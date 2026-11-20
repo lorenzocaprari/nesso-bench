@@ -1,0 +1,8 @@
+# Baseline rule set for the harness imported from nesso: syntax errors,
+# undefined names, unused variables and imports. Widen it in its own pull
+# request, with the fixes, rather than with an import.
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E4", "E7", "E9", "F"]
