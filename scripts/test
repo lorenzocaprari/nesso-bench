@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Runs every unit test under test/scripts with the standard library runner.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
+shopt -s nullglob
+tests=(test/scripts/*_test.py)
+if [[ ${#tests[@]} -eq 0 ]]; then
+  echo "no tests yet"
+  exit 0
+fi
+status=0
+for test in "${tests[@]}"; do
+  echo "== ${test}"
+  python3 "${test}" || status=1
+done
+exit "${status}"

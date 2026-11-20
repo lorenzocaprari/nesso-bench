@@ -1,0 +1,44 @@
+# Pull-request gate for dependencies GitHub's dependency graph has indexed:
+# GitHub Actions today. The optional benchmark stacks are hash-pinned in files
+# that are not named *requirements*.txt (for example
+# competitors/diy-faiss.hashes.txt), so they stay out of this graph on purpose.
+#
+# allow-licenses is the supported control (deny-licenses is deprecated in
+# dependency-review-action v5). An expression passes when it can be satisfied
+# from this list. A dependency with no detected license is reported and does
+# not fail the job. The list matches nesso's.
+fail-on-severity: moderate
+# The action default is runtime only. Go test modules and some Actions
+# changes are classified development or unknown.
+fail-on-scopes:
+  - runtime
+  - development
+  - unknown
+license-check: true
+vulnerability-check: true
+comment-summary-in-pr: never
+show-openssf-scorecard: false
+allow-licenses:
+  - Apache-2.0
+  - MIT
+  - MIT-0
+  - 0BSD
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+  - Unlicense
+  - CC0-1.0
+  - Zlib
+  - BSL-1.0
+  - PostgreSQL
+  - NCSA
+  - HPND
+  - X11
+  - Python-2.0
+  - PSF-2.0
+  - MPL-2.0
+  - LGPL-3.0
+  - LGPL-3.0-only
+  - LGPL-3.0-or-later
+  - Unicode-3.0
+  - Unicode-DFS-2016
