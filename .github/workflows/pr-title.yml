@@ -1,0 +1,46 @@
+name: PR title
+
+on:
+  pull_request:
+    # opened, synchronize, and reopened attach this check to the head commit.
+    # edited is required so a title change re-runs it on the same commit.
+    # GitHub has no title-only activity; a body edit uses edited too, and the
+    # check runs again so a skipped latest run cannot pass a bad title.
+    types: [opened, edited, reopened, synchronize]
+
+# A newer event for this PR cancels an in-progress run. A finished run stays
+# on the commit; the title-edit run is the one branch protection reads next.
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Host job. First step is harden-runner audit.
+jobs:
+  conventional:
+    name: conventional commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Check title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([A-Za-z0-9._/-]+\))?!?: [^ ].+'
+          if printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            printf 'ok: %s\n' "$PR_TITLE"
+            exit 0
+          fi
+          echo "Title does not match a conventional commit:" >&2
+          printf '  %s\n' "$PR_TITLE" >&2
+          echo "Expected: type(scope): subject" >&2
+          echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert" >&2
+          echo "Optional scope. '!' before ':' marks a breaking change." >&2
+          exit 1

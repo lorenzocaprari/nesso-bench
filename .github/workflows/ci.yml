@@ -1,0 +1,87 @@
+name: CI
+
+# lint and test are the checks the main ruleset requires. Heavy benchmark
+# runs live in their own workflows and never run on pull requests.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache pre-commit
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Install pre-commit
+        id: install
+        run: |
+          set -euo pipefail
+          python3 -m venv "${RUNNER_TEMP}/pre-commit-venv"
+          "${RUNNER_TEMP}/pre-commit-venv/bin/pip" install --quiet pre-commit==4.7.0
+          echo "${RUNNER_TEMP}/pre-commit-venv/bin" >> "${GITHUB_PATH}"
+
+      - name: Hygiene and Python (pre-commit)
+        if: steps.install.outcome == 'success'
+        run: bash scripts/lint
+
+      - name: Workflow syntax (actionlint)
+        if: always() && !cancelled() && steps.checkout.outcome == 'success'
+        run: bash scripts/actionlint
+
+      - name: Workflow security (zizmor)
+        if: always() && !cancelled() && steps.checkout.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/zizmor
+
+      - name: Dependency review
+        if: always() && !cancelled() && steps.checkout.outcome == 'success' && github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          config-file: .github/dependency-review-config.yml
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Unit tests
+        run: bash scripts/test
