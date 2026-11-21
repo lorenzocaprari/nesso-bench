@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""Summarize scorecard runs as Markdown: which engine finished which suite.
+
+    scripts/scorecard-status results/0.3.1 [more results directories ...]
+
+Reads status.json (and machine.json, when present) from each directory
+scripts/scorecard wrote, and prints three things: the machine each run was on,
+a table of engine group by suite with each run's outcome and wall time, and
+every run that did not finish with its exit code. Several directories merge
+into one table, which is how the CI smoke run combines its per-engine jobs.
+An outcome other than ok is a finding, not an error here: this exits 0 when it
+could read at least one directory and 1 when it could read none.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+def load(path: Path) -> Any | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def wall(seconds: float | None) -> str:
+    if seconds is None:
+        return "?"
+    if seconds < 120:
+        return f"{seconds:.0f} s"
+    if seconds < 7200:
+        return f"{seconds / 60:.0f} min"
+    return f"{seconds / 3600:.1f} h"
+
+
+def cell(run: dict[str, Any]) -> str:
+    outcome = str(run.get("outcome", "?"))
+    return f"{outcome} ({wall(run.get('wallSeconds'))})"
+
+
+def table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    lines = ["| " + " | ".join(headers) + " |", "|" + " --- |" * len(headers)]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    return lines
+
+
+def machine_row(directory: Path, machine: dict[str, Any]) -> list[str]:
+    memory = machine.get("memTotalBytes")
+    return [
+        directory.name,
+        str(machine.get("cpuModel", "?")),
+        str(machine.get("nproc", "?")),
+        "?" if memory is None else f"{memory / 2**30:.0f} GiB",
+        str(machine.get("memoryMax", "?")),
+        "yes" if machine.get("developmentOnly") else "no",
+    ]
+
+
+def summarize(directories: list[Path]) -> tuple[str, int]:
+    runs: list[dict[str, Any]] = []
+    machines: list[list[str]] = []
+    unreadable: list[str] = []
+    for directory in directories:
+        status = load(directory / "status.json")
+        if not isinstance(status, dict) or not isinstance(status.get("runs"), list):
+            unreadable.append(directory.name)
+            continue
+        runs += [run for run in status["runs"] if isinstance(run, dict)]
+        machine = load(directory / "machine.json")
+        if isinstance(machine, dict):
+            machines.append(machine_row(directory, machine))
+    lines: list[str] = ["### Scorecard runs", ""]
+    if machines:
+        lines += table(["results", "CPU", "logical CPUs", "RAM", "memory cap", "development only"], machines) + [""]
+    if not runs:
+        lines += ["No runs found."]
+    else:
+        groups = list(dict.fromkeys(str(run.get("group")) for run in runs))
+        suites = list(dict.fromkeys(str(run.get("suite")) for run in runs))
+        by_key = {(str(run.get("group")), str(run.get("suite"))): run for run in runs}
+        rows = [[group] + [cell(by_key[(group, suite)]) if (group, suite) in by_key else "—" for suite in suites] for group in groups]
+        lines += table(["engine group", *suites], rows) + [""]
+        failed = [run for run in runs if run.get("outcome") != "ok"]
+        finished = len(runs) - len(failed)
+        lines += [f"{finished} of {len(runs)} runs ok."]
+        if failed:
+            lines += [""] + table(
+                ["suite", "group", "outcome", "exit code"],
+                [[str(run.get("suite")), str(run.get("group")), str(run.get("outcome")), str(run.get("exitCode"))] for run in failed],
+            )
+    if unreadable:
+        lines += ["", "No readable status.json in: " + ", ".join(unreadable) + "."]
+    return "\n".join(lines) + "\n", 0 if runs or not unreadable else 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("results", type=Path, nargs="+", help="scripts/scorecard results directories")
+    args = parser.parse_args(argv)
+    text, code = summarize(args.results)
+    sys.stdout.write(text)
+    return code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

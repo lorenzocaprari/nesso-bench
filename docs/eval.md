@@ -240,6 +240,14 @@ scripts/scorecard --nesso-version 0.3.1 --suites 2k --groups nesso,bm25 --memory
 
 The full run takes many hours: the embedding engines index the 1,000,000-line windows slowly, and ck and vecgrep may hit the memory cap there. That outcome is a result to report, not a failure of the run.
 
+### Checking the memory cap, and the CI smoke run
+
+The scorecard runs every engine under `systemd-run --user --scope -p MemoryMax=...`, so an engine that runs out of memory is killed and recorded as that outcome. That needs a systemd user manager with the memory controller, which a headless SSH or CI session often lacks. `scripts/check-memory-cap` checks it with a bounded probe (a 400 MB allocation under a 100 MB cap; the cap works if the probe is killed). When there is no user manager it enables lingering and starts `user@UID.service` once, probes again, and prints (or, with `--env-file`, appends in the `GITHUB_ENV` format) `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS`. It exits 1 with an explanation when the cap still does not work. Run it first on any new machine. `--memory-max none` runs uncapped, and a runaway engine then takes the machine down.
+
+`scripts/scorecard-status results/<VERSION> [more directories]` prints a table of engine group by suite with each run's outcome and wall time, and lists every run that did not finish, so a long run can be read at a glance.
+
+The **Scorecard smoke** workflow (`.github/workflows/scorecard-smoke.yml`, `workflow_dispatch` only) runs the scorecard on a GitHub-hosted runner, to find out whether the pipeline works on real Linux before a benchmark machine is rented. It checks the memory cap first (every other job needs it); then each of the 11 engine groups runs in its own job with `--dev --repeat 1 --memory-max 12G`, on `2k,formats,json,bundle` (and `bgl-needle-100k` for nesso, ripgrep, bm25, opensearch, xerj, and xerj-semantic; ck and vecgrep exhaust the 16 GB runner on that window, and the embedding engines take one to two hours there). A separate `oom` job runs vecgrep on `bgl-needle-100k` under a 3 GB cap and asserts that the scorecard records `out-of-memory (3G)` and carries on. Each job uploads its results folder (`scorecard-smoke-<group>`), and a final job puts every group in one table in the job summary. Everything is development-only: hosted runners are shared and noisy, so no number from it is published. Dispatch it with `gh workflow run scorecard-smoke.yml --ref <branch> -f nesso_version=0.3.1`. `scripts/scorecard --repeat N` sets the repeat count of every measured suite for runs like this one.
+
 ### Rendering the scorecard
 
 `scripts/eval-results-render results/<VERSION>` turns a `scripts/scorecard` results directory into one Markdown page, `docs/results/<VERSION>.md` by default (`--out` to change it). The page has, in order:

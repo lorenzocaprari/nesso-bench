@@ -1,0 +1,282 @@
+name: Scorecard smoke
+
+# Runs scripts/scorecard on a GitHub-hosted runner, to find out whether the
+# whole pipeline works on real Linux before a benchmark server is rented: the
+# per-run memory cap and the out-of-memory outcome, every competitor install
+# from a clean machine, and install -> run -> merge. Each engine group runs in
+# its own job on the small suites (and the 100k BGL needle window for the light
+# engines) at one repeat. It is development-only: hosted runners are shared and
+# too noisy to publish anything from, so the scorecard marks the results with
+# --dev and nothing here is a result. Manual only (workflow_dispatch): a full
+# run takes about two hours, so it never runs on pull requests. To check a
+# change to this workflow, run it on the branch with
+# `gh workflow run scorecard-smoke.yml --ref <branch> -f nesso_version=0.3.1`.
+on:
+  workflow_dispatch:
+    inputs:
+      nesso_version:
+        description: Released nesso to score (a version pinned in scripts/install-nesso)
+        required: true
+        default: "0.3.1"
+        type: string
+
+concurrency:
+  group: scorecard-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHONHASHSEED: "0"
+
+jobs:
+  # Nothing else runs until a memory cap is known to work: an engine that cannot
+  # be capped would run uncapped and could take the runner down.
+  memory-cap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The check prints what it found (kernel, cgroup controllers, user manager)
+      # whether or not it passes, and fails with an explanation when the cap does
+      # not work even after enabling lingering for the runner user.
+      - name: Check the memory cap
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/check-memory-cap 2>&1 | tee "${RUNNER_TEMP}/memory-cap.txt"
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Memory cap"
+            echo
+            echo '```'
+            cat "${RUNNER_TEMP}/memory-cap.txt" 2>/dev/null || echo "no output"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  score:
+    name: score (${{ matrix.group }})
+    needs: [memory-cap]
+    # Host runner, not the build container: OpenSearch refuses to run as root.
+    # ubuntu-24.04 ships Python 3.12, the version diy-faiss.hashes.txt targets.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The light engines also run the 100k BGL needle window.
+          - group: nesso
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          - group: ripgrep
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          - group: bm25
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          - group: opensearch
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          - group: xerj
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          - group: xerj-semantic
+            suites: 2k,formats,json,bundle,bgl-needle-100k
+          # The embedding engines take 1 to 2 hours on the 100k window at one
+          # repeat, and ck and vecgrep exhaust the 16 GB runner there (the oom
+          # job below runs vecgrep on purpose under a small cap).
+          - group: diy-faiss
+            suites: 2k,formats,json,bundle
+          - group: opensearch-knn
+            suites: 2k,formats,json,bundle
+          - group: xerj-neural
+            suites: 2k,formats,json,bundle
+          - group: ck
+            suites: 2k,formats,json,bundle
+          - group: vecgrep
+            suites: 2k,formats,json,bundle
+    env:
+      NESSO_VERSION: ${{ inputs.nesso_version }}
+      GROUP: ${{ matrix.group }}
+      SUITES: ${{ matrix.suites }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the version
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${NESSO_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "error: nesso_version must look like 0.3.1" >&2; exit 1; }
+
+      # The scorecard measures with GNU time (/usr/bin/time).
+      - name: Install GNU time
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq time
+
+      # Re-checks the cap in this job and, when it needed the user manager
+      # started, passes XDG_RUNTIME_DIR to the steps below.
+      - name: Check the memory cap
+        shell: bash
+        run: bash scripts/check-memory-cap --env-file "${GITHUB_ENV}"
+
+      # The scorecard installs nesso and this group's competitor, fetches or builds
+      # every input, runs each suite under a memory cap and a timeout, and merges.
+      # A run that did not finish is a finding recorded in status.json, not an
+      # error, so this step fails only when the setup itself breaks.
+      - name: Run the scorecard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/scorecard --nesso-version "${NESSO_VERSION}" --dev --repeat 1 \
+            --memory-max 12G --suites "${SUITES}" --groups "${GROUP}"
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        run: |
+          python3 scripts/scorecard-status "results/${NESSO_VERSION}" >> "${GITHUB_STEP_SUMMARY}" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-smoke-${{ matrix.group }}
+          path: results/${{ inputs.nesso_version }}/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # An engine that cannot finish under its cap must be recorded as that result.
+  # vecgrep's chunk index exhausts a 16 GB runner on the 100k window, so under a
+  # 3 GB cap it is killed; the scorecard has to say so and carry on.
+  oom:
+    needs: [memory-cap]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      NESSO_VERSION: ${{ inputs.nesso_version }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the version
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${NESSO_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "error: nesso_version must look like 0.3.1" >&2; exit 1; }
+
+      - name: Install GNU time
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq time
+
+      - name: Check the memory cap
+        shell: bash
+        run: bash scripts/check-memory-cap --env-file "${GITHUB_ENV}"
+
+      - name: Run vecgrep under a 3 GB cap
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/scorecard --nesso-version "${NESSO_VERSION}" --dev --repeat 1 \
+            --memory-max 3G --suites bgl-needle-100k --groups vecgrep
+
+      - name: Check that the out-of-memory run was recorded
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          status = json.load(open(f"results/{os.environ['NESSO_VERSION']}/status.json"))
+          outcomes = [run["outcome"] for run in status["runs"]]
+          print("outcomes:", outcomes)
+          assert outcomes == ["out-of-memory (3G)"], f"expected one out-of-memory (3G) run, got {outcomes}"
+          PY
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        run: |
+          python3 scripts/scorecard-status "results/${NESSO_VERSION}" >> "${GITHUB_STEP_SUMMARY}" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-smoke-oom
+          path: results/${{ inputs.nesso_version }}/
+          retention-days: 14
+          if-no-files-found: warn
+
+  summary:
+    needs: [memory-cap, score, oom]
+    if: always() && !cancelled()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: scorecard-smoke-*
+          path: smoke
+
+      # One table for every engine group, and the runs that did not finish.
+      - name: Summarize every group
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          dirs=(smoke/*/)
+          if [[ ${#dirs[@]} -eq 0 ]]; then
+            echo "No results were uploaded." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          python3 scripts/scorecard-status "${dirs[@]}" >> "${GITHUB_STEP_SUMMARY}"

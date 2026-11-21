@@ -56,6 +56,36 @@ class ScorecardPlanTest(unittest.TestCase):
         self.assertEqual([argv[i + 1] for i, arg in enumerate(argv) if arg == "--engine"], ["nesso"])
         self.assertNotIn("--model-dir", mod.Run(mod.SUITES[0], mod.GROUPS[0]).command(out, "py", {"NESSO_FP32_MODEL_DIR": "/fp32"}))
 
+    def test_repeat_override_applies_to_measured_suites_only(self) -> None:
+        def dry_run(*extra: str) -> list[dict]:
+            done = subprocess.run(
+                [sys.executable, str(SCRIPT), "--nesso-version", "0.3.1", "--dry-run", "--groups", "nesso,xerj-neural", *extra],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(done.returncode, 0, done.stderr)
+            return [json.loads(line) for line in done.stdout.splitlines()]
+
+        def value(run: dict, flag: str) -> str | None:
+            argv = run["argv"]
+            return argv[argv.index(flag) + 1] if flag in argv else None
+
+        for run in dry_run("--suites", "2k,bundle", "--repeat", "1"):
+            if run["suite"] == "2k":
+                self.assertEqual(value(run, "--repeat"), "1")
+                # xerj's quality repeats follow the suite, so a repeat of 1 adds none.
+                self.assertIsNone(value(run, "--quality-repeat"))
+            else:
+                self.assertIsNone(value(run, "--repeat"))
+        defaults = {(run["suite"], run["group"]): run for run in dry_run("--suites", "2k")}
+        self.assertEqual(value(defaults[("2k", "nesso")], "--repeat"), "3")
+        self.assertEqual(value(defaults[("2k", "xerj-neural")], "--quality-repeat"), "3")
+        done = subprocess.run(
+            [sys.executable, str(SCRIPT), "--nesso-version", "0.3.1", "--dry-run", "--repeat", "0"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("--repeat must be a positive integer", done.stderr)
+
     def test_merge_takes_only_merged_runs(self) -> None:
         mod = self.mod
         with tempfile.TemporaryDirectory() as temp:
