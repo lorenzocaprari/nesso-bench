@@ -364,6 +364,32 @@ class FetchLoghubTest(unittest.TestCase):
         self.assertIn("all-2k", bad_url.stderr)
 
 
+class FormatSamplesTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mod = load_fetch()
+
+    def test_pins_and_urls(self) -> None:
+        mod = self.mod
+        self.assertEqual(sorted(mod.FORMAT_SAMPLES), ["hadoop-2k", "healthapp-2k", "openstack-2k"])
+        # Kept out of all-2k, so the six original systems stay comparable.
+        self.assertFalse(set(mod.FORMAT_SAMPLES) & set(mod.SAMPLES_2K))
+        for spec in mod.FORMAT_SAMPLES.values():
+            self.assertRegex(spec.log_sha256, r"^[0-9a-f]{64}$")
+            self.assertRegex(spec.structured_sha256, r"^[0-9a-f]{64}$")
+            self.assertIn(mod.LOGHUB_COMMIT, spec.log_url)
+            self.assertTrue(spec.structured_url.endswith("_structured.csv"))
+        self.assertIn("all-formats", mod.DATASET_CHOICES)
+
+    def test_all_formats_rejects_dest_and_overrides(self) -> None:
+        bad_dest = run_fetch("--dataset", "all-formats", "--dest", "/tmp/x.log")
+        self.assertEqual(bad_dest.returncode, 1, bad_dest.stdout)
+        self.assertIn("all-formats", bad_dest.stderr)
+        bad_url = run_fetch("--dataset", "all-formats", "--url", "https://example.invalid/x")
+        self.assertEqual(bad_url.returncode, 1, bad_url.stdout)
+        self.assertIn("all-formats", bad_url.stderr)
+
+
 _LABELLED_LINES = [
     b"- 1 2005.06.03 R00 normal one\n",
     b"KERNDTLB 2 2005.06.03 R01 data TLB error interrupt\n",

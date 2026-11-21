@@ -123,6 +123,34 @@ SAMPLES_2K: dict[str, Sample2k] = {
     ),
 }
 
+# Systems whose log shape differs from the six syslog-like ones above: a Java log4j
+# log with long identifiers and exceptions (Hadoop), request-id API and compute
+# lines (OpenStack), and pipe-delimited app lines (HealthApp). Kept out of
+# all-2k so results on the six stay comparable; fetched with all-formats.
+FORMAT_SAMPLES: dict[str, Sample2k] = {
+    "hadoop-2k": Sample2k(
+        name="hadoop-2k",
+        folder="Hadoop",
+        log_name="Hadoop_2k.log",
+        log_sha256="9ecaeb807d50d5fb5a20982ea66f1c8d32545259a51ce7456c1ab78db0509732",
+        structured_sha256="e88e5bf99d7f23f482517cc79290ad75b90d914af5d6114176e8bbf0f8ae0fad",
+    ),
+    "openstack-2k": Sample2k(
+        name="openstack-2k",
+        folder="OpenStack",
+        log_name="OpenStack_2k.log",
+        log_sha256="025a1bc64ff5b2ef4a4bda6c4ad5c5c5f18478b71cd1ad2b0676e01625629f2f",
+        structured_sha256="ecc88e7909777181824260e9bdacd1469bd24d55131d6fc14e9c8c17edc49ff0",
+    ),
+    "healthapp-2k": Sample2k(
+        name="healthapp-2k",
+        folder="HealthApp",
+        log_name="HealthApp_2k.log",
+        log_sha256="95ec36322f5db1e6faaab764c568b67023d7d6733793106289dbf30516fc13ee",
+        structured_sha256="11831c70cc8851cb74486153149ae3136453fccca708fcb6826d8dcb0edbc6cb",
+    ),
+}
+
 # Backward-compatible aliases used by tests and callers.
 HDFS_COMMIT = LOGHUB_COMMIT
 _HDFS = SAMPLES_2K["hdfs-2k"]
@@ -134,10 +162,19 @@ HDFS_STRUCTURED_SHA256 = _HDFS.structured_sha256
 DEFAULT_STRUCTURED_DEST = _HDFS.default_structured_dest
 
 DATASET_2K_NAMES = tuple(SAMPLES_2K)
+FORMAT_NAMES = tuple(FORMAT_SAMPLES)
 ALL_2K = "all-2k"
+ALL_FORMATS = "all-formats"
 FULL_DATASET_NAMES = ("hdfs-v1", "bgl", "thunderbird", "all-full")
 LABELLED_DATASET_NAMES = ("bgl-loghub2", "thunderbird-loghub2")
-DATASET_CHOICES = (*DATASET_2K_NAMES, ALL_2K, *FULL_DATASET_NAMES, *LABELLED_DATASET_NAMES)
+DATASET_CHOICES = (
+    *DATASET_2K_NAMES,
+    ALL_2K,
+    *FORMAT_NAMES,
+    ALL_FORMATS,
+    *FULL_DATASET_NAMES,
+    *LABELLED_DATASET_NAMES,
+)
 
 
 @dataclass(frozen=True)
@@ -614,15 +651,16 @@ def main(argv: list[str] | None = None) -> None:
     if args.window:
         raise SystemExit("error: --window applies to bgl-loghub2 and thunderbird-loghub2 only")
 
-    if args.dataset in SAMPLES_2K or args.dataset == ALL_2K:
+    if args.dataset in SAMPLES_2K or args.dataset in FORMAT_SAMPLES or args.dataset in (ALL_2K, ALL_FORMATS):
         _reject_2k_full_flags(args.dataset, args)
-        if args.dataset == ALL_2K:
+        if args.dataset in (ALL_2K, ALL_FORMATS):
             if args.dest is not None:
-                raise SystemExit("error: --dest applies to one dataset; use --dest-dir for all-2k")
+                raise SystemExit(f"error: --dest applies to one dataset; use --dest-dir for {args.dataset}")
             if args.url or args.sha256:
-                raise SystemExit("error: URL and pin overrides apply to one dataset, not all-2k")
-            for name in SAMPLES_2K:
-                spec = SAMPLES_2K[name]
+                raise SystemExit(f"error: URL and pin overrides apply to one dataset, not {args.dataset}")
+            group = SAMPLES_2K if args.dataset == ALL_2K else FORMAT_SAMPLES
+            for name in group:
+                spec = group[name]
                 log_dest = args.dest_dir / spec.log_name
                 structured_dest = args.dest_dir / f"{spec.log_name}_structured.csv"
                 fetch_sample_2k(
@@ -633,7 +671,7 @@ def main(argv: list[str] | None = None) -> None:
                     sha256=None,
                 )
             return
-        spec = SAMPLES_2K[args.dataset]
+        spec = SAMPLES_2K.get(args.dataset) or FORMAT_SAMPLES[args.dataset]
         if args.dest is None:
             log_dest = args.dest_dir / spec.log_name
             structured_dest = args.dest_dir / f"{spec.log_name}_structured.csv"

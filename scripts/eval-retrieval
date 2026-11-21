@@ -96,6 +96,7 @@ SCHEMA_VERSION = 3
 SCHEMA_VERSION_ENGINES = 4
 TOKEN_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
 ALL_2K = "all-2k"
+ALL_FORMATS = "all-formats"
 ES_BULK_BATCH = 500
 XERJ_READY_TIMEOUT_S = 60.0
 XERJ_NEURAL_MODEL_FILES = ("config.json", "tokenizer.json", "model.safetensors")
@@ -182,6 +183,15 @@ DATASETS_2K: dict[str, DatasetSpec] = {
     "openssh-2k": DatasetSpec("openssh-2k", "OpenSSH_2k.log", "openssh_2k.jsonl"),
     "linux-2k": DatasetSpec("linux-2k", "Linux_2k.log", "linux_2k.jsonl"),
     "apache-2k": DatasetSpec("apache-2k", "Apache_2k.log", "apache_2k.jsonl"),
+}
+
+# Log shapes beyond the six above: Java log4j with exceptions, request-id API
+# lines, and pipe-delimited app lines. Not part of all-2k, so its results stay
+# comparable; select them with all-formats or by name.
+DATASETS_FORMATS: dict[str, DatasetSpec] = {
+    "hadoop-2k": DatasetSpec("hadoop-2k", "Hadoop_2k.log", "hadoop_2k.jsonl"),
+    "openstack-2k": DatasetSpec("openstack-2k", "OpenStack_2k.log", "openstack_2k.jsonl"),
+    "healthapp-2k": DatasetSpec("healthapp-2k", "HealthApp_2k.log", "healthapp_2k.jsonl"),
 }
 
 
@@ -2304,10 +2314,13 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if part == ALL_2K:
             names.extend(DATASETS_2K)
             continue
-        if part not in DATASETS_2K:
+        if part == ALL_FORMATS:
+            names.extend(DATASETS_FORMATS)
+            continue
+        if part not in DATASETS_2K and part not in DATASETS_FORMATS:
             raise SystemExit(
                 f"error: unknown dataset {part!r}; expected one of "
-                f"{sorted(DATASETS_2K) + [ALL_2K]}"
+                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + [ALL_2K, ALL_FORMATS]}"
             )
         names.append(part)
     # Preserve order, drop duplicates.
@@ -2317,7 +2330,7 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if name in seen:
             continue
         seen.add(name)
-        ordered.append(DATASETS_2K[name])
+        ordered.append(DATASETS_2K.get(name) or DATASETS_FORMATS[name])
     return ordered
 
 
@@ -4553,7 +4566,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--dataset",
         default=None,
-        help="Comma-separated 2k datasets or all-2k (maps log, CSV, and query file); "
+        help="Comma-separated 2k datasets, all-2k, the log-shape datasets (hadoop-2k, openstack-2k, "
+        "healthapp-2k), or all-formats (maps log, CSV, and query file); "
         "with --measure/--log-prefix-lines also hdfs-v1,bgl,thunderbird,all-full; "
         "or needle windows bgl-needle-100k,bgl-needle-1m,thunderbird-needle-1m,all-needle",
     )

@@ -129,6 +129,10 @@ The `eval-retrieval` workflow prints this table for the 2k report and the needle
 
 Every query line can set `"split"` to `dev` (the default) or `test`. `--split dev|test|all` selects which queries are scored (default `all`). Test queries are frozen: `test/eval/test-split.sha256` holds a digest of all of them, and `scripts/check-test-split`, run by `scripts/test`, fails when one changes, so tuning nesso on the test set shows up in review. `scripts/check-test-split --update` rewrites the digest after a deliberate change. A report row for a test query carries `"split":"test"`; dev rows carry no `split`, so existing reports are unchanged. Today each 2k file freezes three queries (its fifth of each class); the sets are small, so a test margin is mostly a tie until they grow.
 
+### Other log shapes
+
+`--dataset all-formats` (or `hadoop-2k`, `openstack-2k`, `healthapp-2k`) scores three more Loghub 2k samples at the same pinned commit: Hadoop (Java log4j with long job, attempt, and container identifiers and exceptions), OpenStack (compute and API lines with request IDs and UUIDs), and HealthApp (pipe-delimited app lines with millisecond timestamps). They are not part of `all-2k`, so results on the six original systems stay comparable. `scripts/fetch-loghub --dataset all-formats` downloads them with the same sha256 checks. Each has 12 queries per class (exact-ID tokens that occur on one to eight lines, all listed as relevant; paraphrases and causes of 12 different events) and its own test events; see `test/eval/README.md`. The scorecard runs them as the `formats` suite.
+
 ### Repeated quality runs
 
 Most engines rank the same way every run, but xerj-neural and xerj-semantic returned different rankings on `bgl-needle-100k` from runs of the same version, so one run is a sample, not their score. `--quality-repeat N` scores every engine other than nesso N times, building its index again each time. The report keeps one real run, the median by overall MRR (the lower median for an even N, then the earlier run), so its per-query rows, which the paired interval uses, all come from the same run. The engine's row gets `quality_repeat`:
@@ -205,6 +209,7 @@ python3 scripts/eval-retrieval --dataset bgl-needle-100k \
 | Suite | Dataset | Repeats | Scores |
 | --- | --- | --- | --- |
 | `2k` | the six Loghub 2k samples | 3 | quality, speed, memory |
+| `formats` | the Hadoop, OpenStack, and HealthApp 2k samples (see below) | 3 | quality, speed, memory |
 | `bgl-needle-100k` | BGL needle window, 100,000 lines | 3 | quality, speed, memory |
 | `bgl-needle-1m` | BGL needle window, 1,000,000 lines | 1 | quality, speed, memory |
 | `thunderbird-needle-1m` | Thunderbird needle window, 1,000,000 lines | 1 | quality, speed, memory |

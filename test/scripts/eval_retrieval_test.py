@@ -170,6 +170,34 @@ class EvalRetrievalLabelsTest(unittest.TestCase):
                 self.skipTest("Loghub 2k inputs not fetched")
             mod.validate_relevant_events(queries, mod.load_event_ids(spec.structured_path), spec.structured_path)
 
+    def test_format_datasets_are_separate_from_all_2k(self) -> None:
+        mod = self.mod
+        formats = mod.parse_datasets("all-formats")
+        self.assertEqual([spec.name for spec in formats], ["hadoop-2k", "openstack-2k", "healthapp-2k"])
+        # all-2k keeps its six systems, so existing results stay comparable.
+        self.assertEqual(len(mod.parse_datasets("all-2k")), 6)
+        mixed = mod.parse_datasets("bgl-2k,all-formats,hadoop-2k")
+        self.assertEqual([spec.name for spec in mixed], ["bgl-2k", "hadoop-2k", "openstack-2k", "healthapp-2k"])
+        with self.assertRaises(SystemExit) as raised:
+            mod.parse_datasets("nope-2k")
+        self.assertIn("all-formats", str(raised.exception))
+
+    def test_format_query_sets_validate_against_their_logs(self) -> None:
+        mod = self.mod
+        for spec in mod.parse_datasets("all-formats"):
+            queries = mod.load_queries(spec.queries_path)
+            classes = {name: sum(query.class_name == name for query in queries) for name in ("exact_id", "paraphrase", "cause")}
+            self.assertEqual(classes, {"exact_id": 12, "paraphrase": 12, "cause": 12}, spec.name)
+            self.assertTrue(any(query.split == "test" for query in queries), spec.name)
+            self.assertTrue(any(query.split == "dev" for query in queries), spec.name)
+            if not (spec.log_path.is_file() and spec.structured_path.is_file()):
+                self.skipTest("format inputs not fetched")
+            lines = mod.read_log_lines(spec.log_path)
+            events = mod.load_event_ids(spec.structured_path)
+            mod.assert_line_id_alignment(spec.log_path, events, lines)
+            mod.validate_relevant_lines(queries, spec.log_path, lines)
+            mod.validate_relevant_events(queries, events, spec.structured_path)
+
     def test_dataset_mapping_resolves_all_2k(self) -> None:
         specs = self.mod.parse_datasets("all-2k")
         self.assertIsNotNone(specs)

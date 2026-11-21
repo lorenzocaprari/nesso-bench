@@ -48,9 +48,12 @@ for each tool is in [eval.md](eval.md).
 - **Public data.** Loghub logs are public, and the embedding models in several engines were
   probably trained on text like them. That affects every engine that uses a model, not only nesso.
 - **Log shapes covered.** The sets are single-line plain-text logs: three in syslog format
-  (Linux, OpenSSH, Thunderbird), plus HDFS, BGL, and Apache error logs. JSON logs, multi-line
-  records such as stack traces, container and journald output, and mixed trees (`.gz`, tar,
-  directories) are not covered yet. Results say nothing about them.
+  (Linux, OpenSSH, Thunderbird), HDFS, BGL, and Apache error logs, and, as a separate group,
+  Java log4j lines with long identifiers and exceptions (Hadoop), request-id API and compute
+  lines (OpenStack), and pipe-delimited app lines (HealthApp). JSON logs, multi-line records
+  such as stack traces, container and journald output, and mixed trees (`.gz`, tar,
+  directories) are not covered yet. Loghub has no JSON logs, so a JSON result needs another
+  source. Results say nothing about these shapes.
 - **One machine type.** Speed and memory hold for the machine in `machine.json`. Other CPUs,
   memory sizes, and disks will differ; the run-to-run spread on that machine is measured and
   published before any regression threshold is set from it.
