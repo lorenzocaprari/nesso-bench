@@ -20,33 +20,24 @@ Optional keyword and DIY semantic baselines share the same labels and metrics. P
 - **opensearch / opensearch-knn:** single-node [OpenSearch](https://opensearch.org/) (Apache-2.0), the self-hosted search incumbent, through the same stdlib HTTP adapter as xerj. Each index has one primary shard and no replica, so BM25 statistics are not split across shards. `opensearch` maps `text` with the default standard analyzer and runs a plain `match`. `opensearch-knn` stores one `knn_vector` (384 dimensions, HNSW, Lucene engine, `cosinesimil`, default parameters) per line. The vectors come from the same fp32 MiniLM revision and encoder as diy-faiss, computed in the eval process. It needs the diy-faiss venv and reports `skipped` with the install hint when that stack is missing. OpenSearch ML Commons in-engine models are not used. Pass `--opensearch-url http://127.0.0.1:9200` for a node you already run with security off, or `--opensearch-home` (or `OPENSEARCH_HOME`) to spawn one from an extracted tarball. The spawned node is `bin/opensearch` with `discovery.type=single-node`, `network.host=127.0.0.1`, free HTTP and transport ports, a temp `path.data` and `path.logs`, the disk watermark check off, `plugins.security.disabled=true` when the security plugin is installed, and `OPENSEARCH_JAVA_OPTS` (default `-Xms1g -Xmx1g`). With no URL and no home, both engines report `skipped`. A node without the `opensearch-knn` plugin reports `opensearch-knn` as `skipped`. Report `versions` carry `opensearch_version`, `url_mode`, index wall time, `java_opts`, and, for k-NN, the method, model, and revision. Local or per-release only — not Pipeline and not the nightly `eval-retrieval` job.
 - **ck / vecgrep:** the two closest semantic-grep CLIs, [ck](https://github.com/BeaconBay/ck) (Apache-2.0) and [vecgrep](https://github.com/martintrojer/vecgrep) (MIT), run as installed, with their default models and chunking. Each gets its own corpus directory holding only a hard link (or copy) of the log, so its index stays out of the repository. vecgrep gets a `.vecgrep` directory there to pin its project root. The index step is `ck --index --quiet .` or `vecgrep --index-only --quiet`. Each query runs `ck --sem --jsonl --no-snippet --quiet --topk 10 --threshold 0 -- <query> <log>` or `vecgrep --json --quiet -k 10 --threshold 0 -- <query> <log>`. `--threshold 0` turns off ck's default 0.6 cutoff so both tools return their top 10 like every other engine. Both tools rank multi-line chunks, not lines. The adapter orders chunks by score, then start line. Each chunk contributes its lines in file order, a line that an earlier overlapping chunk already gave is skipped, and the list stops at 10 lines. So one strong chunk can fill the whole top 10. That is how a reader of their output sees it, and it is the main reason their line scores differ from nesso's. Missing executables report `skipped`. Report `versions` carry the tool's `--version` line. ck embeds with `BAAI/bge-small-en-v1.5` and downloads it to `$XDG_CACHE_HOME/ck` (or `~/.cache/ck`) on first use. vecgrep ships `all-MiniLM-L6-v2` inside the binary. Run ck once before `--measure` so the timed runs do not include that download. Local or per-release only — not Pipeline and not the nightly `eval-retrieval` job.
 
-Install the pinned release binaries and check their sha256 (ck publishes a `.sha256` file; vecgrep's digest is on its GitHub release asset):
+`scripts/install-competitors` installs the pinned competitors and checks every download against its pin: ck 0.8.1 (release binary, sha256), vecgrep v0.10.1 (built with `cargo install --locked` from the tag's commit, because its release binary needs glibc 2.43; the build needs cargo, `pkg-config`, and the OpenSSL headers, `libssl-dev` on Debian and Ubuntu), xerj 1.0.0-rc.104 (the static musl build, sha256), the three all-MiniLM-L6-v2 files xerj-neural uses (at the revision diy-faiss pins, sha256), the OpenSearch 3.10.0 full bundle (sha512; the min distribution has no k-NN plugin, and the bundle is about 1.1 GB), and the diy-faiss venv (`pip --require-hashes` from `bench/competitors/diy-faiss.hashes.txt`, Python 3.12; set `PYTHON` to pick the interpreter). Pass the engines to install (`diy-faiss`, `opensearch`, `opensearch-knn`, `ck`, `vecgrep`, `xerj`, `xerj-neural`, `xerj-semantic`, or `all`). Everything lands under `build/competitors/` (`--dest` to change it), and a piece already installed from the same pin is reused. The script prints `export` lines for `EVAL_PYTHON`, `OPENSEARCH_HOME`, `XERJ_MODEL_DIR`, and `PATH`, so `eval` sets up the shell:
 
 ```bash
-curl -LO https://github.com/BeaconBay/ck/releases/download/0.8.1/ck-0.8.1-x86_64-unknown-linux-gnu.tar.gz
-echo "042db74e0ed10cd5995024bc16ea9928de6aaef632ef6463b3b8812a8d1ba1ac  ck-0.8.1-x86_64-unknown-linux-gnu.tar.gz" | sha256sum -c
-curl -LO https://github.com/martintrojer/vecgrep/releases/download/v0.10.1/vecgrep-v0.10.1-x86_64-unknown-linux-gnu.tar.gz
-echo "389d131e28bc4dc4b8c00aaffde051b4ebaa127cceeb89dcf8ebb4dc03f05021  vecgrep-v0.10.1-x86_64-unknown-linux-gnu.tar.gz" | sha256sum -c
-mkdir -p "$HOME/.local/bin"
-tar -xzf ck-0.8.1-x86_64-unknown-linux-gnu.tar.gz -C "$HOME/.local/bin" ./ck
-tar -xzf vecgrep-v0.10.1-x86_64-unknown-linux-gnu.tar.gz -C "$HOME/.local/bin" vecgrep
+eval "$(scripts/install-competitors ck vecgrep)"
 python3 scripts/eval-retrieval --dataset all-2k \
   --engine nesso --engine ck --engine vecgrep --out build/eval/chunk_cli.json
-```
 
-Fetch the OpenSearch tarball yourself; the script never downloads it. The min distribution has no k-NN plugin, and the plugin is not published on its own, so use the full bundle (about 1.1 GB):
-
-```bash
-curl -LO https://artifacts.opensearch.org/releases/bundle/opensearch/3.10.0/opensearch-3.10.0-linux-x64.tar.gz
-curl -LO https://artifacts.opensearch.org/releases/bundle/opensearch/3.10.0/opensearch-3.10.0-linux-x64.tar.gz.sha512
-sha512sum -c opensearch-3.10.0-linux-x64.tar.gz.sha512
-tar -xzf opensearch-3.10.0-linux-x64.tar.gz
-PYTHONHASHSEED=0 .venv-diy/bin/python scripts/eval-retrieval --dataset all-2k \
+eval "$(scripts/install-competitors opensearch-knn)"
+PYTHONHASHSEED=0 "${EVAL_PYTHON}" scripts/eval-retrieval --dataset all-2k \
   --engine bm25 --engine diy-faiss --engine opensearch --engine opensearch-knn \
-  --opensearch-home opensearch-3.10.0 --out build/eval/opensearch.json
+  --out build/eval/opensearch.json
+
+eval "$(scripts/install-competitors xerj-neural)"
+python3 scripts/eval-retrieval --dataset all-2k --engine xerj-neural \
+  --xerj-model-dir "${XERJ_MODEL_DIR}" --out build/eval/xerj_neural.json
 ```
 
-OpenSearch refuses to start as root. The bundled JDK means no system Java is needed.
+`scripts/eval-retrieval` never downloads a competitor itself. OpenSearch refuses to start as root. The bundled JDK means no system Java is needed.
 
 Fairness for published comparisons: same logs, queries, machine, and k=10. DIY and opensearch-knn use the original Hub fp32 MiniLM; nesso uses the shipped int8 ONNX. Compare scores; do not expect identical vectors. opensearch-knn and diy-faiss share vectors, so a score gap between them comes from HNSW being approximate where FAISS `IndexFlatIP` is exact. OpenSearch peak RSS follows the JVM heap in `OPENSEARCH_JAVA_OPTS`; keep that value beside any published number.
 
@@ -57,11 +48,8 @@ python3 scripts/eval-retrieval --dataset all-2k \
 ```
 
 ```bash
-python3.12 -m venv .venv-diy
-.venv-diy/bin/pip install --require-hashes \
-  -r bench/competitors/diy-faiss.hashes.txt \
-  --extra-index-url https://download.pytorch.org/whl/cpu
-PYTHONHASHSEED=0 .venv-diy/bin/python scripts/eval-retrieval --dataset all-2k \
+eval "$(PYTHON=python3.12 scripts/install-competitors diy-faiss)"
+PYTHONHASHSEED=0 "${EVAL_PYTHON}" scripts/eval-retrieval --dataset all-2k \
   --engine diy-faiss --out build/eval/diy_faiss.json
 ```
 
@@ -118,7 +106,7 @@ python3 scripts/eval-retrieval --dataset thunderbird-needle-1m,bgl-needle-1m \
 
 ### Heavy competitors in CI
 
-[`.github/workflows/eval-competitors.yml`](../.github/workflows/eval-competitors.yml) scores the competitors that are too heavy for every night on the 2k seed sets and on `bgl-needle-100k`. It measures retrieval quality only, with no `--measure`, because hosted-runner timings are too noisy to publish. Each of diy-faiss, opensearch, opensearch-knn, ck, vecgrep, xerj, xerj-neural, and xerj-semantic runs in its own job on `ubuntu-24.04`, on the host rather than in the build container, because OpenSearch refuses to run as root. The jobs install the same pinned versions as the local steps above: the diy-faiss venv from `bench/competitors/diy-faiss.hashes.txt`, the OpenSearch 3.10.0 bundle checked by sha512, ck 0.8.1 and xerj 1.0.0-rc.104 (the static musl build) checked by sha256, vecgrep v0.10.1 built from its tag commit with `cargo install --locked` (its release binary needs glibc 2.43, newer than the runner's), and for xerj-neural the three all-MiniLM-L6-v2 files at the revision diy-faiss pins, checked by sha256. The `merge` job combines the reports that finished with `scripts/eval-retrieval-merge`, writes an overall table per engine and class to the job summary, and uploads `eval-competitors` (`competitors-2k.json`, `competitors-needle.json`). A `prepare` job fetches the Loghub inputs once, retrying a failed or mismatched download, and hands them to the engine jobs as an artifact. ck and vecgrep score the 2k seed sets only: on the 100k needle window their multi-line chunk indexes exhaust the hosted runner's 16 GB and the runner shuts down mid-step, so run them on `bgl-needle-100k` locally with enough memory. An engine whose job failed is listed as missing rather than failing the merge. The needle step times out after 150 minutes, about twice the slowest engine (xerj-neural, about 75 minutes), and the harness prints one progress line per engine phase on stderr (`eval-retrieval: <dataset> <engine>: indexing`, `indexed in N s`, `scored at N s`), so a running job shows which phase it is in. nesso is not built here; nesso's `eval-retrieval` workflow scores it on the same sets. Run it from this repository's Actions with **Run workflow**; it is manual only and never runs on pull requests, because a full run takes over an hour. To check a change to the workflow, run it on the branch with `gh workflow run eval-competitors.yml --ref <branch>`.
+[`.github/workflows/eval-competitors.yml`](../.github/workflows/eval-competitors.yml) scores the competitors that are too heavy for every night on the 2k seed sets and on `bgl-needle-100k`. It measures retrieval quality only, with no `--measure`, because hosted-runner timings are too noisy to publish. Each of diy-faiss, opensearch, opensearch-knn, ck, vecgrep, xerj, xerj-neural, and xerj-semantic runs in its own job on `ubuntu-24.04`, on the host rather than in the build container, because OpenSearch refuses to run as root. Each job installs its engine with `scripts/install-competitors`, the same script and pins as a local run (see above). The `merge` job combines the reports that finished with `scripts/eval-retrieval-merge`, writes an overall table per engine and class to the job summary, and uploads `eval-competitors` (`competitors-2k.json`, `competitors-needle.json`). A `prepare` job fetches the Loghub inputs once, retrying a failed or mismatched download, and hands them to the engine jobs as an artifact. ck and vecgrep score the 2k seed sets only: on the 100k needle window their multi-line chunk indexes exhaust the hosted runner's 16 GB and the runner shuts down mid-step, so run them on `bgl-needle-100k` locally with enough memory. An engine whose job failed is listed as missing rather than failing the merge. The needle step times out after 150 minutes, about twice the slowest engine (xerj-neural, about 75 minutes), and the harness prints one progress line per engine phase on stderr (`eval-retrieval: <dataset> <engine>: indexing`, `indexed in N s`, `scored at N s`), so a running job shows which phase it is in. nesso is not built here; nesso's `eval-retrieval` workflow scores it on the same sets. Run it from this repository's Actions with **Run workflow**; it is manual only and never runs on pull requests, because a full run takes over an hour. To check a change to the workflow, run it on the branch with `gh workflow run eval-competitors.yml --ref <branch>`.
 
 Which model each semantic engine uses matters for reading the results. **Same-model controls** use all-MiniLM-L6-v2, the model nesso ships, so a difference comes from the engine, fusion, and routing rather than the model: diy-faiss (fp32, exact search), opensearch-knn (the same vectors, HNSW), and xerj-neural. xerj's neural mode is itself all-MiniLM-L6-v2: without `embedding.local_model_dir` it downloads those three files from Hugging Face. The workflow stages them at the revision diy-faiss pins, so the run is reproducible. xerj's release model bundle is its separate facts model and plays no part in search. **As shipped** engines use their own defaults: vecgrep bundles all-MiniLM-L6-v2, ck uses BAAI/bge-small-en-v1.5, and xerj-semantic is xerj's default `semantic` search, a lexical feature-hashing embedder with no model. A loss to an as-shipped engine can come from its model; that question belongs to a model comparison, not to ranking.
 

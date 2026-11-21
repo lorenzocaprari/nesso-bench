@@ -1,7 +1,7 @@
 # DIY retrieval baselines
 
 Optional competitor engines for `scripts/eval-retrieval`. They are not installed
-in the build image, Pipeline, or the nightly `eval-retrieval` workflow.
+in nesso's build image or its nightly `eval-retrieval` workflow.
 
 The pin file is named `diy-faiss.hashes.txt` (not `*requirements*.txt`) so GitHub's
 dependency graph / PR dependency-review does not index this optional stack.
@@ -11,12 +11,12 @@ dependency graph / PR dependency-review does not index this optional stack.
 sentence-transformers `all-MiniLM-L6-v2` (fp32, pinned Hub revision) + FAISS
 `IndexFlatIP`. Setup and fairness notes: [docs/eval.md](../../docs/eval.md).
 
+`scripts/install-competitors` builds the venv under `build/competitors/` from the
+hash-pinned file (Python 3.12; set `PYTHON` to pick the interpreter):
+
 ```bash
-python3.12 -m venv .venv-diy
-.venv-diy/bin/pip install --require-hashes \
-  -r bench/competitors/diy-faiss.hashes.txt \
-  --extra-index-url https://download.pytorch.org/whl/cpu
-PYTHONHASHSEED=0 .venv-diy/bin/python scripts/eval-retrieval \
+eval "$(PYTHON=python3.12 scripts/install-competitors diy-faiss)"
+PYTHONHASHSEED=0 "${EVAL_PYTHON}" scripts/eval-retrieval \
   --dataset all-2k --engine diy-faiss --out build/eval/diy_faiss.json
 ```
 
