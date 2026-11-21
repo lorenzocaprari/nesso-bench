@@ -56,6 +56,13 @@ that occur on one to five lines, all listed as relevant. Many Thunderbird events
 near-duplicates of each other (the InfiniBand sweep lines, the DHCP lines); the queries
 use only ones a phrasing can tell apart.
 
+BGL_2k has 120 templates, so its 20 new paraphrase and cause queries each use a different
+event, one phrasing per class (E60, E51, E82, E101, E111, and E41 are the test events).
+Its exact-ID queries are 8 hex addresses and 6 microsecond timestamps on one line each,
+4 identifiers, and 2 node locations on two lines each, all listed as relevant. Many BGL
+events differ only by a register name (the `program interrupt` and `machine check`
+families), so only ones a phrasing can tell apart are used.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
