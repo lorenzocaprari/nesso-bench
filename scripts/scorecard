@@ -338,16 +338,66 @@ def warm_ck(env: dict[str, str]) -> None:
 # ---- runs ------------------------------------------------------------------
 
 
-def wrap(argv: list[str], memory_max: str | None, timeout_hours: float) -> list[str]:
+def wrap(argv: list[str], memory_max: str | None, timeout_hours: float, unit: str | None = None) -> list[str]:
     limited = ["timeout", "--kill-after=60", f"{int(timeout_hours * 3600)}s", *argv]
     if memory_max is None:
         return limited
-    return ["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={memory_max}", "-p", "MemorySwapMax=0", "--", *limited]
+    named = [f"--unit={unit}"] if unit else []
+    return ["systemd-run", "--user", "--scope", "--quiet", *named, "-p", f"MemoryMax={memory_max}", "-p", "MemorySwapMax=0", "--", *limited]
 
 
-def outcome(code: int, memory_max: str | None, log_text: str, timed_out: bool) -> str:
+def scope_name(suite: str, group: str) -> str:
+    """A unit name for one run, unique within this process and safe for systemd."""
+    return re.sub(r"[^A-Za-z0-9-]", "-", f"scorecard-{os.getpid()}-{suite}-{group}")
+
+
+def scope_result(unit: str, wait_seconds: float = 10.0) -> str | None:
+    """systemd's verdict on a finished scope: oom-kill when the cap killed it, success, or exit-code.
+
+    systemd settles a moment after systemd-run returns (the scope is still
+    deactivating and says success), so this waits for a final state.
+    """
+    result = None
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            done = subprocess.run(
+                ["systemctl", "--user", "show", f"{unit}.scope", "-p", "ActiveState", "-p", "Result"],
+                capture_output=True, text=True, check=False, timeout=30,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if done.returncode != 0:
+            return None
+        fields = dict(line.partition("=")[::2] for line in done.stdout.splitlines())
+        result = fields.get("Result") or None
+        if fields.get("ActiveState") in ("inactive", "failed") or time.monotonic() >= deadline:
+            return result
+        time.sleep(0.25)
+
+
+def reset_scope(unit: str) -> None:
+    """A scope that failed stays loaded until reset; drop it so names never pile up."""
+    try:
+        subprocess.run(["systemctl", "--user", "reset-failed", f"{unit}.scope"], capture_output=True, check=False, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+def outcome(code: int, memory_max: str | None, log_text: str, timed_out: bool, scope: str | None = None) -> str:
+    """ok, timeout, out-of-memory, or failed.
+
+    systemd's own verdict on the scope (oom-kill) decides when it is known: the
+    kernel kills one process, and systemd then stops the rest of the scope with
+    SIGTERM, so the run's exit code is -15 or 143, not a SIGKILL. The exit code
+    and the harness's log are the fallback.
+    """
     if code == 0:
         return "ok"
+    # timeout exits 124 when it is SIGTERMed too, so a memory kill can look like
+    # a timeout; the scope's verdict comes first.
+    if memory_max is not None and scope == "oom-kill" and not timed_out:
+        return f"out-of-memory ({memory_max})"
     if code == EXIT_TIMEOUT or timed_out:
         return "timeout"
     if memory_max is not None and (code == EXIT_KILLED or KILLED_IN_LOG.search(log_text)):
@@ -365,11 +415,15 @@ def execute(run: Run, out: Path, python: str, env: dict[str, str], memory_max: s
     argv = run.command(out, python, run_env)
     print(f"scorecard: {run.suite.name} {run.group.name}: start", file=sys.stderr, flush=True)
     started = time.monotonic()
+    unit = scope_name(run.suite.name, run.group.name) if memory_max is not None else None
     with run.log(out).open("w", encoding="utf-8") as log:
-        code = subprocess.run(wrap(argv, memory_max, timeout_hours), env=run_env, stdout=log, stderr=subprocess.STDOUT, check=False).returncode
+        code = subprocess.run(wrap(argv, memory_max, timeout_hours, unit), env=run_env, stdout=log, stderr=subprocess.STDOUT, check=False).returncode
     seconds = round(time.monotonic() - started, 1)
     log_text = run.log(out).read_text(encoding="utf-8", errors="replace")
-    result = outcome(code, memory_max, log_text, seconds >= timeout_hours * 3600)
+    scope = scope_result(unit) if unit else None
+    if unit:
+        reset_scope(unit)
+    result = outcome(code, memory_max, log_text, seconds >= timeout_hours * 3600, scope)
     print(f"scorecard: {run.suite.name} {run.group.name}: {result} in {seconds} s", file=sys.stderr, flush=True)
     return {
         "suite": run.suite.name,
