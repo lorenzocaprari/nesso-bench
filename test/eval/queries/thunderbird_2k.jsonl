@@ -6,13 +6,73 @@
 {"id":"exact_03","class":"exact_id","query":"e1000_watchdog","relevant_lines":[1307]}
 {"id":"exact_04","class":"exact_id","query":"Thunderbird_D2","relevant_lines":[1430]}
 {"id":"exact_05","class":"exact_id","query":"1131567332","relevant_lines":[2000],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"2728","relevant_lines":[12]}
+{"id":"exact_07","class":"exact_id","query":"28964","relevant_lines":[176]}
+{"id":"exact_08","class":"exact_id","query":"18058","relevant_lines":[361]}
+{"id":"exact_09","class":"exact_id","query":"13156","relevant_lines":[505]}
+{"id":"exact_10","class":"exact_id","query":"29120","relevant_lines":[658]}
+{"id":"exact_11","class":"exact_id","query":"20018","relevant_lines":[805]}
+{"id":"exact_12","class":"exact_id","query":"12879","relevant_lines":[974]}
+{"id":"exact_13","class":"exact_id","query":"19395","relevant_lines":[1105]}
+{"id":"exact_14","class":"exact_id","query":"3042","relevant_lines":[1601]}
+{"id":"exact_15","class":"exact_id","query":"13155","relevant_lines":[1770]}
+{"id":"exact_16","class":"exact_id","query":"0x0100000e","relevant_lines":[1184]}
+{"id":"exact_17","class":"exact_id","query":"0x00000000000fd81c","relevant_lines":[1186]}
+{"id":"exact_18","class":"exact_id","query":"0xfec00000","relevant_lines":[1190,1269]}
+{"id":"exact_19","class":"exact_id","query":"0x00000000000fd724","relevant_lines":[1206]}
+{"id":"exact_20","class":"exact_id","query":"INT_SRC_OVR","relevant_lines":[1188,1189],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"sys_ia32","relevant_lines":[1268],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"dquot_6","relevant_lines":[1294],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"MD_SB_DISKS","relevant_lines":[1330],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"0.0.0.0","relevant_lines":[1466],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"10.100.8.250","relevant_lines":[1554,1632],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"root shell session was closed","relevant_events":["E117"]}
 {"id":"para_02","class":"paraphrase","query":"root session opened by uid 0","relevant_events":["E118"]}
 {"id":"para_03","class":"paraphrase","query":"DHCP discover found no free leases on A_net","relevant_events":["E37"]}
 {"id":"para_04","class":"paraphrase","query":"failed to resolve a ganglia data source name","relevant_events":["E146"]}
 {"id":"para_05","class":"paraphrase","query":"host could not qualify its own domain name","relevant_events":["E131"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"ganglia collector got no reply from any data source","relevant_events":["E32"]}
+{"id":"para_07","class":"paraphrase","query":"ntp client is synchronized with a time server","relevant_events":["E125"]}
+{"id":"para_08","class":"paraphrase","query":"subnet manager sweep found no configuration change","relevant_events":["E7"],"split":"test"}
+{"id":"para_09","class":"paraphrase","query":"InfiniBand subnet manager starts a new sweep","relevant_events":["E8"],"split":"test"}
+{"id":"para_10","class":"paraphrase","query":"config loader reading an included file","relevant_events":["E97"]}
+{"id":"para_11","class":"paraphrase","query":"hourly cron job runs scripts in the cron.hourly directory","relevant_events":["E3"]}
+{"id":"para_12","class":"paraphrase","query":"mail from root queued with its size and recipients","relevant_events":["E15"]}
+{"id":"para_13","class":"paraphrase","query":"mail to root delivered through a relay","relevant_events":["E16"]}
+{"id":"para_14","class":"paraphrase","query":"DHCP request for an address with a lease the server does not know","relevant_events":["E40"]}
+{"id":"para_15","class":"paraphrase","query":"device not ready before probe","relevant_events":["E145"]}
+{"id":"para_16","class":"paraphrase","query":"connection lost because the connection closed","relevant_events":["E30"]}
+{"id":"para_17","class":"paraphrase","query":"filesystem mounted using ordered data journaling","relevant_events":["E71"]}
+{"id":"para_18","class":"paraphrase","query":"SNMP packets received from a host","relevant_events":["E98"]}
+{"id":"para_19","class":"paraphrase","query":"sshd could not bind its port because it is already taken","relevant_events":["E44"],"split":"test"}
+{"id":"para_20","class":"paraphrase","query":"mounting the remaining filesystems failed","relevant_events":["E74"],"split":"test"}
+{"id":"para_21","class":"paraphrase","query":"disk temperature changed since the last report","relevant_events":["E34"]}
+{"id":"para_22","class":"paraphrase","query":"network interface reports its link is up at full duplex","relevant_events":["E46"]}
+{"id":"para_23","class":"paraphrase","query":"cannot open logsurfer device file for writing","relevant_events":["E24"],"split":"test"}
+{"id":"para_24","class":"paraphrase","query":"unknown command sent to the sda disk","relevant_events":["E132"],"split":"test"}
+{"id":"para_25","class":"paraphrase","query":"ssh daemon is listening on a port","relevant_events":["E116"]}
 {"id":"cause_01","class":"cause","query":"interactive root session ended on the admin node","relevant_events":["E117"]}
 {"id":"cause_02","class":"cause","query":"DHCP pool for A_net had no addresses left","relevant_events":["E37"]}
 {"id":"cause_03","class":"cause","query":"gmetad could not resolve a configured data source","relevant_events":["E146"]}
 {"id":"cause_04","class":"cause","query":"mailer could not fully qualify the local hostname","relevant_events":["E131"]}
 {"id":"cause_05","class":"cause","query":"RRD update skipped because the step was under one second","relevant_events":["E111"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"the cluster monitoring daemon could not reach any of its nodes","relevant_events":["E32"]}
+{"id":"cause_07","class":"cause","query":"the machine's clock was adjusted to match a reference time source","relevant_events":["E125"]}
+{"id":"cause_08","class":"cause","query":"the InfiniBand fabric was stable, so nothing needed reprogramming","relevant_events":["E7"],"split":"test"}
+{"id":"cause_09","class":"cause","query":"the fabric manager began another periodic scan of the network","relevant_events":["E8"],"split":"test"}
+{"id":"cause_10","class":"cause","query":"a configuration file pulled in another file through an include directive","relevant_events":["E97"]}
+{"id":"cause_11","class":"cause","query":"the scheduler launched the periodic maintenance tasks","relevant_events":["E3"]}
+{"id":"cause_12","class":"cause","query":"root submitted a message to the local mail system","relevant_events":["E15"]}
+{"id":"cause_13","class":"cause","query":"the mail transfer agent handed a root message to the relay host","relevant_events":["E16"]}
+{"id":"cause_14","class":"cause","query":"a client asked to renew a lease that is not in the server's records","relevant_events":["E40"]}
+{"id":"cause_15","class":"cause","query":"hardware did not report ready in time when the driver probed it","relevant_events":["E145"]}
+{"id":"cause_16","class":"cause","query":"the remote peer closed the link unexpectedly","relevant_events":["E30"]}
+{"id":"cause_17","class":"cause","query":"a journaled volume came online after boot","relevant_events":["E71"]}
+{"id":"cause_18","class":"cause","query":"a monitoring system queried the machine over SNMP","relevant_events":["E98"]}
+{"id":"cause_19","class":"cause","query":"another process was already listening on the SSH port","relevant_events":["E44"],"split":"test"}
+{"id":"cause_20","class":"cause","query":"the boot script could not mount some non-NFS volumes","relevant_events":["E74"],"split":"test"}
+{"id":"cause_21","class":"cause","query":"the drive heated up or cooled down between smartd checks","relevant_events":["E34"]}
+{"id":"cause_22","class":"cause","query":"the ethernet cable was connected or the switch port came up","relevant_events":["E46"]}
+{"id":"cause_23","class":"cause","query":"log analysis tool had no device node to write to","relevant_events":["E24"],"split":"test"}
+{"id":"cause_24","class":"cause","query":"the SCSI layer issued a command the drive does not recognise","relevant_events":["E132"],"split":"test"}
+{"id":"cause_25","class":"cause","query":"the SSH server started and is ready for connections","relevant_events":["E116"]}
