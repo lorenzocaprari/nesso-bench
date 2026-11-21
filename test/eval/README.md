@@ -37,6 +37,11 @@ Queries on the same event are not independent evidence, and the pooled interval
 treats them as if they were. The events E6, E8, and E13 are the test events: both
 phrasings of each are in the frozen split, so no test event is also tuned on.
 
+Linux_2k has 118 templates, so its 20 new paraphrase and cause queries each use a
+different event, one phrasing per class (E36, E89, E4, E107, E46, and E88 are the
+test events). Its exact-ID queries are PIDs, IP addresses, and other tokens that
+occur on exactly one line.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.

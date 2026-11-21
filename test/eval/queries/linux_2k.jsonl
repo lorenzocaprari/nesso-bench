@@ -6,13 +6,73 @@
 {"id":"exact_03","class":"exact_id","query":"19630","relevant_lines":[605]}
 {"id":"exact_04","class":"exact_id","query":"12786","relevant_lines":[905]}
 {"id":"exact_05","class":"exact_id","query":"agpgart","relevant_lines":[2000],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"20882","relevant_lines":[4]}
+{"id":"exact_07","class":"exact_id","query":"18976","relevant_lines":[278]}
+{"id":"exact_08","class":"exact_id","query":"15546","relevant_lines":[462]}
+{"id":"exact_09","class":"exact_id","query":"32058","relevant_lines":[734]}
+{"id":"exact_10","class":"exact_id","query":"13514","relevant_lines":[928]}
+{"id":"exact_11","class":"exact_id","query":"24519","relevant_lines":[1061]}
+{"id":"exact_12","class":"exact_id","query":"30622","relevant_lines":[1182]}
+{"id":"exact_13","class":"exact_id","query":"15342","relevant_lines":[1329]}
+{"id":"exact_14","class":"exact_id","query":"24365","relevant_lines":[1465]}
+{"id":"exact_15","class":"exact_id","query":"30508","relevant_lines":[1608]}
+{"id":"exact_16","class":"exact_id","query":"22655","relevant_lines":[1763]}
+{"id":"exact_17","class":"exact_id","query":"211.46.224.253","relevant_lines":[91]}
+{"id":"exact_18","class":"exact_id","query":"67.170.148.126","relevant_lines":[167]}
+{"id":"exact_19","class":"exact_id","query":"200.60.37.201","relevant_lines":[281]}
+{"id":"exact_20","class":"exact_id","query":"85.44.47.166","relevant_lines":[1714],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"218.38.58.3","relevant_lines":[1907],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"imps2","relevant_lines":[897],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"bhcompile","relevant_lines":[1911],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"ffff3000","relevant_lines":[1932],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"dquot_6","relevant_lines":[1992],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"process exited abnormally with status 1","relevant_events":["E8"]}
 {"id":"para_02","class":"paraphrase","query":"ticket-based login was rejected","relevant_events":["E61"]}
 {"id":"para_03","class":"paraphrase","query":"DNS notify payload omitted the SOA record","relevant_events":["E75"]}
 {"id":"para_04","class":"paraphrase","query":"authentication aborted by a software connection reset","relevant_events":["E14"]}
 {"id":"para_05","class":"paraphrase","query":"printing daemon finished shutting down","relevant_events":["E37"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"user's login session ended","relevant_events":["E101"]}
+{"id":"para_07","class":"paraphrase","query":"a login session started for a user","relevant_events":["E102"]}
+{"id":"para_08","class":"paraphrase","query":"login attempt with an account that does not exist","relevant_events":["E27"]}
+{"id":"para_09","class":"paraphrase","query":"authentication failed with a permission error in the replay cache","relevant_events":["E13"]}
+{"id":"para_10","class":"paraphrase","query":"device node being created under udev","relevant_events":["E36"],"split":"test"}
+{"id":"para_11","class":"paraphrase","query":"device node removed from udev directory","relevant_events":["E89"],"split":"test"}
+{"id":"para_12","class":"paraphrase","query":"ftp daemon cannot get the peer address of a closed connection","relevant_events":["E47"]}
+{"id":"para_13","class":"paraphrase","query":"anonymous user logged in to the ftp server","relevant_events":["E9"]}
+{"id":"para_14","class":"paraphrase","query":"cannot determine client address because the connection was reset","relevant_events":["E116"]}
+{"id":"para_15","class":"paraphrase","query":"unknown user lookup timed out","relevant_events":["E112"]}
+{"id":"para_16","class":"paraphrase","query":"SNMP packets received from a host","relevant_events":["E88"],"split":"test"}
+{"id":"para_17","class":"paraphrase","query":"root logged in on a console terminal","relevant_events":["E91"]}
+{"id":"para_18","class":"paraphrase","query":"unable to authenticate the user","relevant_events":["E31"]}
+{"id":"para_19","class":"paraphrase","query":"ACPI turned off because BIOS is old","relevant_events":["E4"],"split":"test"}
+{"id":"para_20","class":"paraphrase","query":"security framework registered twice","relevant_events":["E107"],"split":"test"}
+{"id":"para_21","class":"paraphrase","query":"capabilities module failed to register with the kernel","relevant_events":["E46"],"split":"test"}
+{"id":"para_22","class":"paraphrase","query":"machine check architecture is supported by the CPU","relevant_events":["E56"]}
+{"id":"para_23","class":"paraphrase","query":"processor speed detected at boot","relevant_events":["E40"]}
+{"id":"para_24","class":"paraphrase","query":"boot-time memory summary with kernel code and reserved sizes","relevant_events":["E70"]}
+{"id":"para_25","class":"paraphrase","query":"boot command line with root device label","relevant_events":["E62"]}
 {"id":"cause_01","class":"cause","query":"monitored service process crashed with exit code 1","relevant_events":["E8"]}
 {"id":"cause_02","class":"cause","query":"Kerberos ticket check rejected the login","relevant_events":["E61"]}
 {"id":"cause_03","class":"cause","query":"DNS notify message had an empty question SOA","relevant_events":["E75"]}
 {"id":"cause_04","class":"cause","query":"remote auth session aborted mid-handshake","relevant_events":["E14"]}
 {"id":"cause_05","class":"cause","query":"printing daemon completed a clean shutdown","relevant_events":["E37"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"the user logged out or the connection was closed so the session finished","relevant_events":["E101"]}
+{"id":"cause_07","class":"cause","query":"someone logged in and the system opened a session on their behalf","relevant_events":["E102"]}
+{"id":"cause_08","class":"cause","query":"the password check found no such user on the system","relevant_events":["E27"]}
+{"id":"cause_09","class":"cause","query":"the service could not write its Kerberos replay cache so it refused the login","relevant_events":["E13"]}
+{"id":"cause_10","class":"cause","query":"a hardware device appeared so the system made a node for it","relevant_events":["E36"],"split":"test"}
+{"id":"cause_11","class":"cause","query":"a device was unplugged so its node was cleaned up","relevant_events":["E89"],"split":"test"}
+{"id":"cause_12","class":"cause","query":"the ftp client disconnected before the server could look up its address","relevant_events":["E47"]}
+{"id":"cause_13","class":"cause","query":"an unauthenticated visitor connected to the file transfer service","relevant_events":["E9"]}
+{"id":"cause_14","class":"cause","query":"the remote end dropped the connection before the server read its address","relevant_events":["E116"]}
+{"id":"cause_15","class":"cause","query":"the server waited too long for an answer while checking whether the user exists","relevant_events":["E112"]}
+{"id":"cause_16","class":"cause","query":"a network monitor polled the machine over SNMP","relevant_events":["E88"],"split":"test"}
+{"id":"cause_17","class":"cause","query":"the administrator account signed in directly on tty2","relevant_events":["E91"]}
+{"id":"cause_18","class":"cause","query":"credentials were rejected so the account could not be verified","relevant_events":["E31"]}
+{"id":"cause_19","class":"cause","query":"the firmware date was too old for the kernel's power management support","relevant_events":["E4"],"split":"test"}
+{"id":"cause_20","class":"cause","query":"a second security module tried to register while one was already active","relevant_events":["E107"],"split":"test"}
+{"id":"cause_21","class":"cause","query":"the kernel refused to load the capability security module","relevant_events":["E46"],"split":"test"}
+{"id":"cause_22","class":"cause","query":"the processor offers hardware error reporting","relevant_events":["E56"]}
+{"id":"cause_23","class":"cause","query":"the kernel measured the CPU clock frequency during startup","relevant_events":["E40"]}
+{"id":"cause_24","class":"cause","query":"the kernel reported how much RAM is available after startup reservations","relevant_events":["E70"]}
+{"id":"cause_25","class":"cause","query":"the bootloader passed the kernel options selecting the root filesystem","relevant_events":["E62"]}
