@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installs a released nesso, so a benchmark scores the binary users get.
 #
-#   scripts/install-nesso [--dest DIR] [--arch amd64|arm64] [--env-file FILE]
-#                         [--path-file FILE] VERSION
+#   scripts/install-nesso [--dest DIR] [--arch amd64|arm64] [--fp32]
+#                         [--env-file FILE] [--path-file FILE] VERSION
 #
 # Downloads nesso_<VERSION>_<arch>.deb from the nesso GitHub release, checks it
 # against the sha256 pinned below (the same digest as that release's
@@ -10,6 +10,12 @@
 # is build/nesso). Nothing is installed system-wide. A version already
 # unpacked from the same pin is reused. The architecture defaults to this
 # machine's.
+#
+# --fp32 also stages the fp32 build of the same MiniLM model nesso quantizes
+# for its shipped int8 one, at the commit and sha256 nesso's scripts/fetch-model
+# pins, next to the shipped vocab.txt (checked against that pin too), under
+# <root>/fp32, and exports NESSO_FP32_MODEL_DIR. Passing that directory as
+# --model-dir scores the shipped binary with the fp32 model.
 #
 # stdout is shell `export` lines for NESSO_BINARY and NESSO_MODEL_DIR, which
 # scripts/eval-retrieval reads, and PATH, so
@@ -30,8 +36,13 @@ declare -A DEB_SHA256=(
   ["0.3.1/arm64"]="56d6f8f4cf5f8e5283c0657ac2e4b20f928926c3e4ba4937a825cc54f373aa65"
 )
 
+# The fp32 model and the vocabulary, as nesso's scripts/fetch-model pins them.
+FP32_MODEL_URL="https://huggingface.co/Xenova/all-MiniLM-L6-v2/resolve/751bff37182d3f1213fa05d7196b954e230abad9/onnx/model.onnx"
+FP32_MODEL_SHA256="759c3cd2b7fe7e93933ad23c4c9181b7396442a2ed746ec7c1d46192c469c46e"
+VOCAB_SHA256="07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+
 usage() {
-  sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -40,12 +51,14 @@ arch=""
 env_file=""
 path_file=""
 version=""
+fp32=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dest) dest="${2:?--dest needs a directory}"; shift 2 ;;
     --arch) arch="${2:?--arch needs amd64 or arm64}"; shift 2 ;;
     --env-file) env_file="${2:?--env-file needs a file}"; shift 2 ;;
     --path-file) path_file="${2:?--path-file needs a file}"; shift 2 ;;
+    --fp32) fp32=1; shift ;;
     -h | --help) usage ;;
     -*) echo "error: unknown option '$1'" >&2; exit 2 ;;
     *)
@@ -122,6 +135,28 @@ if [[ ! -f "${stamp}" || "$(<"${stamp}")" != "${sha256}" ]]; then
   printf '%s\n' "${sha256}" >"${stamp}"
 fi
 
+fp32_dir="${root}/fp32"
+if [[ "${fp32}" == 1 ]]; then
+  if ! echo "${VOCAB_SHA256}  ${model_dir}/vocab.txt" | sha256sum --check --status; then
+    echo "error: ${model_dir}/vocab.txt is not the vocabulary the fp32 model pin expects" >&2
+    exit 1
+  fi
+  if [[ ! -f "${fp32_dir}/nesso-bench.pin" || "$(<"${fp32_dir}/nesso-bench.pin")" != "${FP32_MODEL_SHA256}" ]]; then
+    rm -rf -- "${fp32_dir}"
+    mkdir -p "${fp32_dir}"
+    curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 2 \
+      -o "${fp32_dir}/model.onnx.part" "${FP32_MODEL_URL}"
+    if ! echo "${FP32_MODEL_SHA256}  ${fp32_dir}/model.onnx.part" | sha256sum --check --status; then
+      rm -rf -- "${fp32_dir}"
+      echo "error: sha256 mismatch for the fp32 model.onnx" >&2
+      exit 1
+    fi
+    mv -- "${fp32_dir}/model.onnx.part" "${fp32_dir}/model.onnx"
+    cp -- "${model_dir}/vocab.txt" "${fp32_dir}/vocab.txt"
+    printf '%s\n' "${FP32_MODEL_SHA256}" >"${fp32_dir}/nesso-bench.pin"
+  fi
+fi
+
 # Another architecture's binary cannot run here; its pin is the only check.
 if [[ "${arch}" == "${host_arch}" ]]; then
   reported="$("${binary}" -V)"
@@ -135,8 +170,14 @@ fi
 printf 'export NESSO_BINARY=%q\n' "${binary}" >&3
 printf 'export NESSO_MODEL_DIR=%q\n' "${model_dir}" >&3
 printf 'export PATH=%q:"${PATH}"\n' "${root}/usr/bin" >&3
+if [[ "${fp32}" == 1 ]]; then
+  printf 'export NESSO_FP32_MODEL_DIR=%q\n' "${fp32_dir}" >&3
+fi
 if [[ -n "${env_file}" ]]; then
   printf 'NESSO_BINARY=%s\nNESSO_MODEL_DIR=%s\n' "${binary}" "${model_dir}" >>"${env_file}"
+  if [[ "${fp32}" == 1 ]]; then
+    printf 'NESSO_FP32_MODEL_DIR=%s\n' "${fp32_dir}" >>"${env_file}"
+  fi
 fi
 if [[ -n "${path_file}" ]]; then
   printf '%s\n' "${root}/usr/bin" >>"${path_file}"

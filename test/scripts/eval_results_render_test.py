@@ -162,6 +162,43 @@ class EvalResultsRenderTest(unittest.TestCase):
         self.assertIn("| bm25 † | cause | 2 |", page)
         self.assertEqual(page.count("† The ranker's rankings changed between repeated quality runs"), 2)
 
+    def test_int8_against_fp32(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            results = results_dir(directory)
+            # A nesso-only report, as the nesso-fp32 run writes it: fp32 finds what int8 missed on hdfs-2k.
+            datasets = [
+                {"dataset": "hdfs-2k", "modes": [{"mode": "auto", **entry([1.0] * 10, "h")}], "query_count": 10},
+                {"dataset": "bgl-2k", "modes": [{"mode": "auto", **entry([1.0] * 10, "b")}], "query_count": 10},
+            ]
+            measure = {
+                "datasets": [{"engines": [measured("nesso", 3.0, [3.0, 3.0])], "logBytes": 2**20, "logLines": 1000, "name": "hdfs-2k"}],
+                "tool": {"nesso-model": "fp32 onnx 759c3cd2b7fe 90387606B"},
+            }
+            fp32 = {
+                "datasets": datasets,
+                "k": 10,
+                "measure": measure,
+                "overall": {"modes": [{"mode": "auto", **entry([1.0] * 20, "x")}], "query_count": 20},
+                "schema_version": 3,
+            }
+            (results / "raw" / "2k" / "nesso-fp32.json").write_text(json.dumps(fp32), encoding="utf-8")
+            page = self.render(results, directory / "page.md")
+        section = page.split("## int8 against fp32")[1].split("## Speed and memory")[0]
+        # Pooled over both systems: int8 loses all ten hdfs-2k queries and ties bgl-2k.
+        self.assertIn("| nesso/auto | cause | 20 | 0.500 | 1.000 | -0.500 [", section)
+        self.assertIn("| loss |", section)
+        self.assertIn("### 2k with the fp32 model: hdfs-2k", page)
+        self.assertIn("| nesso | 333 | 3.00 | 300 |", page)
+        self.assertIn("| nesso-model (fp32) | fp32 onnx 759c3cd2b7fe 90387606B |", page)
+
+    def test_no_fp32_section_without_its_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            page = self.render(results_dir(directory), directory / "page.md")
+        self.assertNotIn("int8 against fp32", page)
+        self.assertNotIn("fp32 model", page)
+
     def test_missing_results_fail_clearly(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             completed = subprocess.run(

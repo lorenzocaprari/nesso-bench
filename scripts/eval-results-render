@@ -4,9 +4,10 @@
     scripts/eval-results-render results/0.3.1 --out docs/results/0.3.1.md
 
 Reads what scripts/scorecard wrote (machine.json, status.json,
-merged/<suite>.json, and raw/<suite>/nesso-threads-1.json when present) and
-writes, in this order: the machine, where nesso loses, quality per suite,
-speed and memory per dataset, runs that did not finish, and tool versions.
+merged/<suite>.json, and raw/<suite>/nesso-threads-1.json and
+raw/<suite>/nesso-fp32.json when present) and writes, in this order: the
+machine, where nesso loses, quality per suite, int8 against fp32, speed and
+memory per dataset, runs that did not finish, and tool versions.
 
 Quality rows compare every engine and nesso mode with nesso's headline mode
 (auto) on the same queries: the margin is nesso minus that ranker, with a 95%
@@ -155,6 +156,50 @@ def quality_section(suite: str, report: dict[str, Any], rows: list[dict[str, Any
     if any(row.get("unstable") for row in rows):
         lines += [UNSTABLE_NOTE, ""]
     return lines
+
+
+# ---- int8 against fp32 -------------------------------------------------------
+
+
+def fp32_rows(suite: str, int8: dict[str, Any], fp32: dict[str, Any]) -> list[list[str]]:
+    """Pooled rows per nesso mode and class: shipped int8 model minus fp32, paired on the same queries."""
+    ours, theirs = compare.flatten(int8), compare.flatten(fp32)
+    int8_scores, fp32_scores = compare.query_scores(int8), compare.query_scores(fp32)
+    rows = []
+    for system, ranker, class_name, _bucket in compare.iter_buckets(fp32):
+        if system != "overall" or ranker not in compare.NESSO_MODES:
+            continue
+        key = (system, ranker, class_name, "mrr")
+        if key not in ours or key not in theirs:
+            continue
+        differences = compare.paired_differences(
+            int8_scores.get((system, ranker), {}), fp32_scores.get((system, ranker), {}), class_name
+        )
+        interval = compare.bootstrap_interval(differences, f"{suite}/{class_name}/{ranker}/int8/fp32")
+        spread = "—" if interval is None else f"{ours[key] - theirs[key]:+.3f} [{interval[0]:+.3f}, {interval[1]:+.3f}]"
+        rows.append([f"nesso/{ranker}", class_name, str(len(differences)), number(ours[key]), number(theirs[key]), spread, compare.verdict(interval)])
+    return rows
+
+
+def fp32_section(results: Path, merged: list[tuple[str, dict[str, Any]]]) -> list[str]:
+    out: list[str] = []
+    for suite, report in merged:
+        path = results / "raw" / suite / "nesso-fp32.json"
+        if not path.is_file():
+            continue
+        rows = fp32_rows(suite, report, load_json(path))
+        if rows:
+            out += [f"### {suite}", "", *table(["ranker", "class", "n", "int8 MRR", "fp32 MRR", "int8 − fp32 (95% CI)", "int8"], rows), ""]
+    if not out:
+        return []
+    return [
+        "## int8 against fp32",
+        "",
+        "The same nesso binary with its shipped int8 model and with the fp32 model it is quantized from, on the same queries. "
+        "A `loss` is quality the quantization costs; a `tie` means this query set cannot tell them apart.",
+        "",
+        *out,
+    ]
 
 
 # ---- speed and memory --------------------------------------------------------
@@ -311,6 +356,7 @@ def render(results: Path) -> str:
     ]
     for suite, report, rows in quality:
         lines += quality_section(suite, report, rows)
+    lines += fp32_section(results, merged)
 
     lines += [
         "## Speed and memory",
@@ -328,6 +374,12 @@ def render(results: Path) -> str:
             measure = load_json(threads).get("measure")
             if measure:
                 lines += measure_section(f"{suite} at NESSO_THREADS=1", measure)
+    for suite, _report in merged:
+        fp32 = results / "raw" / suite / "nesso-fp32.json"
+        if fp32.is_file():
+            measure = load_json(fp32).get("measure")
+            if measure:
+                lines += measure_section(f"{suite} with the fp32 model", measure)
 
     unfinished = [run for run in status.get("runs", []) if run.get("outcome") != "ok"]
     lines += ["## Runs that did not finish", ""]
@@ -346,6 +398,11 @@ def render(results: Path) -> str:
     for _suite, report in merged:
         for name, value in sorted((report.get("measure") or {}).get("tool", {}).items()):
             tools.setdefault(name, str(value))
+    for suite, _report in merged:
+        fp32 = results / "raw" / suite / "nesso-fp32.json"
+        model = (load_json(fp32).get("measure") or {}).get("tool", {}).get("nesso-model") if fp32.is_file() else None
+        if model is not None:
+            tools.setdefault("nesso-model (fp32)", str(model))
     if tools:
         lines += ["## Versions", "", *table(["tool", "version"], [[name, tools[name]] for name in sorted(tools)]), ""]
     return "\n".join(lines).rstrip() + "\n"
