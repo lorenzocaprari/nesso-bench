@@ -76,6 +76,13 @@ the last four exact-ID queries of each. Events that differ only in a number or a
 name are not used. OpenStack has 43 templates and Hadoop and HealthApp 114 and 75, so
 paraphrase and cause queries each use a different event.
 
+`bundle.jsonl` scores the support bundle (`scripts/build-bundle`): 54 queries, each one of a
+2k system's queries unchanged (the id names the system), two dev queries and the frozen
+fifth per class and system. Exact-ID labels are every line of the concatenated bundle that
+holds the token, so a number that two systems share is relevant in both; event ids are
+prefixed by their system. Queries with a near twin in another system (a login session
+closing, for instance) are not used, because the label would count the twin as wrong.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
