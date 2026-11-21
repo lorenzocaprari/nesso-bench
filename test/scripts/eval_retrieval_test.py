@@ -131,6 +131,45 @@ class EvalRetrievalLabelsTest(unittest.TestCase):
             mapping = self.mod.load_event_ids(structured)
             self.mod.assert_line_id_alignment(log, mapping)
 
+    def test_unknown_event_is_rejected(self) -> None:
+        mod = self.mod
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            queries = mod.load_queries(
+                self._queries(
+                    directory,
+                    '{"id":"a","class":"cause","query":"x","relevant_events":["E1"]}\n'
+                    '{"id":"b","class":"cause","query":"y","relevant_events":["E1","E99"]}\n',
+                )
+            )
+            structured = directory / "structured.csv"
+            structured.write_text("LineId,EventId\n1,E1\n2,E2\n", encoding="utf-8")
+            mapping = mod.load_event_ids(structured)
+            mod.validate_relevant_events(queries[:1], mapping, structured)
+            with self.assertRaises(SystemExit) as raised:
+                mod.validate_relevant_events(queries, mapping, structured)
+        self.assertIn("query b: event E99 does not occur in", str(raised.exception))
+
+    def test_duplicate_query_id_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = self._queries(
+                pathlib.Path(temp),
+                '{"id":"a","class":"exact_id","query":"x","relevant_lines":[1]}\n'
+                '{"id":"a","class":"exact_id","query":"y","relevant_lines":[2]}\n',
+            )
+            with self.assertRaises(SystemExit) as raised:
+                self.mod.load_queries(path)
+        self.assertIn("duplicate id 'a'", str(raised.exception))
+
+    def test_committed_query_sets_have_known_events(self) -> None:
+        # Every committed 2k set: unique ids and events that occur in its structured CSV.
+        mod = self.mod
+        for spec in mod.parse_datasets("all-2k"):
+            queries = mod.load_queries(spec.queries_path)
+            if not spec.structured_path.is_file():
+                self.skipTest("Loghub 2k inputs not fetched")
+            mod.validate_relevant_events(queries, mod.load_event_ids(spec.structured_path), spec.structured_path)
+
     def test_dataset_mapping_resolves_all_2k(self) -> None:
         specs = self.mod.parse_datasets("all-2k")
         self.assertIsNotNone(specs)

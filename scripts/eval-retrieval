@@ -465,6 +465,7 @@ def load_queries(path: Path) -> list[Query]:
     if not path.is_file():
         raise SystemExit(f"error: query file not found: {path}")
     queries: list[Query] = []
+    seen: set[str] = set()
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
@@ -484,6 +485,9 @@ def load_queries(path: Path) -> list[Query]:
         query_text = payload.get("query")
         if not isinstance(query_id, str) or not query_id:
             raise SystemExit(f"error: {path}:{lineno}: missing id")
+        if query_id in seen:
+            raise SystemExit(f"error: {path}:{lineno}: duplicate id {query_id!r}")
+        seen.add(query_id)
         if class_name not in VALID_CLASSES:
             raise SystemExit(
                 f"error: {path}:{lineno}: class must be one of {sorted(VALID_CLASSES)}"
@@ -618,6 +622,15 @@ def validate_relevant_lines(queries: list[Query], log_path: Path, lines: list[st
                 raise SystemExit(
                     f"error: query {query.id}: line {line_id} does not contain {query.query!r} as a whole token"
                 )
+
+
+def validate_relevant_events(queries: list[Query], event_by_line: dict[int, str], source: Path) -> None:
+    """Every labelled event must occur in the structured CSV; an unknown one would score 0 for every engine."""
+    known = set(event_by_line.values())
+    for query in queries:
+        missing = sorted((query.relevant_events or frozenset()) - known)
+        if missing:
+            raise SystemExit(f"error: query {query.id}: event {', '.join(missing)} does not occur in {source}")
 
 
 def load_event_ids(path: Path) -> dict[int, str]:
@@ -4736,6 +4749,7 @@ def main(argv: list[str] | None = None) -> None:
                 event_by_line = load_event_ids(args.structured)
                 assert_line_id_alignment(args.log, event_by_line, lines)
                 validate_relevant_lines(queries, args.log, lines)
+                validate_relevant_events(queries, event_by_line, args.structured)
                 dataset_results.append(
                     evaluate_dataset(
                         binary=binary,
@@ -4771,6 +4785,7 @@ def main(argv: list[str] | None = None) -> None:
                     event_by_line = load_event_ids(spec.structured_path)
                     assert_line_id_alignment(spec.log_path, event_by_line, lines)
                     validate_relevant_lines(queries, spec.log_path, lines)
+                    validate_relevant_events(queries, event_by_line, spec.structured_path)
                     dataset_results.append(
                         evaluate_dataset(
                             binary=binary,

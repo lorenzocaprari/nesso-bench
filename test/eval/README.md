@@ -7,7 +7,7 @@ pinned Loghub 2k sample (HDFS, BGL, Thunderbird, OpenSSH, Linux, Apache).
 A query sets exactly one of `relevant_lines` (1-based LineIds) or `relevant_events`
 (Loghub EventIds from the matching `*_2k.log_structured.csv`). Exact-ID seeds use
 `relevant_lines`. Paraphrase and cause seeds use `relevant_events`. The script
-rejects both, neither, and the old `relevant` key. Each listed line must exist in
+rejects both, neither, the old `relevant` key, a duplicate id, and an event that does not occur in the structured CSV. Each listed line must exist in
 the log and contain the query as a whole token (`blk_123` does not match inside
 `blk_1234`). The structured CSV row count must equal the log line count so LineId
 matches nesso's 1-based lines, including a final line with no trailing newline.
