@@ -31,6 +31,12 @@ added, or dropped. A deliberate change is made visible with
 for a test query carries `"split":"test"`. Each 2k file freezes its `*_05` query of
 each class; needle files can use the same field.
 
+HDFS_2k has only 14 event templates, and four of them cover about 300 lines or
+more, so its paraphrase and cause queries are written two per event (ten events).
+Queries on the same event are not independent evidence, and the pooled interval
+treats them as if they were. The events E6, E8, and E13 are the test events: both
+phrasings of each are in the frozen split, so no test event is also tuned on.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.

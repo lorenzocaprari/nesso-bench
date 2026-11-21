@@ -6,13 +6,73 @@
 {"id":"exact_03","class":"exact_id","query":"blk_-4980916519894289629","relevant_lines":[29]}
 {"id":"exact_04","class":"exact_id","query":"blk_-2918118818249673980","relevant_lines":[78]}
 {"id":"exact_05","class":"exact_id","query":"blk_-5140072410813878235","relevant_lines":[928],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"blk_2244903517044280975","relevant_lines":[95]}
+{"id":"exact_07","class":"exact_id","query":"blk_-9181958042427679309","relevant_lines":[190]}
+{"id":"exact_08","class":"exact_id","query":"blk_-5306443381473737599","relevant_lines":[285]}
+{"id":"exact_09","class":"exact_id","query":"blk_1777689952069868672","relevant_lines":[380]}
+{"id":"exact_10","class":"exact_id","query":"blk_-1111344660779690782","relevant_lines":[475]}
+{"id":"exact_11","class":"exact_id","query":"blk_6672666770563118759","relevant_lines":[570]}
+{"id":"exact_12","class":"exact_id","query":"blk_-6247364168500873179","relevant_lines":[665]}
+{"id":"exact_13","class":"exact_id","query":"blk_578261619176233743","relevant_lines":[760]}
+{"id":"exact_14","class":"exact_id","query":"blk_7347539858784653625","relevant_lines":[855]}
+{"id":"exact_15","class":"exact_id","query":"blk_-703436021914343546","relevant_lines":[950]}
+{"id":"exact_16","class":"exact_id","query":"blk_-8393060055740236791","relevant_lines":[1045]}
+{"id":"exact_17","class":"exact_id","query":"blk_-1071115021179995772","relevant_lines":[1140]}
+{"id":"exact_18","class":"exact_id","query":"blk_9072486569292195232","relevant_lines":[1235]}
+{"id":"exact_19","class":"exact_id","query":"blk_-2332150303475653460","relevant_lines":[1330]}
+{"id":"exact_20","class":"exact_id","query":"blk_4893049344332234616","relevant_lines":[1425],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"blk_8854625173826438305","relevant_lines":[1520],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"blk_-8050165297538775793","relevant_lines":[1615],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"blk_4471044334742081825","relevant_lines":[1710],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"blk_1122812501843755360","relevant_lines":[1805],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"blk_-3510473878877779134","relevant_lines":[1900],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"PacketResponder terminating for block","relevant_events":["E10"]}
 {"id":"para_02","class":"paraphrase","query":"NameSystem allocated a new block","relevant_events":["E7"]}
 {"id":"para_03","class":"paraphrase","query":"block verification succeeded","relevant_events":["E14"]}
 {"id":"para_04","class":"paraphrase","query":"exception while serving a block","relevant_events":["E3"]}
 {"id":"para_05","class":"paraphrase","query":"ask datanode to delete block","relevant_events":["E4"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"datanode sent a block to a client","relevant_events":["E1"]}
+{"id":"para_07","class":"paraphrase","query":"block served to remote host","relevant_events":["E1"]}
+{"id":"para_08","class":"paraphrase","query":"failure while sending a block to a client","relevant_events":["E3"]}
+{"id":"para_09","class":"paraphrase","query":"datanode error during block read","relevant_events":["E3"]}
+{"id":"para_10","class":"paraphrase","query":"namenode records a datanode as holding a block","relevant_events":["E6"],"split":"test"}
+{"id":"para_11","class":"paraphrase","query":"block map gained a replica location","relevant_events":["E6"],"split":"test"}
+{"id":"para_12","class":"paraphrase","query":"namenode assigns storage for a new block of a file","relevant_events":["E7"]}
+{"id":"para_13","class":"paraphrase","query":"block allocation for a part file","relevant_events":["E7"]}
+{"id":"para_14","class":"paraphrase","query":"namenode marks a block as invalid on a datanode","relevant_events":["E8"],"split":"test"}
+{"id":"para_15","class":"paraphrase","query":"block queued for removal on a node","relevant_events":["E8"],"split":"test"}
+{"id":"para_16","class":"paraphrase","query":"datanode removes a block file from disk","relevant_events":["E9"]}
+{"id":"para_17","class":"paraphrase","query":"block file deletion on a datanode","relevant_events":["E9"]}
+{"id":"para_18","class":"paraphrase","query":"responder thread shutting down for a block","relevant_events":["E10"]}
+{"id":"para_19","class":"paraphrase","query":"write pipeline stage finished for block","relevant_events":["E10"]}
+{"id":"para_20","class":"paraphrase","query":"datanode finished receiving a block of a given size","relevant_events":["E11"]}
+{"id":"para_21","class":"paraphrase","query":"block received from a remote host","relevant_events":["E11"]}
+{"id":"para_22","class":"paraphrase","query":"datanode begins receiving a block from a source","relevant_events":["E13"],"split":"test"}
+{"id":"para_23","class":"paraphrase","query":"incoming block transfer started","relevant_events":["E13"],"split":"test"}
+{"id":"para_24","class":"paraphrase","query":"block checksum check passed","relevant_events":["E14"]}
+{"id":"para_25","class":"paraphrase","query":"scanner verified a block","relevant_events":["E14"]}
 {"id":"cause_01","class":"cause","query":"PacketResponder exited before the transfer finished","relevant_events":["E10"]}
 {"id":"cause_02","class":"cause","query":"client needed a fresh block for a write","relevant_events":["E7"]}
 {"id":"cause_03","class":"cause","query":"replica passed checksum verification","relevant_events":["E14"]}
 {"id":"cause_04","class":"cause","query":"datanode threw while serving a block","relevant_events":["E3"]}
 {"id":"cause_05","class":"cause","query":"NameNode instructed a datanode to drop a block","relevant_events":["E4"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"a client asked a datanode for block contents and got them","relevant_events":["E1"]}
+{"id":"cause_07","class":"cause","query":"reader fetched stored data from a datanode","relevant_events":["E1"]}
+{"id":"cause_08","class":"cause","query":"the client connection dropped while the datanode was sending data","relevant_events":["E3"]}
+{"id":"cause_09","class":"cause","query":"a read request could not be completed by the datanode","relevant_events":["E3"]}
+{"id":"cause_10","class":"cause","query":"a datanode finished writing a replica and reported it","relevant_events":["E6"],"split":"test"}
+{"id":"cause_11","class":"cause","query":"new replica became known to the namenode after a write","relevant_events":["E6"],"split":"test"}
+{"id":"cause_12","class":"cause","query":"a writer needed space for the next chunk of an output file","relevant_events":["E7"]}
+{"id":"cause_13","class":"cause","query":"a job output file grew past its current block","relevant_events":["E7"]}
+{"id":"cause_14","class":"cause","query":"a file was deleted so its replicas must be dropped","relevant_events":["E8"],"split":"test"}
+{"id":"cause_15","class":"cause","query":"stale replicas scheduled for cleanup after deletion","relevant_events":["E8"],"split":"test"}
+{"id":"cause_16","class":"cause","query":"the namenode told the datanode to discard an unneeded replica","relevant_events":["E9"]}
+{"id":"cause_17","class":"cause","query":"disk space reclaimed after a block was invalidated","relevant_events":["E9"]}
+{"id":"cause_18","class":"cause","query":"the last packet of the block was acknowledged so the pipeline stage ended","relevant_events":["E10"]}
+{"id":"cause_19","class":"cause","query":"a write pipeline completed and its responder stopped","relevant_events":["E10"]}
+{"id":"cause_20","class":"cause","query":"a replica transfer into this datanode completed","relevant_events":["E11"]}
+{"id":"cause_21","class":"cause","query":"the datanode has a full copy of the block after a write","relevant_events":["E11"]}
+{"id":"cause_22","class":"cause","query":"a writer or peer began streaming a replica to this datanode","relevant_events":["E13"],"split":"test"}
+{"id":"cause_23","class":"cause","query":"replication pipeline opened a connection to store a block","relevant_events":["E13"],"split":"test"}
+{"id":"cause_24","class":"cause","query":"periodic integrity scan found the replica healthy","relevant_events":["E14"]}
+{"id":"cause_25","class":"cause","query":"datanode confirmed stored data is not corrupted","relevant_events":["E14"]}

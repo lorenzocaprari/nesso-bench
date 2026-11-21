@@ -25,13 +25,15 @@ class CheckTestSplitTest(unittest.TestCase):
         # The check CI relies on: the repository's test queries are the frozen ones.
         completed = check(ROOT)
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertIn("18 test queries", completed.stdout)
+        self.assertRegex(completed.stdout, r"ok: \d+ test queries match")
 
     def test_every_2k_file_has_a_test_query_per_class(self) -> None:
         for path in sorted((ROOT / "test" / "eval" / "queries").glob("*_2k.jsonl")):
             rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("{")]
             test = {row["class"] for row in rows if row.get("split") == "test"}
             self.assertEqual(test, {"exact_id", "paraphrase", "cause"}, path.name)
+            # Dev queries remain in every class, so there is something to tune on.
+            self.assertEqual({row["class"] for row in rows if row.get("split", "dev") == "dev"}, {"exact_id", "paraphrase", "cause"}, path.name)
 
     def test_changes_to_a_test_query_fail_until_updated(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -40,7 +42,8 @@ class CheckTestSplitTest(unittest.TestCase):
             path = root / "test" / "eval" / "queries" / "hdfs_2k.jsonl"
             original = path.read_text(encoding="utf-8")
             # Editing a test query's text.
-            edited = original.replace("NameNode instructed a datanode to drop a block", "NameNode told a datanode to drop a block")
+            target = next(line for line in original.splitlines() if line.startswith("{") and '"split":"test"' in line and '"cause"' in line)
+            edited = original.replace(target, target.replace('"query":"', '"query":"edited '))
             self.assertNotEqual(edited, original)
             path.write_text(edited, encoding="utf-8")
             failed = check(root)
@@ -57,7 +60,9 @@ class CheckTestSplitTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = copy_queries(pathlib.Path(temp))
             path = root / "test" / "eval" / "queries" / "hdfs_2k.jsonl"
-            path.write_text(path.read_text(encoding="utf-8").replace("block verification succeeded", "block check passed"), encoding="utf-8")
+            text = path.read_text(encoding="utf-8")
+            dev = next(line for line in text.splitlines() if line.startswith("{") and '"split"' not in line and '"cause"' in line)
+            path.write_text(text.replace(dev, dev.replace('"query":"', '"query":"edited ')), encoding="utf-8")
             self.assertEqual(check(root).returncode, 0)
 
     def test_missing_digest_fails(self) -> None:
@@ -84,15 +89,18 @@ class SplitOptionTest(unittest.TestCase):
 
     def test_loader_reads_the_split(self) -> None:
         queries = self.mod.load_queries(ROOT / "test" / "eval" / "queries" / "hdfs_2k.jsonl")
-        self.assertEqual(sorted(query.id for query in queries if query.split == "test"), ["cause_05", "exact_05", "para_05"])
-        self.assertEqual(sum(query.split == "dev" for query in queries), 12)
+        tests = {query.id for query in queries if query.split == "test"}
+        # The first generation of frozen queries stays frozen.
+        self.assertLessEqual({"cause_05", "exact_05", "para_05"}, tests)
+        self.assertGreater(sum(query.split == "dev" for query in queries), len(tests) // 2)
 
     def test_select_split(self) -> None:
         path = ROOT / "test" / "eval" / "queries" / "hdfs_2k.jsonl"
         queries = self.mod.load_queries(path)
-        self.assertEqual(len(self.mod.select_split(queries, "all", path)), 15)
-        self.assertEqual(len(self.mod.select_split(queries, "dev", path)), 12)
-        self.assertEqual(len(self.mod.select_split(queries, "test", path)), 3)
+        tests = sum(query.split == "test" for query in queries)
+        self.assertEqual(len(self.mod.select_split(queries, "all", path)), len(queries))
+        self.assertEqual(len(self.mod.select_split(queries, "dev", path)), len(queries) - tests)
+        self.assertEqual(len(self.mod.select_split(queries, "test", path)), tests)
         with self.assertRaises(SystemExit):
             self.mod.select_split([query for query in queries if query.split == "dev"], "test", path)
 
@@ -132,7 +140,9 @@ class SplitOptionTest(unittest.TestCase):
             self.assertNotIn("split", mod.needle_query_row(queries[0], frozenset({1}), [1], 1.0))
 
     def test_cli_scores_one_split(self) -> None:
-        for split, expected in (("dev", 12), ("test", 3), ("all", 15)):
+        queries = self.mod.load_queries(ROOT / "test" / "eval" / "queries" / "hdfs_2k.jsonl")
+        tests = sum(query.split == "test" for query in queries)
+        for split, expected in (("dev", len(queries) - tests), ("test", tests), ("all", len(queries))):
             with tempfile.TemporaryDirectory() as temp:
                 out = pathlib.Path(temp) / "out.json"
                 done = subprocess.run(
