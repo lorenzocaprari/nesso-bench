@@ -34,7 +34,7 @@ class ScorecardPlanTest(unittest.TestCase):
         self.assertTrue(all(run.merged for run in runs))
         with_threads = mod.plan(list(mod.SUITES), list(mod.GROUPS), threads_1=True)
         extra = with_threads[len(runs):]
-        self.assertEqual([run.group.name for run in extra], ["nesso-threads-1"] * len(mod.SUITES))
+        self.assertEqual([run.group.name for run in extra], ["nesso-threads-1"] * sum(suite.measure for suite in mod.SUITES))
         # NESSO_THREADS is part of a measured report's setting, so these stay out of the merge.
         self.assertTrue(all(not run.merged for run in extra))
         # No nesso group selected: no threads-1 runs either.
@@ -88,6 +88,35 @@ class ScorecardPlanTest(unittest.TestCase):
 
     def test_every_suite_has_fetches(self) -> None:
         self.assertEqual(set(self.mod.FETCHES), {suite.name for suite in self.mod.SUITES})
+        # Every step is a script that exists, so a typo fails here and not mid-run.
+        for steps in self.mod.FETCHES.values():
+            for script, *_arguments in steps:
+                self.assertTrue((ROOT / "scripts" / script).is_file(), script)
+
+    def test_json_and_bundle_suites(self) -> None:
+        mod = self.mod
+        suites = {suite.name: suite for suite in mod.SUITES}
+        self.assertEqual(suites["json"].dataset, "hdfs-2k-json")
+        self.assertEqual([step[0] for step in mod.FETCHES["json"]], ["fetch-loghub", "derive-json"])
+        self.assertEqual([step[0] for step in mod.FETCHES["bundle"]], ["fetch-loghub", "build-bundle"])
+        out = pathlib.Path("/results/0.3.1")
+        groups = {group.name: group for group in mod.GROUPS}
+        # The bundle is quality only: eval-retrieval refuses --measure for it.
+        bundle = mod.Run(suites["bundle"], groups["nesso"]).command(out, "py", {})
+        self.assertNotIn("--measure", bundle)
+        self.assertNotIn("--repeat", bundle)
+        self.assertEqual(bundle[bundle.index("--dataset") + 1], "support-bundle")
+        # xerj's repeated quality runs still apply there.
+        repeated = mod.Run(suites["bundle"], groups["xerj-neural"]).command(out, "py", {})
+        self.assertEqual(repeated[repeated.index("--quality-repeat") + 1], "3")
+        measured = mod.Run(suites["json"], groups["nesso"]).command(out, "py", {})
+        self.assertEqual(measured[measured.index("--repeat") + 1], "3")
+        self.assertIn("--measure", measured)
+        # Thread count changes timings only, so there is no threads-1 run of the bundle; fp32 still applies.
+        runs = mod.plan(list(mod.SUITES), list(mod.GROUPS), threads_1=True, fp32=True)
+        self.assertNotIn(("bundle", "nesso-threads-1"), [(run.suite.name, run.group.name) for run in runs])
+        self.assertIn(("bundle", "nesso-fp32"), [(run.suite.name, run.group.name) for run in runs])
+        self.assertIn(("json", "nesso-threads-1"), [(run.suite.name, run.group.name) for run in runs])
 
     def test_command_arguments(self) -> None:
         mod = self.mod

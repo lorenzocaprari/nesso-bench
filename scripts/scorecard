@@ -13,7 +13,8 @@ One command, so every release is measured the same way:
    kernel, CPU governor, SMT, mitigations, swap, disk, tool versions, and the
    nesso-bench commit.
 2. Installs nesso VERSION (scripts/install-nesso) and the competitors
-   (scripts/install-competitors), and fetches every Loghub input.
+   (scripts/install-competitors), and prepares every input: fetches Loghub
+   samples and windows, and builds the JSON-lines set and the support bundle.
 3. Runs scripts/eval-retrieval --measure once per suite and engine group, each
    in its own process under a memory cap (systemd-run, MemoryMax) and a
    timeout, so one engine running out of memory or time is recorded as that
@@ -67,6 +68,7 @@ class Suite:
     dataset: str
     repeat: int
     prefix_lines: int | None = None  # set: speed and memory only, on a full-log prefix
+    measure: bool = True  # False: quality only (the support bundle has no --measure yet)
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,8 @@ class Group:
 SUITES = (
     Suite("2k", "all-2k", 3),
     Suite("formats", "all-formats", 3),
+    Suite("json", "hdfs-2k-json", 3),
+    Suite("bundle", "support-bundle", 3, measure=False),
     Suite("bgl-needle-100k", "bgl-needle-100k", 3),
     Suite("bgl-needle-1m", "bgl-needle-1m", 1),
     Suite("thunderbird-needle-1m", "thunderbird-needle-1m", 1),
@@ -109,14 +113,16 @@ THREADS_1 = Group("nesso-threads-1", ("nesso", "grep"), threads="1")
 # quantization is visible. A different model is a different setting: not merged.
 FP32 = Group("nesso-fp32", ("nesso",), fp32=True)
 
-# Loghub inputs each suite needs, as scripts/fetch-loghub arguments.
+# Inputs each suite needs, as a script under scripts/ and its arguments, run in order.
 FETCHES = {
-    "2k": [["--dataset", "all-2k"]],
-    "formats": [["--dataset", "all-formats"]],
-    "bgl-needle-100k": [["--dataset", "bgl-loghub2", "--window", "4100001:100000"]],
-    "bgl-needle-1m": [["--dataset", "bgl-loghub2", "--window", "3200001:1000000"]],
-    "thunderbird-needle-1m": [["--dataset", "thunderbird-loghub2", "--window", "8550001:1000000"]],
-    "full-1m": [["--dataset", "all-full"]],
+    "2k": [["fetch-loghub", "--dataset", "all-2k"]],
+    "formats": [["fetch-loghub", "--dataset", "all-formats"]],
+    "json": [["fetch-loghub", "--dataset", "hdfs-2k"], ["derive-json"]],
+    "bundle": [["fetch-loghub", "--dataset", "all-2k"], ["build-bundle"]],
+    "bgl-needle-100k": [["fetch-loghub", "--dataset", "bgl-loghub2", "--window", "4100001:100000"]],
+    "bgl-needle-1m": [["fetch-loghub", "--dataset", "bgl-loghub2", "--window", "3200001:1000000"]],
+    "thunderbird-needle-1m": [["fetch-loghub", "--dataset", "thunderbird-loghub2", "--window", "8550001:1000000"]],
+    "full-1m": [["fetch-loghub", "--dataset", "all-full"]],
 }
 
 
@@ -146,9 +152,7 @@ class Run:
             str(ROOT / "scripts" / "eval-retrieval"),
             "--dataset",
             self.suite.dataset,
-            "--measure",
-            "--repeat",
-            str(self.suite.repeat),
+            *(["--measure", "--repeat", str(self.suite.repeat)] if self.suite.measure else []),
             "--skip-fetch",
             "--workdir",
             str(work_root(out) / self.suite.name / self.group.name),
@@ -190,7 +194,8 @@ def plan(suites: list[Suite], groups: list[Group], threads_1: bool, fp32: bool =
     runs = [Run(suite, group) for suite in suites for group in groups]
     has_nesso = any("nesso" in group.engines for group in groups)
     if threads_1 and has_nesso:
-        runs += [Run(suite, THREADS_1) for suite in suites]
+        # The thread count changes timings only, so a quality-only suite has nothing to show.
+        runs += [Run(suite, THREADS_1) for suite in suites if suite.measure]
     if fp32 and has_nesso:
         runs += [Run(suite, FP32) for suite in suites]
     return runs
@@ -448,8 +453,8 @@ def main(argv: list[str] | None = None) -> int:
     if "ck" in competitors:
         warm_ck(env)
     for suite in suites:
-        for fetch in FETCHES[suite.name]:
-            subprocess.run([sys.executable, str(ROOT / "scripts" / "fetch-loghub"), *fetch], check=True)
+        for script, *arguments in FETCHES[suite.name]:
+            subprocess.run([sys.executable, str(ROOT / "scripts" / script), *arguments], check=True)
     python = env.get("EVAL_PYTHON", sys.executable)
 
     entries = []

@@ -137,7 +137,7 @@ Every query line can set `"split"` to `dev` (the default) or `test`. `--split de
 
 A support engineer gets a directory of logs, some rotated, some compressed, some inside archives. `scripts/build-bundle` builds one from six pinned Loghub 2k samples: BGL in a `.tar`, Thunderbird in a `.tgz`, HDFS as a rotated plain file, Apache in a `.zip`, Linux as a plain file, and OpenSSH as a `.gz`, under `var/log/` and `sos_reports/` in `build/bench/bundle/bundle/`. The build is deterministic: gzip, tar, and zip metadata are fixed, and `manifest.json` records each source's decoded sha256, line count, and line offset, in the order nesso visits them (files by byte order of the path). It also writes `SupportBundle_concat.log` (every source's lines in that order, as one file) and a structured CSV with system-prefixed event ids.
 
-`eval-retrieval --dataset support-bundle` scores it. **nesso indexes the bundle directory itself** (`nesso index bundle`, run from the bundle's directory so sources are named as in the manifest), reading every archive in place; its hits (`source`, `line`) are mapped to line ids in the concatenated log through the manifest. **Every other engine reads the concatenated, decoded file**, which is easier for it than the real bundle: an engine that cannot read archives would first need them extracted, and that step is not timed or counted here. So the quality comparison is fair to the others, and nesso's advantage (no extraction step) is not measured yet. `--measure` and `--log-prefix-lines` are refused for this dataset until it is. nesso collapses near-identical lines and reports each occurrence at its own position, so a hit is checked against the manifest (known source, line in range) and not against its text. The scorecard does not run it yet.
+`eval-retrieval --dataset support-bundle` scores it. **nesso indexes the bundle directory itself** (`nesso index bundle`, run from the bundle's directory so sources are named as in the manifest), reading every archive in place; its hits (`source`, `line`) are mapped to line ids in the concatenated log through the manifest. **Every other engine reads the concatenated, decoded file**, which is easier for it than the real bundle: an engine that cannot read archives would first need them extracted, and that step is not timed or counted here. So the quality comparison is fair to the others, and nesso's advantage (no extraction step) is not measured yet. `--measure` and `--log-prefix-lines` are refused for this dataset until it is. nesso collapses near-identical lines and reports each occurrence at its own position, so a hit is checked against the manifest (known source, line in range) and not against its text. The scorecard runs it as the quality-only `bundle` suite.
 
 ### JSON lines
 
@@ -222,6 +222,8 @@ python3 scripts/eval-retrieval --dataset bgl-needle-100k \
 | --- | --- | --- | --- |
 | `2k` | the six Loghub 2k samples | 3 | quality, speed, memory |
 | `formats` | the Hadoop, OpenStack, and HealthApp 2k samples (see below) | 3 | quality, speed, memory |
+| `json` | HDFS_2k as JSON lines (see JSON lines) | 3 | quality, speed, memory |
+| `bundle` | the support bundle (see Support bundle) | none | quality only: `--measure` is refused for it |
 | `bgl-needle-100k` | BGL needle window, 100,000 lines | 3 | quality, speed, memory |
 | `bgl-needle-1m` | BGL needle window, 1,000,000 lines | 1 | quality, speed, memory |
 | `thunderbird-needle-1m` | Thunderbird needle window, 1,000,000 lines | 1 | quality, speed, memory |
