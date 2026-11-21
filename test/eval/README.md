@@ -49,6 +49,13 @@ two phrasings each, so those are not independent. E8, E14, E11, E26, and E2 are 
 events. Its exact-ID queries are ports (one line each), IP addresses, and user names
 that occur on 2 to 8 lines, all of which are listed as relevant.
 
+Thunderbird_2k has 149 templates, so its 20 new paraphrase and cause queries each use a
+different event, one phrasing per class (E7, E8, E44, E74, E24, and E132 are the test
+events). Its exact-ID queries are PIDs, hex addresses, identifiers, and IP addresses
+that occur on one to five lines, all listed as relevant. Many Thunderbird events are
+near-duplicates of each other (the InfiniBand sweep lines, the DHCP lines); the queries
+use only ones a phrasing can tell apart.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
