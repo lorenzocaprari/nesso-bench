@@ -125,6 +125,10 @@ Which model each semantic engine uses matters for reading the results. **Same-mo
 
 The `eval-retrieval` workflow prints this table for the 2k report and the needle report in every run. Its candidates are grep and BM25 from that run, plus the committed reports in `test/eval/reference/` when present, which come from the `eval-competitors` workflow (see that directory's README for the refresh steps).
 
+### Dev and test queries
+
+Every query line can set `"split"` to `dev` (the default) or `test`. `--split dev|test|all` selects which queries are scored (default `all`). Test queries are frozen: `test/eval/test-split.sha256` holds a digest of all of them, and `scripts/check-test-split`, run by `scripts/test`, fails when one changes, so tuning nesso on the test set shows up in review. `scripts/check-test-split --update` rewrites the digest after a deliberate change. A report row for a test query carries `"split":"test"`; dev rows carry no `split`, so existing reports are unchanged. Today each 2k file freezes three queries (its fifth of each class); the sets are small, so a test margin is mostly a tie until they grow.
+
 ### Repeated quality runs
 
 Most engines rank the same way every run, but xerj-neural and xerj-semantic returned different rankings on `bgl-needle-100k` from runs of the same version, so one run is a sample, not their score. `--quality-repeat N` scores every engine other than nesso N times, building its index again each time. The report keeps one real run, the median by overall MRR (the lower median for an even N, then the earlier run), so its per-query rows, which the paired interval uses, all come from the same run. The engine's row gets `quality_repeat`:

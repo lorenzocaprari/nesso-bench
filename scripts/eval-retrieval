@@ -192,6 +192,7 @@ class Query:
     query: str
     relevant_lines: frozenset[int] | None
     relevant_events: frozenset[str] | None
+    split: str = "dev"
 
 
 @dataclass(frozen=True)
@@ -435,6 +436,31 @@ def _event_ids(path: Path, lineno: int, raw: object) -> frozenset[str]:
     return frozenset(raw)
 
 
+SPLITS = ("dev", "test")
+
+
+def query_split(path: Path, lineno: int, payload: dict) -> str:
+    """The optional "split" of a query line: dev (the default) or test.
+
+    Test queries are frozen: scripts/check-test-split fails when one changes,
+    so nesso is not tuned on them without it showing.
+    """
+    split = payload.get("split", "dev")
+    if split not in SPLITS:
+        raise SystemExit(f"error: {path}:{lineno}: split must be one of {list(SPLITS)}")
+    return split
+
+
+def select_split(queries: list, split: str, path: Path) -> list:
+    """The queries of one split, or all of them for split "all"."""
+    if split == "all":
+        return queries
+    chosen = [query for query in queries if query.split == split]
+    if not chosen:
+        raise SystemExit(f"error: no {split} queries in {path}")
+    return chosen
+
+
 def load_queries(path: Path) -> list[Query]:
     if not path.is_file():
         raise SystemExit(f"error: query file not found: {path}")
@@ -483,6 +509,7 @@ def load_queries(path: Path) -> list[Query]:
                 query=query_text,
                 relevant_lines=relevant_lines,
                 relevant_events=relevant_events,
+                split=query_split(path, lineno, payload),
             )
         )
     if not queries:
@@ -2354,14 +2381,15 @@ def score_queries(
         metrics = score_ranking(ranked, relevant)
         all_metrics.append(metrics)
         by_class[query.class_name].append(metrics)
-        per_query.append(
-            {
-                "class": query.class_name,
-                "id": query.id,
-                "metrics": metrics_dict(metrics),
-                "ranked_lines": ranked,
-            }
-        )
+        row = {
+            "class": query.class_name,
+            "id": query.id,
+            "metrics": metrics_dict(metrics),
+            "ranked_lines": ranked,
+        }
+        if query.split != "dev":
+            row["split"] = query.split
+        per_query.append(row)
     class_rows = []
     for class_name in sorted(VALID_CLASSES):
         items = by_class[class_name]
@@ -3985,6 +4013,7 @@ class NeedleQuery:
     class_name: str
     query: str
     alert: str
+    split: str = "dev"
 
 
 def load_needle_queries(path: Path) -> list[NeedleQuery]:
@@ -4014,11 +4043,11 @@ def load_needle_queries(path: Path) -> list[NeedleQuery]:
             raise SystemExit(f"error: {path}:{lineno}: missing query")
         if not isinstance(alert, str) or not alert or alert == "-":
             raise SystemExit(f"error: {path}:{lineno}: alert must be an alert category")
-        unknown = set(payload) - {"id", "class", "query", "alert", "meaning"}
+        unknown = set(payload) - {"id", "class", "query", "alert", "meaning", "split"}
         if unknown:
             raise SystemExit(f"error: {path}:{lineno}: unknown keys {sorted(unknown)}")
         seen.add(query_id)
-        queries.append(NeedleQuery(query_id, class_name, text, alert))
+        queries.append(NeedleQuery(query_id, class_name, text, alert, query_split(path, lineno, payload)))
     if not queries:
         raise SystemExit(f"error: {path}: no queries")
     return queries
@@ -4084,7 +4113,7 @@ def first_hit_rank(ranked_lines: list[int], relevant: frozenset[int], depth: int
 
 def needle_query_row(query: NeedleQuery, relevant: frozenset[int], ranked: list[int], overlap: float) -> dict:
     metrics = score_ranking(ranked, relevant)
-    return {
+    row = {
         "alert": query.alert,
         "class": query.class_name,
         "first_hit_rank": first_hit_rank(ranked, relevant),
@@ -4097,6 +4126,9 @@ def needle_query_row(query: NeedleQuery, relevant: frozenset[int], ranked: list[
         "ranked_lines": ranked[:K],
         "relevant_count": len(relevant),
     }
+    if query.split != "dev":
+        row["split"] = query.split
+    return row
 
 
 def summarize_needle_rows(rows: list[dict]) -> dict:
@@ -4198,11 +4230,12 @@ def evaluate_needle_dataset(
     xerj: XerjContext,
     opensearch: OpenSearchContext,
     quality_repeat: int = 1,
+    split: str = "all",
 ) -> dict:
     lines = read_log_lines(spec.log_path)
     labels = load_labels(spec.labels_path, len(lines))
     relevant_by_alert = lines_by_alert(labels)
-    all_queries = load_needle_queries(spec.queries_path)
+    all_queries = select_split(load_needle_queries(spec.queries_path), split, spec.queries_path)
     queries = [query for query in all_queries if query.alert in relevant_by_alert]
     absent = sorted({query.alert for query in all_queries} - set(relevant_by_alert))
     uncovered = sorted(set(relevant_by_alert) - {query.alert for query in all_queries})
@@ -4459,6 +4492,7 @@ def run_needles(args: argparse.Namespace, engines: list[str], modes: list[str]) 
                     xerj=xerj,
                     opensearch=opensearch,
                     quality_repeat=args.quality_repeat,
+                    split=args.split,
                 )
                 for spec in specs
             ]
@@ -4558,6 +4592,13 @@ def main(argv: list[str] | None = None) -> None:
         type=int,
         default=None,
         help=f"With --measure, median over N repeats (default {DEFAULT_MEASURE_REPEAT})",
+    )
+    parser.add_argument(
+        "--split",
+        choices=("all", *SPLITS),
+        default="all",
+        help="Score only the dev or the test queries (default all). Tune on dev; test queries are frozen "
+        "(scripts/check-test-split) and their rows carry split: test",
     )
     parser.add_argument(
         "--quality-repeat",
@@ -4686,7 +4727,7 @@ def main(argv: list[str] | None = None) -> None:
         else:
             dataset_specs = parse_datasets(args.dataset)
             if dataset_specs is None:
-                queries = load_queries(args.queries)
+                queries = select_split(load_queries(args.queries), args.split, args.queries)
                 if not args.skip_fetch:
                     ensure_inputs(args.log, args.structured)
                 elif not args.log.is_file() or not args.structured.is_file():
@@ -4725,7 +4766,7 @@ def main(argv: list[str] | None = None) -> None:
                             f"error: --log and --structured must exist when --skip-fetch is set "
                             f"({spec.log_path}, {spec.structured_path})"
                         )
-                    queries = load_queries(spec.queries_path)
+                    queries = select_split(load_queries(spec.queries_path), args.split, spec.queries_path)
                     lines = read_log_lines(spec.log_path)
                     event_by_line = load_event_ids(spec.structured_path)
                     assert_line_id_alignment(spec.log_path, event_by_line, lines)

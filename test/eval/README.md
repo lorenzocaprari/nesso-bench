@@ -19,6 +19,18 @@ use binary gains on lines:
 - MRR = 1 / rank of the first line in R (0 if none)
 - nDCG@10 = DCG@10 / IDCG of min(10, |R|) relevant lines
 
+## Dev and test queries
+
+A query line may set `"split":"dev"` (the default) or `"split":"test"`. Tune nesso
+on the dev queries (`eval-retrieval --split dev`) and keep the test queries for
+reporting (`--split test`; the default `all` scores both). Test queries are
+frozen: the digest of every one is committed in `test-split.sha256`, and
+`scripts/check-test-split` (run by `scripts/test`) fails when one is edited, moved,
+added, or dropped. A deliberate change is made visible with
+`scripts/check-test-split --update`, and the commit message says why. A report row
+for a test query carries `"split":"test"`. Each 2k file freezes its `*_05` query of
+each class; needle files can use the same field.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
