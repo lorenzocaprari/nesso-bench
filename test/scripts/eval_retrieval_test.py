@@ -1144,12 +1144,8 @@ class EvalRetrievalEsCompatTest(unittest.TestCase):
         self.assertIn("versions", payload)
         self.assertEqual(payload["versions"]["url_mode"], "external")
         self.assertEqual(payload["versions"]["xerj_version"], "fake-xerj")
-        self.assertIn("index_seconds", payload["versions"])
-        # OpenSearch generalization must not add keys to the xerj report.
-        self.assertEqual(
-            set(payload["versions"]),
-            {"index_seconds", "url_mode", "xerj_version"},
-        )
+        # Scores only: no timing, and the OpenSearch generalization adds no keys.
+        self.assertEqual(set(payload["versions"]), {"url_mode", "xerj_version"})
         self.assertEqual(payload["queries"][0]["ranked_lines"], [1])
         report = {
             "datasets": [
