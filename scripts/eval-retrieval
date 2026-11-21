@@ -1383,7 +1383,6 @@ class EsCompatEngine:
     xerj_version: str = "unknown"
     url_mode: str = "external"
     neural_model_download_size: str | None = None
-    index_seconds: float = 0.0
     # Bulk documents for lines[start:start+len(texts)]; default {"line", "text"}.
     doc_batch_fn: Callable[[int, list[str]], list[dict]] | None = None
     # versions() key for the server version (xerj keeps "xerj_version").
@@ -1395,8 +1394,9 @@ class EsCompatEngine:
         return True, ""
 
     def versions(self) -> dict[str, Any]:
+        # Scores only: timings belong to --measure, so a committed reference
+        # stays machine-independent.
         payload: dict[str, Any] = {
-            "index_seconds": round(self.index_seconds, 6),
             "url_mode": self.url_mode,
             self.version_key: self.xerj_version,
         }
@@ -1420,7 +1420,6 @@ class EsCompatEngine:
 
     def prepare(self, log_path: Path, lines: list[str], workdir: Path) -> None:
         del log_path, workdir
-        started = time.perf_counter()
         index_url = f"{self.base_url}/{self.index_name}"
         # Drop a leftover index from a previous crashed run.
         try:
@@ -1453,7 +1452,6 @@ class EsCompatEngine:
                         )
                 raise SystemExit(f"error: ES bulk reported errors on {self.index_name}")
         es_request("POST", f"{index_url}/_refresh", {})
-        self.index_seconds = time.perf_counter() - started
         self._prepared = True
 
     def rank(self, query: str, *, k: int = K) -> list[int]:
@@ -2103,7 +2101,6 @@ def format_xerj_metadata_lines(payload: dict) -> list[str]:
             parts = [
                 f"xerj_version={versions.get('xerj_version', 'unknown')}",
                 f"url_mode={versions.get('url_mode', 'unknown')}",
-                f"index_seconds={versions.get('index_seconds', 0)}",
             ]
             size = versions.get("neural_model_download_size")
             if size is not None:
@@ -2124,7 +2121,6 @@ def format_opensearch_metadata_lines(payload: dict) -> list[str]:
             parts = [
                 f"opensearch_version={versions.get('opensearch_version', 'unknown')}",
                 f"url_mode={versions.get('url_mode', 'unknown')}",
-                f"index_seconds={versions.get('index_seconds', 0)}",
                 f"java_opts={versions.get('java_opts', 'unknown')!r}",
             ]
             method = versions.get("knn_method")

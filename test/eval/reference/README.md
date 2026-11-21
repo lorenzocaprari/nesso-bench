@@ -9,7 +9,9 @@ without running the heavy engines every night. A reference whose report kind (2k
 engine report or needle) does not match the current report is ignored.
 
 They are scores, not timings: a reference is machine-independent, so it stays valid
-until the query sets, the labels, or a competitor version change.
+until the query sets, the labels, or a competitor version change. An engine's
+`versions` block records the tool version and setup, never how long it took;
+timings come only from `--measure`.
 
 Refresh them by hand when that happens:
 
