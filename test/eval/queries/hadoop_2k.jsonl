@@ -1,0 +1,39 @@
+# Queries for scripts/eval-retrieval on Loghub Hadoop_2k.
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"attempt_1445144423722_0020_r_000000_0","relevant_lines":[105]}
+{"id":"exact_02","class":"exact_id","query":"attempt_1445144423722_0020_m_000000_1","relevant_lines":[822]}
+{"id":"exact_03","class":"exact_id","query":"attempt_1445144423722_0020_m_000002_1","relevant_lines":[1038,1042]}
+{"id":"exact_04","class":"exact_id","query":"attempt_1445144423722_0020_m_000001_1","relevant_lines":[1067,1069]}
+{"id":"exact_05","class":"exact_id","query":"container_1445144423722_0020_01_000002","relevant_lines":[117,128,132]}
+{"id":"exact_06","class":"exact_id","query":"container_1445144423722_0020_01_000005","relevant_lines":[295,301,305,800,826]}
+{"id":"exact_07","class":"exact_id","query":"container_1445144423722_0020_01_000008","relevant_lines":[544,551,555]}
+{"id":"exact_08","class":"exact_id","query":"jvm_1445144423722_0020_m_000002","relevant_lines":[178,179]}
+{"id":"exact_09","class":"exact_id","query":"jvm_1445144423722_0020_m_000006","relevant_lines":[562,564],"split":"test"}
+{"id":"exact_10","class":"exact_id","query":"10.86.169.121","relevant_lines":[32,908,910],"split":"test"}
+{"id":"exact_11","class":"exact_id","query":"task_1445144423722_0020_m_000003","relevant_lines":[75,307,308,807],"split":"test"}
+{"id":"exact_12","class":"exact_id","query":"task_1445144423722_0020_r_000000","relevant_lines":[94],"split":"test"}
+{"id":"para_01","class":"paraphrase","query":"lease renewal for the DFS client failed and will be retried","relevant_events":["E44"]}
+{"id":"para_02","class":"paraphrase","query":"error while contacting the resource manager","relevant_events":["E38"]}
+{"id":"para_03","class":"paraphrase","query":"retrying connection to a server after earlier failed attempts","relevant_events":["E91"]}
+{"id":"para_04","class":"paraphrase","query":"reduce slow start threshold not yet met","relevant_events":["E85"]}
+{"id":"para_05","class":"paraphrase","query":"task attempt diagnostics report a no route to host error","relevant_events":["E35"]}
+{"id":"para_06","class":"paraphrase","query":"response processor exception for a block","relevant_events":["E33"]}
+{"id":"para_07","class":"paraphrase","query":"error recovery for a block with a bad datanode in the pipeline","relevant_events":["E39"],"split":"test"}
+{"id":"para_08","class":"paraphrase","query":"data streamer threw an exception","relevant_events":["E30"]}
+{"id":"para_09","class":"paraphrase","query":"error writing a job history event","relevant_events":["E40"]}
+{"id":"para_10","class":"paraphrase","query":"event handling thread threw an uncaught exception","relevant_events":["E108"],"split":"test"}
+{"id":"para_11","class":"paraphrase","query":"completion event for a container that is not known","relevant_events":["E28"],"split":"test"}
+{"id":"para_12","class":"paraphrase","query":"task cleanup failed for an attempt","relevant_events":["E99"],"split":"test"}
+{"id":"cause_01","class":"cause","query":"the client could not reach the NameNode to keep its file lease alive","relevant_events":["E44"]}
+{"id":"cause_02","class":"cause","query":"the application master lost its connection to YARN's scheduler","relevant_events":["E38"]}
+{"id":"cause_03","class":"cause","query":"the server was unreachable so the client kept retrying with a fixed sleep","relevant_events":["E91"]}
+{"id":"cause_04","class":"cause","query":"too few map tasks have completed to start launching reducers","relevant_events":["E85"]}
+{"id":"cause_05","class":"cause","query":"the node could not reach the HDFS server because the network path was down","relevant_events":["E35"]}
+{"id":"cause_06","class":"cause","query":"the write pipeline to a datanode broke while acknowledgements were being read","relevant_events":["E33"]}
+{"id":"cause_07","class":"cause","query":"a replica node failed during a write so the pipeline was rebuilt without it","relevant_events":["E39"],"split":"test"}
+{"id":"cause_08","class":"cause","query":"the thread that sends data to datanodes hit a failure while writing a file","relevant_events":["E30"]}
+{"id":"cause_09","class":"cause","query":"the history file could not be updated because its output stream had failed","relevant_events":["E40"]}
+{"id":"cause_10","class":"cause","query":"an unexpected failure killed the job history event thread","relevant_events":["E108"],"split":"test"}
+{"id":"cause_11","class":"cause","query":"a container finished that the application master never recorded","relevant_events":["E28"],"split":"test"}
+{"id":"cause_12","class":"cause","query":"cleanup after a failed task could not be completed","relevant_events":["E99"],"split":"test"}

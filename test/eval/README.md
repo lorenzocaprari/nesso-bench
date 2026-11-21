@@ -69,6 +69,13 @@ class (two more phrasings of each event, 17 in all), and they are strongly corre
 the pooled interval overstates what 17 queries show. E6 is its only test event. Its
 exact-ID queries are 12 child PIDs and 8 client IP addresses, each on one line.
 
+Hadoop_2k, OpenStack_2k, and HealthApp_2k (`all-formats`) are written the same way, with 12
+queries per class each and no seed queries before them. Their test events are E108, E28,
+E99, E39 (Hadoop), E40, E43, E29, E33 (OpenStack), and E31, E73, E69, E5 (HealthApp), and
+the last four exact-ID queries of each. Events that differ only in a number or a register
+name are not used. OpenStack has 43 templates and Hadoop and HealthApp 114 and 75, so
+paraphrase and cause queries each use a different event.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.

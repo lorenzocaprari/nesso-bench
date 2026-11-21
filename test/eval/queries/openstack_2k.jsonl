@@ -1,0 +1,39 @@
+# Queries for scripts/eval-retrieval on Loghub OpenStack_2k.
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"req-38101a0b-2096-447d-96ea-a692162415ae","relevant_lines":[1]}
+{"id":"exact_02","class":"exact_id","query":"req-2886b8ba-64e7-4ee7-862d-0e6af9fb9fe9","relevant_lines":[400]}
+{"id":"exact_03","class":"exact_id","query":"req-8f756dca-2eff-4af6-ba75-9a79b10195a3","relevant_lines":[805]}
+{"id":"exact_04","class":"exact_id","query":"req-0a48ad90-076f-4367-9334-0b865814f9dd","relevant_lines":[1189]}
+{"id":"exact_05","class":"exact_id","query":"req-96b6dd3d-8eb1-43f0-9bbb-19fd234cc6f5","relevant_lines":[1590]}
+{"id":"exact_06","class":"exact_id","query":"10.11.21.122","relevant_lines":[41,42,43,44,46,50]}
+{"id":"exact_07","class":"exact_id","query":"10.11.21.128","relevant_lines":[580,581,582,586,588,592]}
+{"id":"exact_08","class":"exact_id","query":"10.11.21.134","relevant_lines":[1139,1140,1141,1142,1145]}
+{"id":"exact_09","class":"exact_id","query":"38101a0b-2096-447d-96ea-a692162415ae","relevant_lines":[1],"split":"test"}
+{"id":"exact_10","class":"exact_id","query":"330a4477-cfaf-485f-a5e9-69e0e9be0a4f","relevant_lines":[499],"split":"test"}
+{"id":"exact_11","class":"exact_id","query":"b9718cd8-f65e-49cc-8349-6cf7122af137","relevant_lines":[1008],"split":"test"}
+{"id":"exact_12","class":"exact_id","query":"a2cd93b2-1e15-4277-91c3-f32e5949210b","relevant_lines":[1489],"split":"test"}
+{"id":"para_01","class":"paraphrase","query":"HTTP exception because no instances were found for any event","relevant_events":["E33"],"split":"test"}
+{"id":"para_02","class":"paraphrase","query":"unknown base file found in the image cache","relevant_events":["E42"]}
+{"id":"para_03","class":"paraphrase","query":"instance list re-created because the host sync did not match","relevant_events":["E40"],"split":"test"}
+{"id":"para_04","class":"paraphrase","query":"found different instance counts in the database and on the hypervisor","relevant_events":["E43"],"split":"test"}
+{"id":"para_05","class":"paraphrase","query":"power-state sync skipped because the instance is spawning","relevant_events":["E7"]}
+{"id":"para_06","class":"paraphrase","query":"network vif plugged event created for an instance","relevant_events":["E31"]}
+{"id":"para_07","class":"paraphrase","query":"instance spawned successfully","relevant_events":["E9"]}
+{"id":"para_08","class":"paraphrase","query":"time taken to spawn the instance on the hypervisor","relevant_events":["E15"]}
+{"id":"para_09","class":"paraphrase","query":"VM resumed lifecycle event","relevant_events":["E21"]}
+{"id":"para_10","class":"paraphrase","query":"attempting a resource claim for memory, disk and vcpus","relevant_events":["E1"]}
+{"id":"para_11","class":"paraphrase","query":"base or swap file is too young to remove","relevant_events":["E29"],"split":"test"}
+{"id":"para_12","class":"paraphrase","query":"removing a base or swap file","relevant_events":["E37"]}
+{"id":"cause_01","class":"cause","query":"the API was asked for server events but no instance matched the request","relevant_events":["E33"],"split":"test"}
+{"id":"cause_02","class":"cause","query":"an image file sits in the cache that no instance or record references","relevant_events":["E42"]}
+{"id":"cause_03","class":"cause","query":"the compute service's record of instances differed from the database so it rebuilt the list","relevant_events":["E40"],"split":"test"}
+{"id":"cause_04","class":"cause","query":"the database and the hypervisor disagree about how many VMs exist on the node","relevant_events":["E43"],"split":"test"}
+{"id":"cause_05","class":"cause","query":"a VM was being created while the periodic sync ran, so the sync left it alone","relevant_events":["E7"]}
+{"id":"cause_06","class":"cause","query":"the network port for a new VM came up and nova was notified","relevant_events":["E31"]}
+{"id":"cause_07","class":"cause","query":"a VM boot completed on the hypervisor","relevant_events":["E9"]}
+{"id":"cause_08","class":"cause","query":"how long the hypervisor needed to start the VM","relevant_events":["E15"]}
+{"id":"cause_09","class":"cause","query":"a paused VM was continued by the hypervisor","relevant_events":["E21"]}
+{"id":"cause_10","class":"cause","query":"a new VM asked the compute node to reserve capacity for it","relevant_events":["E1"]}
+{"id":"cause_11","class":"cause","query":"an unused cached file was kept because it had not aged past the removal threshold","relevant_events":["E29"],"split":"test"}
+{"id":"cause_12","class":"cause","query":"the image cache cleaner deleted an unused file","relevant_events":["E37"]}
