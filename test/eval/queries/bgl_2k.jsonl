@@ -6,13 +6,73 @@
 {"id":"exact_03","class":"exact_id","query":"0x0d09f1c0","relevant_lines":[821]}
 {"id":"exact_04","class":"exact_id","query":"0x155e28e0","relevant_lines":[1151]}
 {"id":"exact_05","class":"exact_id","query":"SPaSM_mini","relevant_lines":[2000],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"0x1438f9e0","relevant_lines":[11]}
+{"id":"exact_07","class":"exact_id","query":"0x10e1b8a0","relevant_lines":[1238]}
+{"id":"exact_08","class":"exact_id","query":"0x0fa3d060","relevant_lines":[1467]}
+{"id":"exact_09","class":"exact_id","query":"0x10e1bce0","relevant_lines":[1728]}
+{"id":"exact_10","class":"exact_id","query":"0x00284720","relevant_lines":[1930]}
+{"id":"exact_11","class":"exact_id","query":"0x057c7e00","relevant_lines":[1942]}
+{"id":"exact_12","class":"exact_id","query":"0x01fc9260","relevant_lines":[1954]}
+{"id":"exact_13","class":"exact_id","query":"0x01fc8b00","relevant_lines":[1956]}
+{"id":"exact_14","class":"exact_id","query":"2005-06-03-15.42.50.675872","relevant_lines":[1]}
+{"id":"exact_15","class":"exact_id","query":"2005-06-15-11.28.31.099655","relevant_lines":[334]}
+{"id":"exact_16","class":"exact_id","query":"2005-07-09-11.47.25.418111","relevant_lines":[667]}
+{"id":"exact_17","class":"exact_id","query":"2005-07-17-04.04.38.873517","relevant_lines":[1000]}
+{"id":"exact_18","class":"exact_id","query":"2005-08-28-02.00.10.847914","relevant_lines":[1333]}
+{"id":"exact_19","class":"exact_id","query":"2005-11-04-11.12.33.858917","relevant_lines":[1666]}
+{"id":"exact_20","class":"exact_id","query":"runtime_malloc","relevant_lines":[372],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"perf_tests","relevant_lines":[1398],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"MPITs_v050902","relevant_lines":[1413],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"new_comp","relevant_lines":[1745],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"R03-M1-N9-C:J09-U11","relevant_lines":[89,1483],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"R47-M0-N4-C:J07-U01","relevant_lines":[1236,1412],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"corrected an instruction cache parity error","relevant_events":["E77"]}
 {"id":"para_02","class":"paraphrase","query":"data TLB error interrupt fired","relevant_events":["E55"]}
 {"id":"para_03","class":"paraphrase","query":"data storage interrupt occurred","relevant_events":["E52"]}
 {"id":"para_04","class":"paraphrase","query":"ciod could not load a program image","relevant_events":["E28"]}
 {"id":"para_05","class":"paraphrase","query":"idoproxydb hit an ASSERT in SendPacket","relevant_events":["E74"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"core file generation message","relevant_events":["E67"]}
+{"id":"para_07","class":"paraphrase","query":"floating point alignment exceptions were counted","relevant_events":["E4"]}
+{"id":"para_08","class":"paraphrase","query":"double hummer alignment exceptions were counted","relevant_events":["E3"]}
+{"id":"para_09","class":"paraphrase","query":"correctable error summary with symbol and mask","relevant_events":["E18"]}
+{"id":"para_10","class":"paraphrase","query":"interrupt totals with critical input time spent","relevant_events":["E12"]}
+{"id":"para_11","class":"paraphrase","query":"time spent in the rbs signal handler","relevant_events":["E7"]}
+{"id":"para_12","class":"paraphrase","query":"ciod wrote core files for a program","relevant_events":["E34"]}
+{"id":"para_13","class":"paraphrase","query":"program image could not be loaded because of permissions","relevant_events":["E26"]}
+{"id":"para_14","class":"paraphrase","query":"program image load failed with an exec format error","relevant_events":["E25"]}
+{"id":"para_15","class":"paraphrase","query":"ciod received a signal with a code and errno","relevant_events":["E41"],"split":"test"}
+{"id":"para_16","class":"paraphrase","query":"DDR errors detected and corrected on a rank","relevant_events":["E2"]}
+{"id":"para_17","class":"paraphrase","query":"node card VPD mismatch in processor card slot","relevant_events":["E93"]}
+{"id":"para_18","class":"paraphrase","query":"link severed while reading message after load","relevant_events":["E29"]}
+{"id":"para_19","class":"paraphrase","query":"Lustre mount failure on an I/O node","relevant_events":["E81"]}
+{"id":"para_20","class":"paraphrase","query":"illegal instruction program interrupt","relevant_events":["E101"],"split":"test"}
+{"id":"para_21","class":"paraphrase","query":"machine check DCR read timeout","relevant_events":["E82"],"split":"test"}
+{"id":"para_22","class":"paraphrase","query":"node card is not fully functional","relevant_events":["E90"]}
+{"id":"para_23","class":"paraphrase","query":"kernel terminated for a reason code","relevant_events":["E111"],"split":"test"}
+{"id":"para_24","class":"paraphrase","query":"data cache parity error, attempting correction","relevant_events":["E51"],"split":"test"}
+{"id":"para_25","class":"paraphrase","query":"error receiving a packet on the tree network with the wrong type","relevant_events":["E60"],"split":"test"}
 {"id":"cause_01","class":"cause","query":"node reported a corrected instruction-cache parity fault","relevant_events":["E77"]}
 {"id":"cause_02","class":"cause","query":"compute node took a data TLB error interrupt","relevant_events":["E55"]}
 {"id":"cause_03","class":"cause","query":"application image missing when ciod tried to load it","relevant_events":["E28"]}
 {"id":"cause_04","class":"cause","query":"proxy asserted while sending a control packet","relevant_events":["E74"]}
 {"id":"cause_05","class":"cause","query":"login chdir target directory does not exist","relevant_events":["E37"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"a process crashed and the system wrote a core dump","relevant_events":["E67"]}
+{"id":"cause_07","class":"cause","query":"unaligned floating point accesses were handled by the kernel","relevant_events":["E4"]}
+{"id":"cause_08","class":"cause","query":"misaligned paired floating-point loads or stores were fixed up","relevant_events":["E3"]}
+{"id":"cause_09","class":"cause","query":"memory ECC corrected a bit error and logged the symbol","relevant_events":["E18"]}
+{"id":"cause_10","class":"cause","query":"the kernel reported how much time interrupt handling had consumed","relevant_events":["E12"]}
+{"id":"cause_11","class":"cause","query":"signal handling overhead was measured over many calls","relevant_events":["E7"]}
+{"id":"cause_12","class":"cause","query":"a job crashed on several nodes so core dumps were collected","relevant_events":["E34"]}
+{"id":"cause_13","class":"cause","query":"the job's executable was not readable by the launching user","relevant_events":["E26"]}
+{"id":"cause_14","class":"cause","query":"the binary was built for the wrong architecture or is corrupted","relevant_events":["E25"]}
+{"id":"cause_15","class":"cause","query":"an application process was killed by a signal on a compute node","relevant_events":["E41"],"split":"test"}
+{"id":"cause_16","class":"cause","query":"memory errors were fixed by ECC on a specific DIMM rank","relevant_events":["E2"]}
+{"id":"cause_17","class":"cause","query":"the vital product data of the installed card does not match what was expected","relevant_events":["E93"]}
+{"id":"cause_18","class":"cause","query":"the control connection broke while a program was being loaded","relevant_events":["E29"]}
+{"id":"cause_19","class":"cause","query":"the parallel filesystem could not be attached","relevant_events":["E81"]}
+{"id":"cause_20","class":"cause","query":"the processor tried to execute an invalid opcode","relevant_events":["E101"],"split":"test"}
+{"id":"cause_21","class":"cause","query":"a device control register did not answer in time, raising a machine check","relevant_events":["E82"],"split":"test"}
+{"id":"cause_22","class":"cause","query":"hardware on the card is degraded so it cannot be used normally","relevant_events":["E90"]}
+{"id":"cause_23","class":"cause","query":"the compute node kernel stopped itself after a fatal condition","relevant_events":["E111"],"split":"test"}
+{"id":"cause_24","class":"cause","query":"a data cache bit flip was detected and the hardware is trying to repair it","relevant_events":["E51"],"split":"test"}
+{"id":"cause_25","class":"cause","query":"a collective-network packet arrived of a different kind than expected","relevant_events":["E60"],"split":"test"}
