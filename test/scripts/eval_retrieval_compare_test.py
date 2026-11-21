@@ -1,3 +1,5 @@
+import importlib.machinery
+import importlib.util
 import json
 import os
 import pathlib
@@ -100,6 +102,34 @@ def needle_report(engines: list[dict]) -> dict:
         "overall": {"engines": engines, "query_count": 1},
         "schema_version": 1,
     }
+
+
+def load_compare():
+    loader = importlib.machinery.SourceFileLoader("eval_retrieval_compare", str(COMPARE))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+def scored_entry(name: str, scores: list[float], class_name: str = "cause") -> dict:
+    """An engine (or nesso/<mode>) with one query per score, ids q0, q1, ..."""
+    queries = [
+        {"class": class_name, "id": f"q{index}", "metrics": metrics(score, score, score)}
+        for index, score in enumerate(scores)
+    ]
+    mean = sum(scores) / len(scores)
+    bucket = {"class": class_name, "metrics": metrics(mean, mean, mean), "n": len(scores)}
+    entry = {
+        "by_class": [bucket],
+        "overall": {"metrics": bucket["metrics"], "n": len(scores)},
+        "queries": queries,
+        "status": "ok",
+    }
+    if name.startswith("nesso/"):
+        return {"engine": "nesso", "modes": [{"mode": name.removeprefix("nesso/"), **entry}], "status": "ok"}
+    return {"engine": name, **entry}
 
 
 def needle_entry(name: str, mrr: float, precision: float) -> dict:
@@ -344,6 +374,56 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         no_nesso = self.run_margins(engine_report([baseline_entry("bm25")]), [])
         self.assertEqual(no_nesso.returncode, 0, no_nesso.stderr)
         self.assertIn("no nesso rows", no_nesso.stdout)
+
+    def test_margins_report_a_paired_interval_and_verdict(self) -> None:
+        # Ten queries: nesso finds all, bm25 none, so the interval excludes 0.
+        win = engine_report([scored_entry("nesso/auto", [1.0] * 10), scored_entry("bm25", [0.0] * 10)])
+        result = self.run_margins(win, [])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("| 95% CI | verdict |", result.stdout)
+        self.assertIn("| hdfs-2k | cause | 10 | 1.000 | 1.000 | bm25 | 0.000 | 0.000 | +1.000 | [+1.000, +1.000] | win |", result.stdout)
+        self.assertIn("paired bootstrap", result.stdout)
+        # The reference engine is better on every query.
+        reference = engine_report([scored_entry("diy-faiss", [1.0] * 10)])
+        loss = engine_report([scored_entry("nesso/auto", [0.0] * 10), scored_entry("bm25", [0.0] * 10)])
+        result = self.run_margins(loss, [reference])
+        self.assertIn("| diy-faiss (reference) | 1.000 | 1.000 | -1.000 | [-1.000, -1.000] | loss |", result.stdout)
+        # Wins and losses that cancel out are a tie.
+        tie = engine_report([scored_entry("nesso/auto", [1.0, 0.0] * 5), scored_entry("bm25", [0.0, 1.0] * 5)])
+        result = self.run_margins(tie, [])
+        row = next(line for line in result.stdout.splitlines() if line.startswith("| hdfs-2k | cause |"))
+        self.assertTrue(row.endswith("| tie |"), row)
+
+    def test_bootstrap_helpers(self) -> None:
+        mod = load_compare()
+        differences = [0.5, -0.25, 0.0, 1.0, 0.25]
+        first = mod.bootstrap_interval(differences, "row")
+        # Seeded from the label: the same row prints the same bounds.
+        self.assertEqual(first, mod.bootstrap_interval(differences, "row"))
+        assert first is not None
+        self.assertLessEqual(first[0], sum(differences) / len(differences))
+        self.assertGreaterEqual(first[1], sum(differences) / len(differences))
+        self.assertIsNone(mod.bootstrap_interval([], "row"))
+        self.assertEqual(mod.verdict(None), "—")
+        self.assertEqual(mod.verdict((0.1, 0.2)), "win")
+        self.assertEqual(mod.verdict((-0.2, -0.1)), "loss")
+        self.assertEqual(mod.verdict((-0.1, 0.1)), "tie")
+        ours = {("d", "a"): ("cause", 1.0), ("d", "b"): ("exact_id", 1.0), ("d", "c"): ("cause", 0.5)}
+        theirs = {("d", "a"): ("cause", 0.0), ("d", "b"): ("exact_id", 1.0)}
+        # Only queries both answered, filtered by class unless overall.
+        self.assertEqual(mod.paired_differences(ours, theirs, "cause"), [1.0])
+        self.assertEqual(mod.paired_differences(ours, theirs, "overall"), [1.0, 0.0])
+
+    def test_query_scores_pool_datasets_into_overall(self) -> None:
+        mod = load_compare()
+        first = engine_report([scored_entry("nesso/auto", [1.0, 0.0])], dataset="hdfs-2k")
+        second = engine_report([scored_entry("nesso/auto", [0.5])], dataset="bgl-2k")
+        combined = {**first, "datasets": first["datasets"] + second["datasets"]}
+        scores = mod.query_scores(combined)
+        self.assertEqual(len(scores[("hdfs-2k", "auto")]), 2)
+        self.assertEqual(len(scores[("bgl-2k", "auto")]), 1)
+        # Query ids repeat across datasets, so overall keys include the dataset.
+        self.assertEqual(len(scores[("overall", "auto")]), 3)
 
     def test_margins_and_previous_can_be_combined_but_one_is_required(self) -> None:
         current = engine_report([{"engine": "nesso", "modes": [mode_entry("auto")], "status": "ok"}, baseline_entry("bm25")])
