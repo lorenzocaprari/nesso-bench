@@ -1,5 +1,7 @@
+import contextlib
 import hashlib
 import http.server
+import io
 import importlib.machinery
 import importlib.util
 import json
@@ -1774,19 +1776,28 @@ class EvalRetrievalNeedleTest(unittest.TestCase):
             spec = mod.NeedleSpec("tiny-needle", "bgl-loghub2", "BGL_loghub2", 1, 5, "q.jsonl")
             old_bench, old_needles = mod.BENCH_DIR, mod.NEEDLES_DIR
             mod.BENCH_DIR, mod.NEEDLES_DIR = bench, needles
+            stderr = io.StringIO()
             try:
-                result = mod.evaluate_needle_dataset(
-                    spec,
-                    engines=["grep", "bm25"],
-                    modes=["dense"],
-                    binary=None,
-                    model_dir=None,
-                    workdir=directory / "work",
-                    xerj=mod.XerjContext(),
-                    opensearch=mod.OpenSearchContext(),
-                )
+                with contextlib.redirect_stderr(stderr):
+                    result = mod.evaluate_needle_dataset(
+                        spec,
+                        engines=["grep", "bm25"],
+                        modes=["dense"],
+                        binary=None,
+                        model_dir=None,
+                        workdir=directory / "work",
+                        xerj=mod.XerjContext(),
+                        opensearch=mod.OpenSearchContext(),
+                    )
             finally:
                 mod.BENCH_DIR, mod.NEEDLES_DIR = old_bench, old_needles
+        # Progress goes to stderr, one line per phase, so stdout stays the report.
+        logged = stderr.getvalue().splitlines()
+        self.assertEqual(logged[0], "eval-retrieval: tiny-needle: 5 lines, 2 queries")
+        for engine in ("grep", "bm25"):
+            self.assertIn(f"eval-retrieval: tiny-needle {engine}: indexing", logged)
+            self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine}: indexed in ") for line in logged))
+            self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine}: scored at ") for line in logged))
         self.assertEqual(result["alert_counts"], {"APPSEV": 1, "KERNDTLB": 1, "KERNPAN": 1})
         self.assertEqual(result["queries_absent_alert"], ["KERNMICRO"])
         self.assertEqual(result["uncovered_alerts"], ["APPSEV", "KERNPAN"])
