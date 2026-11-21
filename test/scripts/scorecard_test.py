@@ -4,6 +4,7 @@ import json
 import pathlib
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -37,8 +38,48 @@ class ScorecardPlanTest(unittest.TestCase):
         # NESSO_THREADS is part of a measured report's setting, so these stay out of the merge.
         self.assertTrue(all(not run.merged for run in extra))
         # No nesso group selected: no threads-1 runs either.
-        only_bm25 = mod.plan(list(mod.SUITES), [mod.GROUPS[2]], threads_1=True)
+        only_bm25 = mod.plan(list(mod.SUITES), [mod.GROUPS[2]], threads_1=True, fp32=True)
         self.assertEqual({run.group.name for run in only_bm25}, {"bm25"})
+
+    def test_fp32_runs_are_separate_and_use_the_fp32_model(self) -> None:
+        mod = self.mod
+        runs = mod.plan(list(mod.SUITES), list(mod.GROUPS), threads_1=True, fp32=True)
+        fp32 = [run for run in runs if run.group.fp32]
+        self.assertEqual([run.suite.name for run in fp32], [suite.name for suite in mod.SUITES])
+        # A different model is a different setting: kept out of the suite merge.
+        self.assertTrue(all(not run.merged for run in fp32))
+        out = pathlib.Path("/results/0.3.1")
+        argv = fp32[0].command(out, "py", {"NESSO_FP32_MODEL_DIR": "/fp32"})
+        self.assertEqual(argv[argv.index("--model-dir") + 1], "/fp32")
+        self.assertEqual(argv[argv.index("--modes") + 1], mod.NESSO_MODES)
+        self.assertEqual(argv[argv.index("--out") + 1], "/results/0.3.1/raw/2k/nesso-fp32.json")
+        self.assertEqual([argv[i + 1] for i, arg in enumerate(argv) if arg == "--engine"], ["nesso"])
+        self.assertNotIn("--model-dir", mod.Run(mod.SUITES[0], mod.GROUPS[0]).command(out, "py", {"NESSO_FP32_MODEL_DIR": "/fp32"}))
+
+    def test_merge_takes_only_merged_runs(self) -> None:
+        mod = self.mod
+        with tempfile.TemporaryDirectory() as temp:
+            out = pathlib.Path(temp)
+            entries = [
+                {"suite": "2k", "report": "raw/2k/nesso.json", "merged": True},
+                {"suite": "2k", "report": "raw/2k/nesso-fp32.json", "merged": False},
+                {"suite": "2k", "report": None, "merged": True},
+            ]
+            calls = []
+            original = mod.subprocess.run
+
+            def fake_run(argv, **kwargs):
+                calls.append(argv)
+                return subprocess.CompletedProcess(argv, 0, "", "")
+
+            mod.subprocess.run = fake_run
+            try:
+                result = mod.merge_suite(mod.SUITES[0], entries, out)
+            finally:
+                mod.subprocess.run = original
+        self.assertEqual(result["inputs"], 1)
+        self.assertIn(str(out / "raw/2k/nesso.json"), calls[0])
+        self.assertNotIn(str(out / "raw/2k/nesso-fp32.json"), calls[0])
 
     def test_nesso_runs_with_grep(self) -> None:
         # A nesso-only report is schema 3, which eval-retrieval-merge refuses.

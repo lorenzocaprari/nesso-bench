@@ -1,6 +1,7 @@
 import pathlib
 import re
 import subprocess
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -47,6 +48,31 @@ class InstallNessoTest(unittest.TestCase):
             self.assertEqual(completed.returncode, 2, args)
             self.assertIn(message, completed.stderr)
             self.assertEqual(completed.stdout, "")
+
+    def test_fp32_pins_match_nesso_fetch_model_shape(self) -> None:
+        text = SCRIPT.read_text(encoding="utf-8")
+        url = re.search(r'^FP32_MODEL_URL="([^"]+)"', text, re.M)
+        assert url is not None
+        # A commit, not a branch, so the download cannot change under the pin.
+        self.assertRegex(url.group(1), r"^https://huggingface\.co/Xenova/all-MiniLM-L6-v2/resolve/[0-9a-f]{40}/onnx/model\.onnx$")
+        for name in ("FP32_MODEL_SHA256", "VOCAB_SHA256"):
+            pin = re.search(rf'^{name}="([^"]*)"', text, re.M)
+            assert pin is not None
+            self.assertRegex(pin.group(1), r"^[0-9a-f]{64}$", name)
+
+    def test_fp32_refuses_a_different_vocabulary(self) -> None:
+        # An already unpacked release (same pin) whose vocab.txt is not the one the fp32 model expects.
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp) / "nesso-0.3.1-amd64"
+            (root / "usr" / "bin").mkdir(parents=True)
+            (root / "usr" / "share" / "nesso").mkdir(parents=True)
+            (root / "usr" / "share" / "nesso" / "vocab.txt").write_text("[PAD]\n", encoding="utf-8")
+            (root / "nesso-bench.pin").write_text(pins()["0.3.1/amd64"] + "\n", encoding="utf-8")
+            completed = run("--dest", temp, "--arch", "amd64", "--fp32", "0.3.1")
+            self.assertFalse((root / "fp32").exists())
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("is not the vocabulary the fp32 model pin expects", completed.stderr)
+        self.assertEqual(completed.stdout, "")
 
 
 if __name__ == "__main__":
