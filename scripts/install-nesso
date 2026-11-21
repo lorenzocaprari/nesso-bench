@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Installs a released nesso, so a benchmark scores the binary users get.
+#
+#   scripts/install-nesso [--dest DIR] [--arch amd64|arm64] [--env-file FILE]
+#                         [--path-file FILE] VERSION
+#
+# Downloads nesso_<VERSION>_<arch>.deb from the nesso GitHub release, checks it
+# against the sha256 pinned below (the same digest as that release's
+# SHA256SUMS), and unpacks it under DEST/nesso-<VERSION>-<arch> (default DEST
+# is build/nesso). Nothing is installed system-wide. A version already
+# unpacked from the same pin is reused. The architecture defaults to this
+# machine's.
+#
+# stdout is shell `export` lines for NESSO_BINARY and NESSO_MODEL_DIR, which
+# scripts/eval-retrieval reads, and PATH, so
+#   eval "$(scripts/install-nesso 0.3.1)"
+# sets up the current shell. --env-file and --path-file append the same values
+# in the GITHUB_ENV and GITHUB_PATH formats. Tool output goes to stderr.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RELEASES="https://github.com/lorenzocaprari/nesso/releases/download"
+
+# sha256 of nesso_<version>_<arch>.deb, copied from each release's SHA256SUMS.
+# Add a release here before benchmarking it.
+declare -A DEB_SHA256=(
+  ["0.3.0/amd64"]="118e2919acbf88403e77e9765e9bf20474b011f2e72b171c23904a181c986c2e"
+  ["0.3.0/arm64"]="015082a20c4f9f57b5e0ccde2f9840cb481f29557837c766a29dd3cc78a95c9d"
+  ["0.3.1/amd64"]="f0a94abfe158be24e229d7cd68a9b14d9b622f2139db9c87607d3694cc15e2db"
+  ["0.3.1/arm64"]="56d6f8f4cf5f8e5283c0657ac2e4b20f928926c3e4ba4937a825cc54f373aa65"
+)
+
+usage() {
+  sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  exit 2
+}
+
+dest="${ROOT}/build/nesso"
+arch=""
+env_file=""
+path_file=""
+version=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dest) dest="${2:?--dest needs a directory}"; shift 2 ;;
+    --arch) arch="${2:?--arch needs amd64 or arm64}"; shift 2 ;;
+    --env-file) env_file="${2:?--env-file needs a file}"; shift 2 ;;
+    --path-file) path_file="${2:?--path-file needs a file}"; shift 2 ;;
+    -h | --help) usage ;;
+    -*) echo "error: unknown option '$1'" >&2; exit 2 ;;
+    *)
+      if [[ -n "${version}" ]]; then
+        echo "error: one VERSION only" >&2
+        exit 2
+      fi
+      version="${1#v}"
+      shift
+      ;;
+  esac
+done
+if [[ -z "${version}" ]]; then
+  usage
+fi
+case "$(uname -m)" in
+  x86_64) host_arch=amd64 ;;
+  aarch64 | arm64) host_arch=arm64 ;;
+  *) host_arch="" ;;
+esac
+if [[ -z "${arch}" ]]; then
+  if [[ -z "${host_arch}" ]]; then
+    echo "error: no nesso package for $(uname -m); pass --arch" >&2
+    exit 2
+  fi
+  arch="${host_arch}"
+fi
+sha256="${DEB_SHA256["${version}/${arch}"]:-}"
+if [[ -z "${sha256}" ]]; then
+  pinned="$(printf '%s\n' "${!DEB_SHA256[@]}" | sort | tr '\n' ' ')"
+  echo "error: no pin for nesso ${version} on ${arch} (pinned: ${pinned% }); add it from the release's SHA256SUMS" >&2
+  exit 2
+fi
+
+# Keep stdout for the export lines.
+exec 3>&1 1>&2
+
+mkdir -p "${dest}"
+dest="$(cd "${dest}" && pwd)"
+root="${dest}/nesso-${version}-${arch}"
+stamp="${root}/nesso-bench.pin"
+binary="${root}/usr/bin/nesso"
+model_dir="${root}/usr/share/nesso"
+
+if [[ ! -f "${stamp}" || "$(<"${stamp}")" != "${sha256}" ]]; then
+  deb="nesso_${version}_${arch}.deb"
+  tmp="$(mktemp -d "${dest}/tmp.XXXXXX")"
+  trap 'rm -rf -- "${tmp}"' EXIT
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 2 \
+    -o "${tmp}/${deb}" "${RELEASES}/v${version}/${deb}"
+  if ! echo "${sha256}  ${tmp}/${deb}" | sha256sum --check --status; then
+    echo "error: sha256 mismatch for ${deb}" >&2
+    exit 1
+  fi
+  mkdir -p "${tmp}/root"
+  if command -v dpkg-deb >/dev/null; then
+    dpkg-deb -x "${tmp}/${deb}" "${tmp}/root"
+  else
+    # Without dpkg: a .deb is an ar archive; the files are in data.tar.*.
+    (cd "${tmp}" && ar x "${deb}")
+    data="$(find "${tmp}" -maxdepth 1 -name 'data.tar.*' -print -quit)"
+    if [[ "${data}" == *.zst ]] && ! command -v zstd >/dev/null; then
+      echo "error: ${deb} is zstd-compressed; install dpkg-deb or zstd" >&2
+      exit 1
+    fi
+    tar -xaf "${data}" -C "${tmp}/root"
+  fi
+  if [[ ! -x "${tmp}/root/usr/bin/nesso" || ! -f "${tmp}/root/usr/share/nesso/model.onnx" ]]; then
+    echo "error: ${deb} has no usr/bin/nesso or usr/share/nesso/model.onnx" >&2
+    exit 1
+  fi
+  rm -rf -- "${root}"
+  mv -- "${tmp}/root" "${root}"
+  printf '%s\n' "${sha256}" >"${stamp}"
+fi
+
+# Another architecture's binary cannot run here; its pin is the only check.
+if [[ "${arch}" == "${host_arch}" ]]; then
+  reported="$("${binary}" -V)"
+  echo "${reported}"
+  if [[ "${reported}" != *"${version}"* ]]; then
+    echo "error: ${binary} -V reports '${reported}', expected ${version}" >&2
+    exit 1
+  fi
+fi
+
+printf 'export NESSO_BINARY=%q\n' "${binary}" >&3
+printf 'export NESSO_MODEL_DIR=%q\n' "${model_dir}" >&3
+printf 'export PATH=%q:"${PATH}"\n' "${root}/usr/bin" >&3
+if [[ -n "${env_file}" ]]; then
+  printf 'NESSO_BINARY=%s\nNESSO_MODEL_DIR=%s\n' "${binary}" "${model_dir}" >>"${env_file}"
+fi
+if [[ -n "${path_file}" ]]; then
+  printf '%s\n' "${root}/usr/bin" >>"${path_file}"
+fi

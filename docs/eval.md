@@ -9,6 +9,13 @@ How the retrieval benchmarks in this repository work: datasets, engines, metrics
 python3 scripts/eval-retrieval --dataset all-2k --out build/eval/all_2k.json
 ```
 
+The nesso binary comes from `--binary`, else `NESSO_BINARY`, else a nesso build tree, and the model from `--model-dir`, else `NESSO_MODEL_DIR`, else `models/`. Published numbers score a released nesso, not a development build. `scripts/install-nesso VERSION` downloads `nesso_<VERSION>_<arch>.deb` from the nesso GitHub release, checks it against the sha256 pinned in the script (the digest in that release's `SHA256SUMS`), and unpacks the binary and the shipped int8 model under `build/nesso/nesso-<VERSION>-<arch>/`. Nothing is installed system-wide. It prints `export` lines for `NESSO_BINARY`, `NESSO_MODEL_DIR`, and `PATH`. It uses `dpkg-deb` when present, else `ar` and `tar` (zstd needed for the data member). The architecture defaults to this machine's (`--arch amd64|arm64`). To benchmark a new release, add its two `.deb` digests to the script.
+
+```bash
+eval "$(scripts/install-nesso 0.3.1)"
+python3 scripts/eval-retrieval --dataset all-2k --engine nesso --out build/eval/all_2k_v0.3.1.json
+```
+
 Optional keyword and DIY semantic baselines share the same labels and metrics. Pass `--engine` repeatedly (`nesso`, `grep`, `ripgrep`, `bm25`, `diy-faiss`, `xerj`, `xerj-neural`, `opensearch`, `opensearch-knn`, `ck`, `vecgrep`; default is nesso only). Without `--engine` (or with `--engine nesso` alone) the JSON stays `schema_version` 3 and is byte-compatible with prior nesso-only reports. Any other engine writes `schema_version` 4 with an `engines[]` axis and a side-by-side text table. Scoring is unchanged: each engine only supplies ranked 1-based line ids.
 
 - **grep:** `grep -n -F -i -e <query> -- <log>`. If that has no hits, OR the query's whitespace tokens with one `-e` per token. Rank is file order (ascending line id), top 10. This is the "what people do today" baseline.
