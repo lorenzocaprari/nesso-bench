@@ -83,6 +83,10 @@ holds the token, so a number that two systems share is relevant in both; event i
 prefixed by their system. Queries with a near twin in another system (a login session
 closing, for instance) are not used, because the label would count the twin as wrong.
 
+`hdfs-2k-json` (`scripts/derive-json`) has no query file of its own: it scores `hdfs_2k.jsonl`
+against the same sample written as JSON lines, one object per line, so line ids and labels are
+unchanged and a score difference comes from the format.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
