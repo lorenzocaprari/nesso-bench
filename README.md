@@ -7,7 +7,8 @@ other embedding models, on public log data with labels we did not write.
 
 Everything here can be rerun by anyone: inputs are pinned by checksum, tools and models by
 version or commit, and every report records the machine and the versions that produced it.
-Reports say where nesso loses, too.
+Reports say where nesso loses, too. [docs/method.md](docs/method.md) lists the rules we follow and
+what these results cannot show.
 
 ## What is measured
 
@@ -42,7 +43,7 @@ fields, the tool versions, and digests of the models used.
 | `test/eval/` | 2k seed query sets, needle queries, and `reference/`: committed competitor reports that nesso's CI compares against |
 | `test/scripts/` | Harness unit tests |
 | `bench/competitors/` | Optional competitor stacks, hash-pinned |
-| `docs/` | How each benchmark works, and published results |
+| `docs/` | How each benchmark works ([eval.md](docs/eval.md)), the rules and limits of the results ([method.md](docs/method.md)), and published results |
 
 ## Development
 
