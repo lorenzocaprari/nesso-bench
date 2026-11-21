@@ -1,0 +1,450 @@
+#!/usr/bin/env python3
+"""Run the full scorecard on the benchmark machine: quality, speed, and memory.
+
+    scripts/scorecard --nesso-version 0.3.1 [--out results/0.3.1]
+                      [--suites ...] [--groups ...] [--memory-max 48G]
+                      [--timeout-hours 8] [--nesso-threads-1] [--dev] [--dry-run]
+
+One command, so every release is measured the same way:
+
+1. Preflight: refuses WSL and a busy machine (load above 1.0) unless --dev,
+   which marks the results development-only. Writes machine.json: CPU, RAM,
+   kernel, CPU governor, SMT, mitigations, swap, disk, tool versions, and the
+   nesso-bench commit.
+2. Installs nesso VERSION (scripts/install-nesso) and the competitors
+   (scripts/install-competitors), and fetches every Loghub input.
+3. Runs scripts/eval-retrieval --measure once per suite and engine group, each
+   in its own process under a memory cap (systemd-run, MemoryMax) and a
+   timeout, so one engine running out of memory or time is recorded as that
+   result instead of stopping the run. nesso runs with grep, so its report has
+   the engine layout the merge needs.
+4. Merges each suite's finished reports with scripts/eval-retrieval-merge and
+   writes status.json: one entry per run with its outcome (ok, failed,
+   timeout, or out-of-memory) and wall time.
+
+Layout under --out: machine.json, status.json, raw/<suite>/<group>.json and
+.log, merged/<suite>.json. Indexes and temporary corpora go to
+build/scorecard/<out name>/. --dry-run prints the runs as JSON lines and does
+nothing else.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+NESSO_MODES = "auto,dense,lexical"
+PUBLISHED_PREFIX_LINES = 1_000_000
+LOAD_LIMIT = 1.0
+EXIT_TIMEOUT = 124
+EXIT_KILLED = 137
+# How a SIGKILLed child shows up in a run log: the harness's "exit -9" and
+# GNU time's line. Under the cgroup cap, only the kernel's OOM killer sends it
+# before the timeout does.
+KILLED_IN_LOG = re.compile(r"exit -9\b|terminated by signal 9\b")
+
+
+@dataclass(frozen=True)
+class Suite:
+    name: str
+    dataset: str
+    repeat: int
+    prefix_lines: int | None = None  # set: speed and memory only, on a full-log prefix
+
+
+@dataclass(frozen=True)
+class Group:
+    name: str
+    engines: tuple[str, ...]
+    threads: str | None = None  # NESSO_THREADS for this run; None keeps nesso's default
+
+
+SUITES = (
+    Suite("2k", "all-2k", 3),
+    Suite("bgl-needle-100k", "bgl-needle-100k", 3),
+    Suite("bgl-needle-1m", "bgl-needle-1m", 1),
+    Suite("thunderbird-needle-1m", "thunderbird-needle-1m", 1),
+    Suite("full-1m", "all-full", 1, PUBLISHED_PREFIX_LINES),
+)
+
+GROUPS = (
+    Group("nesso", ("nesso", "grep")),
+    Group("ripgrep", ("ripgrep",)),
+    Group("bm25", ("bm25",)),
+    Group("diy-faiss", ("diy-faiss",)),
+    Group("opensearch", ("opensearch",)),
+    Group("opensearch-knn", ("opensearch-knn",)),
+    Group("xerj", ("xerj",)),
+    Group("xerj-neural", ("xerj-neural",)),
+    Group("xerj-semantic", ("xerj-semantic",)),
+    Group("ck", ("ck",)),
+    Group("vecgrep", ("vecgrep",)),
+)
+# Same engines at one nesso thread. NESSO_THREADS is part of a measured
+# report's setting, so this group is kept out of the suite merge.
+THREADS_1 = Group("nesso-threads-1", ("nesso", "grep"), threads="1")
+
+# Loghub inputs each suite needs, as scripts/fetch-loghub arguments.
+FETCHES = {
+    "2k": [["--dataset", "all-2k"]],
+    "bgl-needle-100k": [["--dataset", "bgl-loghub2", "--window", "4100001:100000"]],
+    "bgl-needle-1m": [["--dataset", "bgl-loghub2", "--window", "3200001:1000000"]],
+    "thunderbird-needle-1m": [["--dataset", "thunderbird-loghub2", "--window", "8550001:1000000"]],
+    "full-1m": [["--dataset", "all-full"]],
+}
+
+
+def work_root(out: Path) -> Path:
+    """Indexes and temporary corpora go under build/, never into the results directory."""
+    return ROOT / "build" / "scorecard" / out.name
+
+
+@dataclass(frozen=True)
+class Run:
+    suite: Suite
+    group: Group
+
+    @property
+    def merged(self) -> bool:
+        return self.group.threads is None
+
+    def report(self, out: Path) -> Path:
+        return out / "raw" / self.suite.name / f"{self.group.name}.json"
+
+    def log(self, out: Path) -> Path:
+        return out / "raw" / self.suite.name / f"{self.group.name}.log"
+
+    def command(self, out: Path, python: str, env: dict[str, str]) -> list[str]:
+        argv = [
+            python,
+            str(ROOT / "scripts" / "eval-retrieval"),
+            "--dataset",
+            self.suite.dataset,
+            "--measure",
+            "--repeat",
+            str(self.suite.repeat),
+            "--skip-fetch",
+            "--workdir",
+            str(work_root(out) / self.suite.name / self.group.name),
+            "--out",
+            str(self.report(out)),
+        ]
+        for engine in self.group.engines:
+            argv += ["--engine", engine]
+        if "nesso" in self.group.engines:
+            argv += ["--modes", NESSO_MODES]
+        if self.suite.prefix_lines is not None:
+            argv += ["--log-prefix-lines", str(self.suite.prefix_lines)]
+        if "xerj-neural" in self.group.engines and env.get("XERJ_MODEL_DIR"):
+            argv += ["--xerj-model-dir", env["XERJ_MODEL_DIR"]]
+        return argv
+
+
+def pick(names: str | None, known: tuple, label: str) -> list:
+    if names is None:
+        return list(known)
+    by_name = {item.name: item for item in known}
+    chosen = []
+    for name in (part.strip() for part in names.split(",")):
+        if not name:
+            continue
+        if name not in by_name:
+            raise SystemExit(f"error: unknown {label} {name!r}; expected one of {', '.join(by_name)}")
+        chosen.append(by_name[name])
+    if not chosen:
+        raise SystemExit(f"error: --{label}s selects nothing")
+    return chosen
+
+
+def plan(suites: list[Suite], groups: list[Group], threads_1: bool) -> list[Run]:
+    runs = [Run(suite, group) for suite in suites for group in groups]
+    if threads_1 and any("nesso" in group.engines for group in groups):
+        runs += [Run(suite, THREADS_1) for suite in suites]
+    return runs
+
+
+def competitor_engines(groups: list[Group]) -> list[str]:
+    names: list[str] = []
+    for group in groups:
+        for engine in group.engines:
+            if engine not in ("nesso", "grep", "bm25") and engine not in names:
+                names.append(engine)
+    return names
+
+
+# ---- preflight -------------------------------------------------------------
+
+
+def read_text(path: str) -> str | None:
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+
+
+def meminfo_bytes(text: str, key: str) -> int | None:
+    for line in text.splitlines():
+        if line.startswith(f"{key}:"):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                return int(parts[1]) * 1024
+    return None
+
+
+def is_wsl(version_text: str | None) -> bool:
+    return bool(version_text) and "microsoft" in version_text.lower()
+
+
+def tool_line(argv: list[str]) -> str | None:
+    try:
+        completed = subprocess.run(argv, capture_output=True, text=True, check=False, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    lines = (completed.stdout or completed.stderr).strip().splitlines()
+    return lines[0] if lines else None
+
+
+def mitigations() -> dict[str, str]:
+    directory = Path("/sys/devices/system/cpu/vulnerabilities")
+    if not directory.is_dir():
+        return {}
+    return {entry.name: entry.read_text(encoding="utf-8").strip() for entry in sorted(directory.iterdir())}
+
+
+def machine_info(out: Path, dev: bool) -> dict:
+    meminfo = read_text("/proc/meminfo") or ""
+    load = os.getloadavg()[0]
+    disk = shutil.disk_usage(out)
+    commit = tool_line(["git", "-C", str(ROOT), "rev-parse", "HEAD"])
+    dirty = tool_line(["git", "-C", str(ROOT), "status", "--porcelain"])
+    return {
+        "developmentOnly": dev,
+        "cpuModel": next(
+            (line.split(":", 1)[1].strip() for line in (read_text("/proc/cpuinfo") or "").splitlines()
+             if line.lower().startswith("model name")),
+            "unknown",
+        ),
+        "nproc": os.cpu_count(),
+        "memTotalBytes": meminfo_bytes(meminfo, "MemTotal"),
+        "swapTotalBytes": meminfo_bytes(meminfo, "SwapTotal"),
+        "kernel": platform.release(),
+        "platform": platform.platform(),
+        "os": (read_text("/etc/os-release") or "").splitlines()[:2],
+        "wsl": is_wsl(read_text("/proc/version")),
+        "loadAverage1m": round(load, 2),
+        "cpuGovernor": read_text("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"),
+        "smtActive": read_text("/sys/devices/system/cpu/smt/active"),
+        "mitigations": mitigations(),
+        "diskFreeBytes": disk.free,
+        "lscpu": tool_line(["sh", "-c", "lscpu | tr '\\n' ';'"]),
+        "tools": {
+            "python": platform.python_version(),
+            "gnuTime": tool_line(["/usr/bin/time", "--version"]),
+            "grep": tool_line(["grep", "--version"]),
+            "sqlite3": tool_line([sys.executable, "-c", "import sqlite3; print(sqlite3.sqlite_version)"]),
+        },
+        "nessoBenchCommit": commit,
+        "nessoBenchDirty": bool(dirty),
+        "startedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def check_machine(info: dict, dev: bool) -> None:
+    problems = []
+    if info["wsl"]:
+        problems.append("this is WSL; published numbers need native Linux")
+    if info["loadAverage1m"] > LOAD_LIMIT:
+        problems.append(f"1-minute load average is {info['loadAverage1m']} (limit {LOAD_LIMIT}); stop other work first")
+    if info["nessoBenchDirty"]:
+        problems.append("the nesso-bench checkout has uncommitted changes")
+    if problems and not dev:
+        raise SystemExit("error: " + "; ".join(problems) + ". Pass --dev for a development-only run.")
+    for problem in problems:
+        print(f"scorecard: development-only run: {problem}", file=sys.stderr)
+
+
+# ---- setup -----------------------------------------------------------------
+
+
+def install(script: str, args: list[str], env: dict[str, str]) -> None:
+    """Runs an installer and folds its GITHUB_ENV / GITHUB_PATH style output into env."""
+    with tempfile.TemporaryDirectory() as temp:
+        env_file = Path(temp) / "env"
+        path_file = Path(temp) / "path"
+        env_file.touch()
+        path_file.touch()
+        subprocess.run(
+            ["bash", str(ROOT / "scripts" / script), "--env-file", str(env_file), "--path-file", str(path_file), *args],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            key, _, value = line.partition("=")
+            if key:
+                env[key] = value
+        for line in path_file.read_text(encoding="utf-8").splitlines():
+            if line:
+                env["PATH"] = f"{line}:{env['PATH']}"
+
+
+def warm_ck(env: dict[str, str]) -> None:
+    """ck downloads its model on first use; do that before anything is timed."""
+    with tempfile.TemporaryDirectory() as temp:
+        Path(temp, "warm.log").write_text("scorecard warm-up line\n", encoding="utf-8")
+        subprocess.run(["ck", "--index", "--quiet", "."], cwd=temp, env=env, check=True)
+
+
+# ---- runs ------------------------------------------------------------------
+
+
+def wrap(argv: list[str], memory_max: str | None, timeout_hours: float) -> list[str]:
+    limited = ["timeout", "--kill-after=60", f"{int(timeout_hours * 3600)}s", *argv]
+    if memory_max is None:
+        return limited
+    return ["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={memory_max}", "-p", "MemorySwapMax=0", "--", *limited]
+
+
+def outcome(code: int, memory_max: str | None, log_text: str, timed_out: bool) -> str:
+    if code == 0:
+        return "ok"
+    if code == EXIT_TIMEOUT or timed_out:
+        return "timeout"
+    if memory_max is not None and (code == EXIT_KILLED or KILLED_IN_LOG.search(log_text)):
+        return f"out-of-memory ({memory_max})"
+    return f"failed (exit {code})"
+
+
+def execute(run: Run, out: Path, python: str, env: dict[str, str], memory_max: str | None, timeout_hours: float) -> dict:
+    run.report(out).parent.mkdir(parents=True, exist_ok=True)
+    run_env = dict(env)
+    if run.group.threads is not None:
+        run_env["NESSO_THREADS"] = run.group.threads
+    else:
+        run_env.pop("NESSO_THREADS", None)
+    argv = run.command(out, python, run_env)
+    print(f"scorecard: {run.suite.name} {run.group.name}: start", file=sys.stderr, flush=True)
+    started = time.monotonic()
+    with run.log(out).open("w", encoding="utf-8") as log:
+        code = subprocess.run(wrap(argv, memory_max, timeout_hours), env=run_env, stdout=log, stderr=subprocess.STDOUT, check=False).returncode
+    seconds = round(time.monotonic() - started, 1)
+    log_text = run.log(out).read_text(encoding="utf-8", errors="replace")
+    result = outcome(code, memory_max, log_text, seconds >= timeout_hours * 3600)
+    print(f"scorecard: {run.suite.name} {run.group.name}: {result} in {seconds} s", file=sys.stderr, flush=True)
+    return {
+        "suite": run.suite.name,
+        "group": run.group.name,
+        "engines": list(run.group.engines),
+        "threads": run.group.threads,
+        "outcome": result,
+        "exitCode": code,
+        "wallSeconds": seconds,
+        "report": str(run.report(out).relative_to(out)) if code == 0 else None,
+    }
+
+
+def merge_suite(suite: Suite, entries: list[dict], out: Path) -> dict:
+    inputs = [out / entry["report"] for entry in entries if entry["suite"] == suite.name and entry["report"] and entry["threads"] is None]
+    target = out / "merged" / f"{suite.name}.json"
+    if not inputs:
+        return {"suite": suite.name, "merged": None, "reason": "no finished runs"}
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "eval-retrieval-merge"), *map(str, inputs), "--out", str(target)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return {"suite": suite.name, "merged": None, "reason": completed.stderr.strip()}
+    return {"suite": suite.name, "merged": str(target.relative_to(out)), "inputs": len(inputs)}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--nesso-version", required=True, help="Released nesso to score (pinned in scripts/install-nesso)")
+    parser.add_argument("--out", type=Path, default=None, help="Results directory (default results/<version>)")
+    parser.add_argument("--suites", default=None, help=f"Comma-separated subset of {', '.join(s.name for s in SUITES)}")
+    parser.add_argument("--groups", default=None, help=f"Comma-separated subset of {', '.join(g.name for g in GROUPS)}")
+    parser.add_argument("--memory-max", default="48G", help="cgroup MemoryMax per run (systemd-run); 'none' to run uncapped")
+    parser.add_argument("--timeout-hours", type=float, default=8.0, help="Wall limit per run")
+    parser.add_argument("--nesso-threads-1", action="store_true", help="Also run nesso and grep at NESSO_THREADS=1")
+    parser.add_argument("--dev", action="store_true", help="Allow WSL, a busy machine, or local changes; marks results development-only")
+    parser.add_argument("--dry-run", action="store_true", help="Print the runs as JSON lines and exit")
+    args = parser.parse_args(argv)
+
+    version = args.nesso_version.removeprefix("v")
+    out = (args.out or ROOT / "results" / version).resolve()
+    suites = pick(args.suites, SUITES, "suite")
+    groups = pick(args.groups, GROUPS, "group")
+    runs = plan(suites, groups, args.nesso_threads_1)
+    memory_max = None if args.memory_max == "none" else args.memory_max
+    if args.timeout_hours <= 0:
+        raise SystemExit("error: --timeout-hours must be positive")
+
+    if args.dry_run:
+        for run in runs:
+            print(json.dumps({
+                "suite": run.suite.name,
+                "group": run.group.name,
+                "engines": list(run.group.engines),
+                "threads": run.group.threads,
+                "merged": run.merged,
+                "argv": run.command(out, "python3", {})[1:],
+            }, sort_keys=True))
+        return 0
+
+    if memory_max is not None and shutil.which("systemd-run") is None:
+        raise SystemExit("error: systemd-run is missing; install systemd or pass --memory-max none")
+    out.mkdir(parents=True, exist_ok=True)
+    info = machine_info(out, args.dev)
+    info["nessoVersion"] = version
+    info["memoryMax"] = memory_max
+    info["timeoutHours"] = args.timeout_hours
+    check_machine(info, args.dev)
+    (out / "machine.json").write_text(json.dumps(info, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    env = {key: value for key, value in os.environ.items() if not key.startswith("NESSO_")}
+    env["PYTHONHASHSEED"] = "0"
+    install("install-nesso", [version], env)
+    competitors = competitor_engines(groups)
+    if competitors:
+        install("install-competitors", competitors, env)
+    if "ck" in competitors:
+        warm_ck(env)
+    for suite in suites:
+        for fetch in FETCHES[suite.name]:
+            subprocess.run([sys.executable, str(ROOT / "scripts" / "fetch-loghub"), *fetch], check=True)
+    python = env.get("EVAL_PYTHON", sys.executable)
+
+    entries = []
+    status_path = out / "status.json"
+    for run in runs:
+        entries.append(execute(run, out, python, env, memory_max, args.timeout_hours))
+        status_path.write_text(json.dumps({"runs": entries}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    merges = [merge_suite(suite, entries, out) for suite in suites]
+    finished = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    status_path.write_text(
+        json.dumps({"finishedAt": finished, "merges": merges, "runs": entries}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    failed = [entry for entry in entries if entry["outcome"] != "ok"]
+    print(f"scorecard: {len(entries) - len(failed)} of {len(entries)} runs ok; results in {out}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as exc:
+        print(f"error: {' '.join(map(str, exc.cmd))} exited {exc.returncode}", file=sys.stderr)
+        raise SystemExit(1) from exc
