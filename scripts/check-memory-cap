@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Checks that a per-run memory cap works on this machine.
+#
+#   scripts/check-memory-cap [--env-file FILE]
+#
+# scripts/scorecard runs every engine under `systemd-run --user --scope -p
+# MemoryMax=...`, so an engine that runs out of memory is killed and recorded as
+# that result instead of taking the machine down. That needs a systemd user
+# manager with the memory controller, which a headless SSH or CI session often
+# lacks. This runs a probe that tries to hold 400 MB under a 100 MB cap:
+#
+#   killed        the cap is enforced (exit 0)
+#   finished      the cap is NOT enforced (exit 1)
+#   systemd-run   fails (no user manager): enable lingering and start the
+#                 user manager once, as the fix, then probe again
+#
+# --env-file appends XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS, in the
+# GITHUB_ENV format, when that fix was needed, so later steps of a CI job
+# inherit it. Without it, export the two variables (printed) in your shell.
+# The probe is bounded (400 MB), so a broken cap cannot take the machine down.
+set -uo pipefail
+
+env_file=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env-file) env_file="${2:?--env-file needs a file}"; shift 2 ;;
+    -h | --help) sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "error: unknown argument '$1'" >&2; exit 2 ;;
+  esac
+done
+
+probe() {
+  timeout 60 systemd-run --user --scope --quiet -p MemoryMax=100M -p MemorySwapMax=0 -- \
+    python3 -c 'b = bytearray(b"x") * (400 * 1024 * 1024); print(len(b))' >/dev/null 2>&1
+}
+
+classify() {
+  case "$1" in
+    0) echo "not-enforced" ;;
+    137 | 9 | 143) echo "enforced" ;;
+    124) echo "hung" ;;
+    *) echo "unavailable" ;;
+  esac
+}
+
+echo "kernel: $(uname -r)"
+echo "cgroup controllers: $(cat /sys/fs/cgroup/cgroup.controllers 2>/dev/null || echo unreadable)"
+echo "user: $(id -un) (uid $(id -u)), XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR:-}'"
+echo "user manager: $(systemctl --user is-system-running 2>&1 | head -n 1)"
+
+probe
+code=$?
+state="$(classify "${code}")"
+echo "probe 1: exit ${code} (${state})"
+
+if [[ "${state}" == "unavailable" ]]; then
+  uid="$(id -u)"
+  echo "no systemd user manager; enabling lingering and starting user@${uid}.service"
+  sudo loginctl enable-linger "$(id -un)" || true
+  sudo systemctl start "user@${uid}.service" || true
+  export XDG_RUNTIME_DIR="/run/user/${uid}"
+  export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+  if [[ -n "${env_file}" ]]; then
+    printf 'XDG_RUNTIME_DIR=%s\nDBUS_SESSION_BUS_ADDRESS=%s\n' "${XDG_RUNTIME_DIR}" "${DBUS_SESSION_BUS_ADDRESS}" >>"${env_file}"
+  else
+    echo "export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}"
+    echo "export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS}"
+  fi
+  probe
+  code=$?
+  state="$(classify "${code}")"
+  echo "probe 2: exit ${code} (${state})"
+fi
+
+case "${state}" in
+  enforced)
+    echo "ok: a 100 MB cap killed a 400 MB allocation"
+    exit 0
+    ;;
+  not-enforced)
+    echo "FAIL: the cap is not enforced: a 400 MB allocation finished under MemoryMax=100M." >&2
+    echo "The memory controller is probably not delegated to user sessions (cgroup.controllers above)." >&2
+    ;;
+  hung)
+    echo "FAIL: the probe did not finish in 60 s under MemoryMax=100M." >&2
+    ;;
+  *)
+    echo "FAIL: systemd-run --user does not work here, even after enabling lingering." >&2
+    echo "Needs a systemd user manager (user@UID.service) and cgroup v2." >&2
+    ;;
+esac
+exit 1

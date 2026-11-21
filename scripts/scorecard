@@ -3,8 +3,8 @@
 
     scripts/scorecard --nesso-version 0.3.1 [--out results/0.3.1]
                       [--suites ...] [--groups ...] [--memory-max 48G]
-                      [--timeout-hours 8] [--nesso-threads-1] [--nesso-fp32]
-                      [--dev] [--dry-run]
+                      [--timeout-hours 8] [--repeat N] [--nesso-threads-1]
+                      [--nesso-fp32] [--dev] [--dry-run]
 
 One command, so every release is measured the same way:
 
@@ -23,6 +23,9 @@ One command, so every release is measured the same way:
 4. Merges each suite's finished reports with scripts/eval-retrieval-merge and
    writes status.json: one entry per run with its outcome (ok, failed,
    timeout, or out-of-memory) and wall time.
+
+--repeat N replaces the repeat count of every measured suite (3 or 1 by
+default), for a smoke run that cannot afford the full ladder.
 
 --nesso-threads-1 adds nesso and grep at NESSO_THREADS=1, and --nesso-fp32
 adds nesso with the fp32 model (scripts/install-nesso --fp32). Neither is
@@ -47,7 +50,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -406,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--groups", default=None, help=f"Comma-separated subset of {', '.join(g.name for g in GROUPS)}")
     parser.add_argument("--memory-max", default="48G", help="cgroup MemoryMax per run (systemd-run); 'none' to run uncapped")
     parser.add_argument("--timeout-hours", type=float, default=8.0, help="Wall limit per run")
+    parser.add_argument("--repeat", type=int, default=None, help="Repeats for every measured suite (default: each suite's own)")
     parser.add_argument("--nesso-threads-1", action="store_true", help="Also run nesso and grep at NESSO_THREADS=1")
     parser.add_argument("--nesso-fp32", action="store_true", help="Also run nesso with the fp32 model")
     parser.add_argument("--dev", action="store_true", help="Allow WSL, a busy machine, or local changes; marks results development-only")
@@ -415,6 +419,11 @@ def main(argv: list[str] | None = None) -> int:
     version = args.nesso_version.removeprefix("v")
     out = (args.out or ROOT / "results" / version).resolve()
     suites = pick(args.suites, SUITES, "suite")
+    if args.repeat is not None:
+        if args.repeat <= 0:
+            raise SystemExit("error: --repeat must be a positive integer")
+        # xerj's quality repeats follow the suite's repeat, so they shrink with it.
+        suites = [replace(suite, repeat=args.repeat) if suite.measure else suite for suite in suites]
     groups = pick(args.groups, GROUPS, "group")
     runs = plan(suites, groups, args.nesso_threads_1, args.nesso_fp32)
     memory_max = None if args.memory_max == "none" else args.memory_max
