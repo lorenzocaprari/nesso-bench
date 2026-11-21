@@ -38,7 +38,7 @@ fields, the tool versions, and digests of the models used.
 
 | Path | What |
 | --- | --- |
-| `scripts/` | The harness (`eval-retrieval`, `eval-retrieval-compare`, `eval-retrieval-merge`, `fetch-loghub`), the pinned installers (`install-nesso` for a released nesso, `install-competitors`), and lint wrappers |
+| `scripts/` | The harness (`eval-retrieval`, `eval-retrieval-compare`, `eval-retrieval-merge`, `fetch-loghub`), the pinned installers (`install-nesso` for a released nesso, `install-competitors`), the one-command `scorecard` run for the benchmark machine, and lint wrappers |
 | `test/eval/` | 2k seed query sets, needle queries, and `reference/`: committed competitor reports that nesso's CI compares against |
 | `test/scripts/` | Harness unit tests |
 | `bench/competitors/` | Optional competitor stacks, hash-pinned |

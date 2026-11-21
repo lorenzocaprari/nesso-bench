@@ -176,3 +176,31 @@ python3 scripts/eval-retrieval --dataset bgl-needle-100k \
 ```
 
 `--measure-only` skips the quality scoring and only measures, which saves the second pass over a slow engine. Quality and measurements share one report: the measurements are under `measure` and the scores under `datasets`. Run `--repeat 1` at 1,000,000 lines. `xerj` and OpenSearch run in a spawned node per phase, so their peak RSS includes the server, and `--xerj-url` and `--opensearch-url` are refused. The report records the machine, the tool versions, and, for nesso, a digest of `model.onnx` and `vocab.txt` (`measure.tool["nesso-model"]` and the top-level `nesso.model`), so numbers produced with a different embedding model, quantization, or vocabulary cannot be mistaken for each other. Timings from a laptop are for development. Published numbers should come from one fixed machine, with the platform fields kept beside the table, and are never produced by CI.
+
+### Scorecard run
+
+`scripts/scorecard --nesso-version VERSION` runs the whole comparison on the benchmark machine with one command, so every release is measured the same way. It writes to `results/<VERSION>/` (`--out` to change it); indexes and temporary corpora go to `build/scorecard/`.
+
+1. **Preflight.** It refuses WSL, a 1-minute load average above 1.0, and a nesso-bench checkout with uncommitted changes. `--dev` allows them and marks the run development-only. `machine.json` records the CPU model, `nproc`, RAM, swap, kernel and OS, CPU governor, SMT, CPU vulnerability mitigations, free disk, `lscpu`, the versions of Python, GNU time, grep, and SQLite, the nesso-bench commit, the memory cap, and the timeout.
+2. **Setup.** `scripts/install-nesso VERSION` installs the released nesso and its shipped model; `scripts/install-competitors` installs the competitors the selected groups need. ck's model is downloaded once before anything is timed. `scripts/fetch-loghub` fetches every input the selected suites need.
+3. **Runs.** Each suite and engine group is one `scripts/eval-retrieval --measure` process, wrapped in `systemd-run --user --scope -p MemoryMax=<cap> -p MemorySwapMax=0` (default cap 48G, `--memory-max none` to run uncapped) and `timeout` (default 8 hours, `--timeout-hours`). An engine that runs out of memory or time is recorded as that outcome, and the other runs continue. nesso runs with grep, so its report has the engine layout the merge needs. Each run's output is `raw/<suite>/<group>.log`.
+4. **Merge.** Each suite's finished reports are merged into `merged/<suite>.json` with `scripts/eval-retrieval-merge`. `status.json` lists every run with its outcome (`ok`, `timeout`, `out-of-memory (<cap>)`, or `failed (exit N)`), exit code, and wall time, and every merge.
+
+| Suite | Dataset | Repeats | Scores |
+| --- | --- | --- | --- |
+| `2k` | the six Loghub 2k samples | 3 | quality, speed, memory |
+| `bgl-needle-100k` | BGL needle window, 100,000 lines | 3 | quality, speed, memory |
+| `bgl-needle-1m` | BGL needle window, 1,000,000 lines | 1 | quality, speed, memory |
+| `thunderbird-needle-1m` | Thunderbird needle window, 1,000,000 lines | 1 | quality, speed, memory |
+| `full-1m` | first 1,000,000 lines of HDFS_v1, BGL, and Thunderbird | 1 | speed and memory only |
+
+The engine groups are `nesso` (nesso in `auto`, `dense`, and `lexical`, with grep), `ripgrep`, `bm25`, `diy-faiss`, `opensearch`, `opensearch-knn`, `xerj`, `xerj-neural`, `xerj-semantic`, `ck`, and `vecgrep`. `--suites` and `--groups` select a subset. `--nesso-threads-1` adds the `nesso` group again at `NESSO_THREADS=1`; that report is not merged, because the thread setting is part of a measured report's setting. `--dry-run` prints the planned runs as JSON lines.
+
+```bash
+scripts/scorecard --nesso-version 0.3.1 --dry-run | wc -l
+scripts/scorecard --nesso-version 0.3.1 --nesso-threads-1
+# Development smoke on a laptop: small suites, marked development-only.
+scripts/scorecard --nesso-version 0.3.1 --suites 2k --groups nesso,bm25 --memory-max 4G --dev
+```
+
+The full run takes many hours: the embedding engines index the 1,000,000-line windows slowly, and ck and vecgrep may hit the memory cap there. That outcome is a result to report, not a failure of the run.
