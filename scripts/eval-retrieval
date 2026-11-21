@@ -153,6 +153,43 @@ DATASETS_FULL: dict[str, FullDatasetSpec] = {
 }
 
 
+SUPPORT_BUNDLE = "support-bundle"
+BUNDLE_DIR = BENCH_DIR / "bundle"
+ROOT_BUNDLE_NAME = "bundle"
+
+
+@dataclass(frozen=True)
+class SupportBundle:
+    """A directory of logs, rotated, compressed, and archived (scripts/build-bundle).
+
+    nesso indexes the directory itself. Every other engine reads the
+    concatenated, decoded log, so a line's id is its position in that file;
+    nesso's hits are mapped to it through the manifest.
+    """
+
+    root: Path
+    # nesso's `source` for a file or member -> (line offset in the concatenated log, line count)
+    sources: dict[str, tuple[int, int]]
+
+    @classmethod
+    def load(cls, root: Path) -> "SupportBundle":
+        try:
+            manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+            return cls(root, {entry["source"]: (int(entry["lineOffset"]), int(entry["lineCount"])) for entry in manifest["sources"]})
+        except (OSError, KeyError, ValueError) as exc:
+            raise SystemExit(f"error: cannot read the bundle manifest in {root}: {exc}; run scripts/build-bundle") from exc
+
+    def line_id(self, hit: dict) -> int:
+        source = str(hit.get("source"))
+        if source not in self.sources:
+            raise SystemExit(f"error: nesso hit from {source!r}, which is not in the bundle manifest")
+        offset, count = self.sources[source]
+        line = int(hit["line"])
+        if not 1 <= line <= count:
+            raise SystemExit(f"error: nesso hit at line {line} of {source!r}, which has {count} lines in the manifest")
+        return offset + line
+
+
 @dataclass(frozen=True)
 class DatasetSpec:
     name: str
@@ -184,6 +221,7 @@ DATASETS_2K: dict[str, DatasetSpec] = {
     "linux-2k": DatasetSpec("linux-2k", "Linux_2k.log", "linux_2k.jsonl"),
     "apache-2k": DatasetSpec("apache-2k", "Apache_2k.log", "apache_2k.jsonl"),
 }
+BUNDLE_SPEC = DatasetSpec(SUPPORT_BUNDLE, "SupportBundle_concat.log", "bundle.jsonl")
 
 # Log shapes beyond the six above: Java log4j with exceptions, request-id API
 # lines, and pipe-delimited app lines. Not part of all-2k, so its results stay
@@ -891,15 +929,33 @@ class NessoEngine:
     binary: Path = Path()
     model_dir: Path = Path()
     corpus: Path | None = None
+    bundle: SupportBundle | None = None
 
     def availability(self) -> tuple[bool, str]:
         return True, ""
 
     def prepare(self, log_path: Path, lines: list[str], workdir: Path) -> None:
-        del lines
         workdir.mkdir(parents=True, exist_ok=True)
         if self.corpus is None:
             raise SystemExit("error: nesso engine missing corpus path")
+        if self.bundle is not None:
+            # The real bundle, read in place, from its parent directory so the
+            # sources are named as in the manifest.
+            del lines
+            run_checked(
+                [
+                    str(self.binary.resolve()),
+                    "index",
+                    "-o",
+                    str(self.corpus.resolve()),
+                    ROOT_BUNDLE_NAME,
+                    "--model-dir",
+                    str(self.model_dir.resolve()),
+                ],
+                label="nesso index",
+                cwd=self.bundle.root,
+            )
+            return
         run_checked(
             [
                 str(self.binary),
@@ -937,7 +993,12 @@ class NessoEngine:
             label=f"nesso search ({mode})",
             ok_codes=frozenset({0, 1}),
         )
-        return lines_for_hits(parse_search_json(completed.stdout), k)
+        hits = parse_search_json(completed.stdout)
+        if self.bundle is not None:
+            # Ids in the concatenated log. nesso reports each occurrence of a
+            # collapsed near-duplicate line at its own position.
+            return [self.bundle.line_id(hit) for hit in hits[:k]]
+        return lines_for_hits(hits, k)
 
 
 @dataclass
@@ -2309,6 +2370,10 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
     parts = [part.strip() for part in raw.split(",") if part.strip()]
     if not parts:
         raise SystemExit("error: --dataset must list at least one dataset")
+    if SUPPORT_BUNDLE in parts:
+        if parts != [SUPPORT_BUNDLE]:
+            raise SystemExit(f"error: {SUPPORT_BUNDLE} cannot be mixed with other datasets")
+        return [BUNDLE_SPEC]
     names: list[str] = []
     for part in parts:
         if part == ALL_2K:
@@ -2320,7 +2385,7 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if part not in DATASETS_2K and part not in DATASETS_FORMATS:
             raise SystemExit(
                 f"error: unknown dataset {part!r}; expected one of "
-                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + [ALL_2K, ALL_FORMATS]}"
+                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + [ALL_2K, ALL_FORMATS, SUPPORT_BUNDLE]}"
             )
         names.append(part)
     # Preserve order, drop duplicates.
@@ -2352,6 +2417,15 @@ def parse_engines(raw: list[str] | None) -> list[str]:
     if not ordered:
         raise SystemExit("error: --engine must list at least one engine")
     return ordered
+
+
+def ensure_bundle() -> None:
+    """Build the support bundle (and fetch the 2k samples it is made of) when it is not there."""
+    needed = [BENCH_DIR / BUNDLE_SPEC.log_name, BENCH_DIR / f"{BUNDLE_SPEC.log_name}_structured.csv", BUNDLE_DIR / "manifest.json"]
+    if all(path.is_file() for path in needed):
+        return
+    run_checked([sys.executable, str(ROOT / "scripts" / "fetch-loghub"), "--dataset", ALL_2K], label="fetch-loghub")
+    run_checked([sys.executable, str(ROOT / "scripts" / "build-bundle")], label="build-bundle")
 
 
 def ensure_inputs(
@@ -2445,8 +2519,9 @@ def evaluate_modes(
     log_path: Path,
     modes: list[str],
     corpus: Path,
+    bundle: SupportBundle | None = None,
 ) -> list[dict]:
-    engine = NessoEngine(binary=binary, model_dir=model_dir, corpus=corpus)
+    engine = NessoEngine(binary=binary, model_dir=model_dir, corpus=corpus, bundle=bundle)
     engine.prepare(log_path, read_log_lines(log_path), corpus.parent)
     mode_results = []
     for mode in modes:
@@ -2710,6 +2785,7 @@ def evaluate_dataset(
     xerj: XerjContext | None = None,
     opensearch: OpenSearchContext | None = None,
     quality_repeat: int = 1,
+    bundle: SupportBundle | None = None,
 ) -> dict:
     workdir.mkdir(parents=True, exist_ok=True)
     nesso_only = engines == ["nesso"]
@@ -2723,6 +2799,7 @@ def evaluate_dataset(
             log_path=log_path,
             modes=modes,
             corpus=workdir / corpus_name,
+            bundle=bundle,
         )
         return {
             "dataset": dataset_name,
@@ -2742,6 +2819,7 @@ def evaluate_dataset(
                 log_path=log_path,
                 modes=modes,
                 corpus=workdir / corpus_name,
+                bundle=bundle,
             )
             engine_payloads.append(
                 {
@@ -4567,7 +4645,8 @@ def main(argv: list[str] | None = None) -> None:
         "--dataset",
         default=None,
         help="Comma-separated 2k datasets, all-2k, the log-shape datasets (hadoop-2k, openstack-2k, "
-        "healthapp-2k), or all-formats (maps log, CSV, and query file); "
+        "healthapp-2k), all-formats (maps log, CSV, and query file), or support-bundle "
+        "(nesso reads a directory of logs, gz, tar, tgz, and zip files; the others read it decoded); "
         "with --measure/--log-prefix-lines also hdfs-v1,bgl,thunderbird,all-full; "
         "or needle windows bgl-needle-100k,bgl-needle-1m,thunderbird-needle-1m,all-needle",
     )
@@ -4687,6 +4766,11 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit("error: --quality-repeat must be a positive integer")
     if args.quality_repeat > 1 and (args.measure_only or args.log_prefix_lines is not None):
         raise SystemExit("error: --quality-repeat needs quality scoring; not with --measure-only or --log-prefix-lines")
+    if args.dataset is not None and SUPPORT_BUNDLE in [part.strip() for part in args.dataset.split(",")]:
+        if args.measure or args.measure_only or args.log_prefix_lines is not None:
+            raise SystemExit(
+                f"error: {SUPPORT_BUNDLE} scores quality only; --measure and --log-prefix-lines are not supported for it yet"
+            )
     if args.log_prefix_lines is not None and args.log_prefix_lines <= 0:
         raise SystemExit("error: --log-prefix-lines must be a positive integer")
     measure_repeats = DEFAULT_MEASURE_REPEAT if args.repeat is None else args.repeat
@@ -4787,9 +4871,14 @@ def main(argv: list[str] | None = None) -> None:
                 )
             else:
                 for spec in dataset_specs:
-                    if not args.skip_fetch:
+                    bundle = None
+                    if spec is BUNDLE_SPEC:
+                        if not args.skip_fetch:
+                            ensure_bundle()
+                        bundle = SupportBundle.load(BUNDLE_DIR)
+                    elif not args.skip_fetch:
                         ensure_inputs(spec.log_path, spec.structured_path, fetch_dataset=spec.name)
-                    elif not spec.log_path.is_file() or not spec.structured_path.is_file():
+                    if not spec.log_path.is_file() or not spec.structured_path.is_file():
                         raise SystemExit(
                             f"error: --log and --structured must exist when --skip-fetch is set "
                             f"({spec.log_path}, {spec.structured_path})"
@@ -4816,6 +4905,7 @@ def main(argv: list[str] | None = None) -> None:
                             xerj=xerj,
                             opensearch=opensearch,
                             quality_repeat=args.quality_repeat,
+                            bundle=bundle,
                         )
                     )
                     measure_targets.append(

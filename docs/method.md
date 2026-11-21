@@ -50,10 +50,12 @@ for each tool is in [eval.md](eval.md).
 - **Log shapes covered.** The sets are single-line plain-text logs: three in syslog format
   (Linux, OpenSSH, Thunderbird), HDFS, BGL, and Apache error logs, and, as a separate group,
   Java log4j lines with long identifiers and exceptions (Hadoop), request-id API and compute
-  lines (OpenStack), and pipe-delimited app lines (HealthApp). JSON logs, multi-line records
-  such as stack traces, container and journald output, and mixed trees (`.gz`, tar,
-  directories) are not covered yet. Loghub has no JSON logs, so a JSON result needs another
-  source. Results say nothing about these shapes.
+  lines (OpenStack), and pipe-delimited app lines (HealthApp). One small dataset, the support
+  bundle, puts six of the first group in a directory with `.gz`, `.tar`, `.tgz`, and `.zip`
+  files; it scores quality only, and the other engines read it decoded, so it does not show
+  nesso's advantage of skipping extraction. JSON logs, multi-line records such as stack
+  traces, and container and journald output are not covered. Loghub has no JSON logs, so a
+  JSON result needs another source. Results say nothing about these shapes.
 - **One machine type.** Speed and memory hold for the machine in `machine.json`. Other CPUs,
   memory sizes, and disks will differ; the run-to-run spread on that machine is measured and
   published before any regression threshold is set from it.
