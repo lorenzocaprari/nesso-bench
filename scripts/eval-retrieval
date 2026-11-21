@@ -490,6 +490,11 @@ def contains_whole_token(text: str, query: str) -> bool:
         start = index + 1
 
 
+def progress(message: str) -> None:
+    """One line on stderr, so a long CI step shows where it is. stdout stays the report."""
+    print(f"eval-retrieval: {message}", file=sys.stderr, flush=True)
+
+
 def read_log_lines(log_path: Path) -> list[str]:
     try:
         return log_path.read_text(encoding="utf-8").splitlines()
@@ -4083,12 +4088,16 @@ def evaluate_needle_dataset(
         query.id: query_overlap(query.query, relevant_by_alert[query.alert], lines) for query in queries
     }
     workdir.mkdir(parents=True, exist_ok=True)
+    progress(f"{spec.name}: {len(lines)} lines, {len(queries)} queries")
     rows: list[dict] = []
     for engine_name in engines:
+        started = time.monotonic()
         if engine_name == "nesso":
             assert binary is not None and model_dir is not None
             engine = NessoEngine(binary=binary, model_dir=model_dir, corpus=workdir / spec.corpus_name)
+            progress(f"{spec.name} nesso: indexing")
             engine.prepare(spec.log_path, lines, workdir)
+            progress(f"{spec.name} nesso: indexed in {time.monotonic() - started:.0f} s")
             for mode in modes:
                 scored = score_needle_queries(
                     queries,
@@ -4097,6 +4106,7 @@ def evaluate_needle_dataset(
                     lambda text, mode=mode: engine.rank_mode(text, mode, k=NEEDLE_DEPTH),
                 )
                 rows.append({"engine": f"nesso/{mode}", "status": "ok", **scored})
+                progress(f"{spec.name} nesso/{mode}: scored at {time.monotonic() - started:.0f} s")
             continue
         other = make_rank_engine(engine_name, xerj=xerj, opensearch=opensearch)
         ok, reason = other.availability()
@@ -4104,15 +4114,19 @@ def evaluate_needle_dataset(
             if engine_name not in SKIPPABLE_ENGINES:
                 raise SystemExit(f"error: {reason}")
             rows.append({"engine": engine_name, "status": "skipped", "reason": reason})
+            progress(f"{spec.name} {engine_name}: skipped ({reason})")
             continue
         try:
+            progress(f"{spec.name} {engine_name}: indexing")
             other.prepare(spec.log_path, lines, workdir)
+            progress(f"{spec.name} {engine_name}: indexed in {time.monotonic() - started:.0f} s")
             scored = score_needle_queries(
                 queries,
                 relevant_by_alert,
                 overlaps,
                 lambda text: other.rank(text, k=NEEDLE_DEPTH),
             )
+            progress(f"{spec.name} {engine_name}: scored at {time.monotonic() - started:.0f} s")
             row = {"engine": engine_name, "status": "ok", **scored}
             versions_fn = getattr(other, "versions", None)
             if callable(versions_fn):
