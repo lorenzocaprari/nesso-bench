@@ -1,0 +1,265 @@
+#!/usr/bin/env bash
+# Installs the pinned competitor engines that scripts/eval-retrieval scores.
+#
+#   scripts/install-competitors [--dest DIR] [--env-file FILE] [--path-file FILE]
+#                               [--dry-run] ENGINE...
+#
+# ENGINE is diy-faiss, opensearch, opensearch-knn, ck, vecgrep, xerj,
+# xerj-neural, xerj-semantic, or all. grep, ripgrep, BM25, and nesso are not
+# installed here.
+#
+# Every download is checked against the pins below, and a mismatch fails. A
+# piece already installed under DEST (default build/competitors) with the same
+# pin is reused. Tool output goes to stderr. stdout is shell `export` lines for
+# EVAL_PYTHON, OPENSEARCH_HOME, XERJ_MODEL_DIR, and PATH, so
+#   eval "$(scripts/install-competitors ck xerj)"
+# sets up the current shell. --env-file and --path-file append the same values
+# in the GITHUB_ENV and GITHUB_PATH formats. --dry-run prints the pieces the
+# engines need, one per line, and installs nothing.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Pinned competitor releases. docs/eval.md describes each engine.
+CK_VERSION="0.8.1"
+CK_SHA256="042db74e0ed10cd5995024bc16ea9928de6aaef632ef6463b3b8812a8d1ba1ac"
+# The vecgrep release binary needs glibc 2.43 (ubuntu-24.04 has 2.39), so
+# vecgrep is built from tag v0.10.1's commit with the tag's Cargo.lock.
+VECGREP_REPO="https://github.com/martintrojer/vecgrep"
+VECGREP_REV="b257853b9202f4a170952a04ef1df7bea1b99315"
+XERJ_VERSION="1.0.0-rc.104"
+# Static musl build: the gnu build needs glibc 2.43.
+XERJ_SHA256="1628ee401a9a121156cc380950f9d48923e6e856458ae1e6648f0ef18db7b693"
+# xerj's neural mode is all-MiniLM-L6-v2 (it downloads these three files when
+# no local_model_dir is set). Staging them at the revision diy-faiss pins keeps
+# the run reproducible and a same-model comparison.
+MINILM_REVISION="1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+MINILM_CONFIG_SHA256="953f9c0d463486b10a6871cc2fd59f223b2c70184f49815e7efbcab5d8908b41"
+MINILM_TOKENIZER_SHA256="be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"
+MINILM_MODEL_SHA256="53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db"
+OPENSEARCH_VERSION="3.10.0"
+OPENSEARCH_SHA512="bbcdb9aba66e304e6759c4d3c903fde7d4269083e886ea4853f3dae01867d87287eeff5f04e6dbe84c89e684a4a1f94773b15e62d00cd06144421606212cedd9"
+# The diy-faiss stack (also opensearch-knn's encoder) is hash-pinned in this
+# file. ubuntu-24.04 ships Python 3.12, the version it targets.
+DIY_HASHES="${ROOT}/bench/competitors/diy-faiss.hashes.txt"
+DIY_EXTRA_INDEX="https://download.pytorch.org/whl/cpu"
+
+# Pieces in install order. Each engine maps to the pieces it needs.
+PIECES=(diy opensearch ck vecgrep xerj minilm)
+
+usage() {
+  sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  exit 2
+}
+
+declare -A wanted=()
+
+# Marks the pieces one engine needs. Runs in this shell, so an unknown engine
+# exits the script.
+want_engine() {
+  local piece
+  case "$1" in
+    diy-faiss) wanted[diy]=1 ;;
+    opensearch) wanted[opensearch]=1 ;;
+    opensearch-knn) wanted[diy]=1 wanted[opensearch]=1 ;;
+    ck) wanted[ck]=1 ;;
+    vecgrep) wanted[vecgrep]=1 ;;
+    xerj | xerj-semantic) wanted[xerj]=1 ;;
+    xerj-neural) wanted[xerj]=1 wanted[minilm]=1 ;;
+    all)
+      for piece in "${PIECES[@]}"; do
+        wanted["${piece}"]=1
+      done
+      ;;
+    *)
+      echo "error: unknown engine '$1' (expected diy-faiss, opensearch, opensearch-knn, ck, vecgrep, xerj, xerj-neural, xerj-semantic, or all)" >&2
+      exit 2
+      ;;
+  esac
+}
+
+dest="${ROOT}/build/competitors"
+env_file=""
+path_file=""
+dry_run=false
+engines=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dest) dest="${2:?--dest needs a directory}"; shift 2 ;;
+    --env-file) env_file="${2:?--env-file needs a file}"; shift 2 ;;
+    --path-file) path_file="${2:?--path-file needs a file}"; shift 2 ;;
+    --dry-run) dry_run=true; shift ;;
+    -h | --help) usage ;;
+    -*) echo "error: unknown option '$1'" >&2; exit 2 ;;
+    *) engines+=("$1"); shift ;;
+  esac
+done
+if [[ ${#engines[@]} -eq 0 ]]; then
+  usage
+fi
+
+for engine in "${engines[@]}"; do
+  want_engine "${engine}"
+done
+selected=()
+for piece in "${PIECES[@]}"; do
+  if [[ -n "${wanted[${piece}]:-}" ]]; then
+    selected+=("${piece}")
+  fi
+done
+
+if [[ "${dry_run}" == true ]]; then
+  printf '%s\n' "${selected[@]}"
+  exit 0
+fi
+
+# Keep stdout for the export lines; everything a tool prints goes to stderr.
+exec 3>&1 1>&2
+
+mkdir -p "${dest}"
+dest="$(cd "${dest}" && pwd)"
+bin="${dest}/bin"
+exports=()
+path_used=false
+
+fetch() {
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 2 -o "$2" "$1"
+}
+
+check_sum() {
+  local algo="$1" digest="$2" file="$3"
+  if ! echo "${digest}  ${file}" | "${algo}sum" --check --status; then
+    echo "error: ${algo} mismatch for ${file}" >&2
+    return 1
+  fi
+}
+
+# A stamp file holds the pin a piece was installed from.
+stamp_matches() {
+  [[ -f "$1" && "$(<"$1")" == "$2" ]]
+}
+
+export_value() {
+  exports+=("$1=$2")
+}
+
+install_diy() {
+  local venv="${dest}/venv-diy"
+  local stamp="${venv}/nesso-bench.pin"
+  local pin
+  pin="$(sha256sum "${DIY_HASHES}" | cut -d' ' -f1)"
+  if ! stamp_matches "${stamp}" "${pin}"; then
+    local python="${PYTHON:-python3}"
+    "${python}" --version
+    rm -rf -- "${venv}"
+    "${python}" -m venv "${venv}"
+    "${venv}/bin/pip" install --quiet --require-hashes -r "${DIY_HASHES}" --extra-index-url "${DIY_EXTRA_INDEX}"
+    printf '%s\n' "${pin}" >"${stamp}"
+  fi
+  export_value EVAL_PYTHON "${venv}/bin/python"
+}
+
+install_opensearch() {
+  local home="${dest}/opensearch-${OPENSEARCH_VERSION}"
+  local stamp="${home}/nesso-bench.pin"
+  if ! stamp_matches "${stamp}" "${OPENSEARCH_SHA512}"; then
+    local tarball="${dest}/opensearch-${OPENSEARCH_VERSION}-linux-x64.tar.gz"
+    fetch "https://artifacts.opensearch.org/releases/bundle/opensearch/${OPENSEARCH_VERSION}/opensearch-${OPENSEARCH_VERSION}-linux-x64.tar.gz" "${tarball}"
+    check_sum sha512 "${OPENSEARCH_SHA512}" "${tarball}"
+    rm -rf -- "${home}"
+    tar -xzf "${tarball}" -C "${dest}"
+    rm -f -- "${tarball}"
+    printf '%s\n' "${OPENSEARCH_SHA512}" >"${stamp}"
+  fi
+  export_value OPENSEARCH_HOME "${home}"
+}
+
+# Downloads a release tarball, checks its sha256, and moves one member to bin/.
+install_release_binary() {
+  local name="$1" url="$2" sha256="$3" member="$4" strip="$5"
+  local stamp="${dest}/${name}.pin"
+  mkdir -p "${bin}"
+  if [[ ! -x "${bin}/${name}" ]] || ! stamp_matches "${stamp}" "${sha256}"; then
+    local tmp
+    tmp="$(mktemp -d "${dest}/tmp.XXXXXX")"
+    fetch "${url}" "${tmp}/archive.tar.gz"
+    check_sum sha256 "${sha256}" "${tmp}/archive.tar.gz"
+    tar -xzf "${tmp}/archive.tar.gz" -C "${tmp}" --strip-components="${strip}" "${member}"
+    mv -f -- "${tmp}/${name}" "${bin}/${name}"
+    rm -rf -- "${tmp}"
+    printf '%s\n' "${sha256}" >"${stamp}"
+  fi
+  path_used=true
+}
+
+install_ck() {
+  local tarball="ck-${CK_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+  install_release_binary ck "https://github.com/BeaconBay/ck/releases/download/${CK_VERSION}/${tarball}" \
+    "${CK_SHA256}" ./ck 0
+  "${bin}/ck" --version
+}
+
+install_vecgrep() {
+  local stamp="${dest}/vecgrep.pin"
+  mkdir -p "${bin}"
+  if [[ ! -x "${bin}/vecgrep" ]] || ! stamp_matches "${stamp}" "${VECGREP_REV}"; then
+    # vecgrep links OpenSSL through openssl-sys, which fails late without these.
+    if ! command -v cargo >/dev/null || ! pkg-config --exists openssl 2>/dev/null; then
+      echo "error: building vecgrep needs cargo, pkg-config, and the OpenSSL headers (Debian/Ubuntu: libssl-dev)" >&2
+      return 1
+    fi
+    cargo --version
+    cargo install --locked --git "${VECGREP_REPO}" --rev "${VECGREP_REV}" --root "${dest}/vecgrep" vecgrep
+    cp -f -- "${dest}/vecgrep/bin/vecgrep" "${bin}/vecgrep"
+    printf '%s\n' "${VECGREP_REV}" >"${stamp}"
+  fi
+  path_used=true
+  "${bin}/vecgrep" --version
+}
+
+install_xerj() {
+  local name="xerj-${XERJ_VERSION}-x86_64-unknown-linux-musl"
+  install_release_binary xerj "https://github.com/xerj-org/xerj/releases/download/v${XERJ_VERSION}/${name}.tar.gz" \
+    "${XERJ_SHA256}" "${name}/xerj" 1
+  "${bin}/xerj" -V
+}
+
+install_minilm() {
+  local dir="${dest}/minilm"
+  local base="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/${MINILM_REVISION}"
+  mkdir -p "${dir}"
+  local file digest
+  for file in config.json tokenizer.json model.safetensors; do
+    case "${file}" in
+      config.json) digest="${MINILM_CONFIG_SHA256}" ;;
+      tokenizer.json) digest="${MINILM_TOKENIZER_SHA256}" ;;
+      model.safetensors) digest="${MINILM_MODEL_SHA256}" ;;
+    esac
+    if [[ -f "${dir}/${file}" ]] && echo "${digest}  ${dir}/${file}" | sha256sum --check --status; then
+      continue
+    fi
+    fetch "${base}/${file}" "${dir}/${file}"
+    check_sum sha256 "${digest}" "${dir}/${file}"
+  done
+  export_value XERJ_MODEL_DIR "${dir}"
+}
+
+for piece in "${selected[@]}"; do
+  echo "install-competitors: ${piece}"
+  "install_${piece}"
+done
+
+for entry in "${exports[@]}"; do
+  key="${entry%%=*}"
+  value="${entry#*=}"
+  printf 'export %s=%q\n' "${key}" "${value}" >&3
+  if [[ -n "${env_file}" ]]; then
+    printf '%s=%s\n' "${key}" "${value}" >>"${env_file}"
+  fi
+done
+if [[ "${path_used}" == true ]]; then
+  printf 'export PATH=%q:"${PATH}"\n' "${bin}" >&3
+  if [[ -n "${path_file}" ]]; then
+    printf '%s\n' "${bin}" >>"${path_file}"
+  fi
+fi

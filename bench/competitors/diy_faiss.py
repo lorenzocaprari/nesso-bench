@@ -23,9 +23,8 @@ DEFAULT_K = 10
 REQUIREMENTS_PATH = "bench/competitors/diy-faiss.hashes.txt"
 INSTALL_HINT = (
     f"diy-faiss requires packages from {REQUIREMENTS_PATH}\n"
-    "  python3 -m venv .venv-diy && .venv-diy/bin/pip install --require-hashes \\\n"
-    f"    -r {REQUIREMENTS_PATH} \\\n"
-    "    --extra-index-url https://download.pytorch.org/whl/cpu"
+    '  eval "$(scripts/install-competitors diy-faiss)"\n'
+    '  then run scripts/eval-retrieval with "${EVAL_PYTHON}"'
 )
 
 
