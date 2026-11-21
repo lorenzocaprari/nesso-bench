@@ -511,6 +511,63 @@ def progress(message: str) -> None:
     print(f"eval-retrieval: {message}", file=sys.stderr, flush=True)
 
 
+def bucket_range(buckets: list[dict]) -> dict[str, list[float]]:
+    """Per metric, [min, max] over the same bucket from several runs."""
+    present = [bucket["metrics"] for bucket in buckets if "metrics" in bucket]
+    if not present:
+        return {}
+    return {name: [min(item[name] for item in present), max(item[name] for item in present)] for name in sorted(present[0])}
+
+
+def combine_quality_runs(runs: list[dict]) -> dict:
+    """One scored payload from repeated scoring of the same engine.
+
+    The median run by overall MRR is reported as is (the lower median for an
+    even count, then the earlier run), so its per-query rows, ranks, and
+    buckets stay one consistent run that a paired comparison can use.
+    quality_repeat records how many runs there were, whether every query row
+    was identical across them, which queries changed, and, when any did, the
+    min-max of each bucket's metrics.
+    """
+    if len(runs) == 1:
+        return runs[0]
+    order = sorted(range(len(runs)), key=lambda index: (runs[index]["overall"]["metrics"]["mrr"], index))
+    chosen = order[(len(runs) - 1) // 2]
+    first = runs[0]["queries"]
+    changed = sorted(
+        {row["id"] for run in runs[1:] for row, base in zip(run["queries"], first, strict=True) if row != base}
+    )
+    repeat: dict[str, Any] = {
+        "changed_queries": changed,
+        "identical": not changed,
+        "reported_run": chosen + 1,
+        "runs": len(runs),
+    }
+    if changed:
+        repeat["range"] = {
+            "by_class": {
+                bucket["class"]: bucket_range([run["by_class"][index] for run in runs])
+                for index, bucket in enumerate(runs[0]["by_class"])
+                if "metrics" in bucket
+            },
+            "overall": bucket_range([run["overall"] for run in runs]),
+        }
+    return {**runs[chosen], "quality_repeat": repeat}
+
+
+def pooled_quality_repeat(samples: list[tuple[str, dict]]) -> dict | None:
+    """quality_repeat for an overall row pooled from per-dataset rows."""
+    repeated = [(dataset, row["quality_repeat"]) for dataset, row in samples if "quality_repeat" in row]
+    if not repeated:
+        return None
+    changed = [f"{dataset}/{query}" for dataset, repeat in repeated for query in repeat["changed_queries"]]
+    return {
+        "changed_queries": changed,
+        "identical": not changed,
+        "runs": min(repeat["runs"] for _, repeat in repeated),
+    }
+
+
 def read_log_lines(log_path: Path) -> list[str]:
     try:
         return log_path.read_text(encoding="utf-8").splitlines()
@@ -2109,6 +2166,24 @@ def format_xerj_metadata_lines(payload: dict) -> list[str]:
     return lines
 
 
+def format_quality_repeat_lines(payload: dict) -> list[str]:
+    """One line per engine row scored more than once."""
+    lines: list[str] = []
+    for dataset in payload.get("datasets", []):
+        for engine in dataset.get("engines", []):
+            repeat = engine.get("quality_repeat")
+            if not isinstance(repeat, dict):
+                continue
+            if repeat["identical"]:
+                state = "identical rankings"
+            else:
+                mrr = repeat.get("range", {}).get("overall", {}).get("mrr")
+                spread = f", overall MRR {mrr[0]:.3f}-{mrr[1]:.3f}" if mrr else ""
+                state = f"{len(repeat['changed_queries'])} queries changed{spread}; median run {repeat['reported_run']} shown"
+            lines.append(f"# {dataset['dataset']}/{engine['engine']}: {repeat['runs']} quality runs, {state}")
+    return lines
+
+
 def format_opensearch_metadata_lines(payload: dict) -> list[str]:
     lines: list[str] = []
     for dataset in payload.get("datasets", []):
@@ -2141,6 +2216,7 @@ def format_report(payload: dict) -> str:
         sections.append(format_engine_table(payload["overall"]["engines"]))
         sections.extend(format_xerj_metadata_lines(payload))
         sections.extend(format_opensearch_metadata_lines(payload))
+        sections.extend(format_quality_repeat_lines(payload))
         return "\n".join(sections)
     for dataset in payload["datasets"]:
         sections.append(f"=== {dataset['dataset']} ===")
@@ -2344,6 +2420,7 @@ def evaluate_keyword_engine(
     log_path: Path,
     lines: list[str],
     workdir: Path,
+    quality_repeat: int = 1,
 ) -> dict:
     ok, reason = engine.availability()
     if not ok:
@@ -2354,28 +2431,33 @@ def evaluate_keyword_engine(
                 "reason": reason,
             }
         raise SystemExit(f"error: {reason}")
-    try:
-        engine.prepare(log_path, lines, workdir)
-        scored = score_queries(
-            queries=queries,
-            event_by_line=event_by_line,
-            rank_fn=lambda q: engine.rank(q),
-        )
-        payload = {
-            "engine": engine.name,
-            "status": "ok",
-            "by_class": scored["by_class"],
-            "overall": scored["overall"],
-            "queries": scored["queries"],
-        }
-        versions_fn = getattr(engine, "versions", None)
-        if callable(versions_fn):
-            payload["versions"] = versions_fn()
-        return payload
-    finally:
-        cleanup = getattr(engine, "cleanup", None)
-        if callable(cleanup):
-            cleanup()
+    runs: list[dict] = []
+    # Each run builds the index again, so an engine whose ranking depends on
+    # how its index was built shows it.
+    for _ in range(quality_repeat):
+        try:
+            engine.prepare(log_path, lines, workdir)
+            scored = score_queries(
+                queries=queries,
+                event_by_line=event_by_line,
+                rank_fn=lambda q: engine.rank(q),
+            )
+            payload = {
+                "engine": engine.name,
+                "status": "ok",
+                "by_class": scored["by_class"],
+                "overall": scored["overall"],
+                "queries": scored["queries"],
+            }
+            versions_fn = getattr(engine, "versions", None)
+            if callable(versions_fn):
+                payload["versions"] = versions_fn()
+            runs.append(payload)
+        finally:
+            cleanup = getattr(engine, "cleanup", None)
+            if callable(cleanup):
+                cleanup()
+    return combine_quality_runs(runs)
 
 
 def aggregate_overall(dataset_results: list[dict], modes: list[str]) -> dict:
@@ -2422,9 +2504,11 @@ def aggregate_overall_engines(dataset_results: list[dict], engine_names: list[st
     total_queries = sum(item["query_count"] for item in dataset_results)
     for engine_name in engine_names:
         samples = []
+        named: list[tuple[str, dict]] = []
         for dataset in dataset_results:
             entry = next(item for item in dataset["engines"] if item["engine"] == engine_name)
             samples.append(entry)
+            named.append((dataset["dataset"], entry))
         if any(item.get("status") == "skipped" for item in samples):
             reason = next(
                 item.get("reason", "skipped")
@@ -2516,6 +2600,9 @@ def aggregate_overall_engines(dataset_results: list[dict], engine_names: list[st
         }
         if "versions" in samples[0]:
             row["versions"] = samples[0]["versions"]
+        repeat = pooled_quality_repeat(named)
+        if repeat is not None:
+            row["quality_repeat"] = repeat
         engine_rows.append(row)
     return {"engines": engine_rows, "query_count": total_queries}
 
@@ -2568,6 +2655,7 @@ def evaluate_dataset(
     dataset_name: str,
     xerj: XerjContext | None = None,
     opensearch: OpenSearchContext | None = None,
+    quality_repeat: int = 1,
 ) -> dict:
     workdir.mkdir(parents=True, exist_ok=True)
     nesso_only = engines == ["nesso"]
@@ -2618,6 +2706,7 @@ def evaluate_dataset(
                 log_path=log_path,
                 lines=lines,
                 workdir=workdir,
+                quality_repeat=quality_repeat,
             )
         )
     return {
@@ -4108,6 +4197,7 @@ def evaluate_needle_dataset(
     workdir: Path,
     xerj: XerjContext,
     opensearch: OpenSearchContext,
+    quality_repeat: int = 1,
 ) -> dict:
     lines = read_log_lines(spec.log_path)
     labels = load_labels(spec.labels_path, len(lines))
@@ -4150,26 +4240,30 @@ def evaluate_needle_dataset(
             rows.append({"engine": engine_name, "status": "skipped", "reason": reason})
             progress(f"{spec.name} {engine_name}: skipped ({reason})")
             continue
-        try:
-            progress(f"{spec.name} {engine_name}: indexing")
-            other.prepare(spec.log_path, lines, workdir)
-            progress(f"{spec.name} {engine_name}: indexed in {time.monotonic() - started:.0f} s")
-            scored = score_needle_queries(
-                queries,
-                relevant_by_alert,
-                overlaps,
-                lambda text: other.rank(text, k=NEEDLE_DEPTH),
-            )
-            progress(f"{spec.name} {engine_name}: scored at {time.monotonic() - started:.0f} s")
-            row = {"engine": engine_name, "status": "ok", **scored}
-            versions_fn = getattr(other, "versions", None)
-            if callable(versions_fn):
-                row["versions"] = versions_fn()
-            rows.append(row)
-        finally:
-            cleanup = getattr(other, "cleanup", None)
-            if callable(cleanup):
-                cleanup()
+        runs: list[dict] = []
+        for run in range(1, quality_repeat + 1):
+            label = f"{spec.name} {engine_name}" + (f" run {run}/{quality_repeat}" if quality_repeat > 1 else "")
+            try:
+                progress(f"{label}: indexing")
+                other.prepare(spec.log_path, lines, workdir)
+                progress(f"{label}: indexed in {time.monotonic() - started:.0f} s")
+                scored = score_needle_queries(
+                    queries,
+                    relevant_by_alert,
+                    overlaps,
+                    lambda text: other.rank(text, k=NEEDLE_DEPTH),
+                )
+                progress(f"{label}: scored at {time.monotonic() - started:.0f} s")
+                row = {"engine": engine_name, "status": "ok", **scored}
+                versions_fn = getattr(other, "versions", None)
+                if callable(versions_fn):
+                    row["versions"] = versions_fn()
+                runs.append(row)
+            finally:
+                cleanup = getattr(other, "cleanup", None)
+                if callable(cleanup):
+                    cleanup()
+        rows.append(combine_quality_runs(runs))
     return {
         "alert_counts": {alert: len(ids) for alert, ids in sorted(relevant_by_alert.items())},
         "dataset": spec.name,
@@ -4198,7 +4292,18 @@ def aggregate_needle_overall(dataset_results: list[dict]) -> list[dict]:
             overall.append({"engine": name, "status": "skipped", "reason": skipped[0]["reason"]})
             continue
         rows = [query for entry in entries for query in entry["queries"]]
-        overall.append({"engine": name, "status": "ok", **needle_buckets(rows)})
+        row = {"engine": name, "status": "ok", **needle_buckets(rows)}
+        repeat = pooled_quality_repeat(
+            [
+                (dataset["dataset"], entry)
+                for dataset in dataset_results
+                for entry in dataset["engines"]
+                if entry["engine"] == name
+            ]
+        )
+        if repeat is not None:
+            row["quality_repeat"] = repeat
+        overall.append(row)
     return overall
 
 
@@ -4252,6 +4357,7 @@ def format_needle_report(payload: dict) -> str:
         sections.append(format_needle_table(dataset["engines"]))
         if dataset["uncovered_alerts"]:
             sections.append("# alerts without a query: " + ", ".join(dataset["uncovered_alerts"]))
+    sections.extend(format_quality_repeat_lines(payload))
     sections.append("=== overall ===")
     sections.append(format_needle_table(payload["overall"]["engines"]))
     return "\n".join(sections)
@@ -4352,6 +4458,7 @@ def run_needles(args: argparse.Namespace, engines: list[str], modes: list[str]) 
                     workdir=args.workdir / spec.name,
                     xerj=xerj,
                     opensearch=opensearch,
+                    quality_repeat=args.quality_repeat,
                 )
                 for spec in specs
             ]
@@ -4453,6 +4560,13 @@ def main(argv: list[str] | None = None) -> None:
         help=f"With --measure, median over N repeats (default {DEFAULT_MEASURE_REPEAT})",
     )
     parser.add_argument(
+        "--quality-repeat",
+        type=int,
+        default=1,
+        help="Score each engine other than nesso N times, building its index each time, and record "
+        "whether its rankings changed; the median run by MRR is reported (default 1)",
+    )
+    parser.add_argument(
         "--log-prefix-lines",
         type=int,
         nargs="?",
@@ -4501,6 +4615,10 @@ def main(argv: list[str] | None = None) -> None:
             "error: --measure requires a spawned OpenSearch (--opensearch-home / OPENSEARCH_HOME); "
             "not --opensearch-url"
         )
+    if args.quality_repeat <= 0:
+        raise SystemExit("error: --quality-repeat must be a positive integer")
+    if args.quality_repeat > 1 and (args.measure_only or args.log_prefix_lines is not None):
+        raise SystemExit("error: --quality-repeat needs quality scoring; not with --measure-only or --log-prefix-lines")
     if args.log_prefix_lines is not None and args.log_prefix_lines <= 0:
         raise SystemExit("error: --log-prefix-lines must be a positive integer")
     measure_repeats = DEFAULT_MEASURE_REPEAT if args.repeat is None else args.repeat
@@ -4592,6 +4710,7 @@ def main(argv: list[str] | None = None) -> None:
                         dataset_name="hdfs-2k",
                         xerj=xerj,
                         opensearch=opensearch,
+                        quality_repeat=args.quality_repeat,
                     )
                 )
                 measure_targets.append(
@@ -4626,6 +4745,7 @@ def main(argv: list[str] | None = None) -> None:
                             dataset_name=spec.name,
                             xerj=xerj,
                             opensearch=opensearch,
+                            quality_repeat=args.quality_repeat,
                         )
                     )
                     measure_targets.append(

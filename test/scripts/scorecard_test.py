@@ -68,6 +68,13 @@ class ScorecardPlanTest(unittest.TestCase):
         self.assertNotIn("--modes", needle)
         self.assertEqual(needle[needle.index("--xerj-model-dir") + 1], "/m")
         self.assertEqual(needle[needle.index("--repeat") + 1], "3")
+        # xerj's embedding engines repeat quality scoring as often as the suite repeats its measurements.
+        self.assertEqual(needle[needle.index("--quality-repeat") + 1], "3")
+        semantic = mod.Run(suites["2k"], groups["xerj-semantic"]).command(out, "py", {})
+        self.assertEqual(semantic[semantic.index("--quality-repeat") + 1], "3")
+        self.assertNotIn("--quality-repeat", mod.Run(suites["bgl-needle-1m"], groups["xerj-neural"]).command(out, "py", {}))
+        self.assertNotIn("--quality-repeat", mod.Run(suites["full-1m"], groups["xerj-neural"]).command(out, "py", {}))
+        self.assertNotIn("--quality-repeat", mod.Run(suites["2k"], groups["xerj"]).command(out, "py", {}))
 
     def test_selection_and_competitors(self) -> None:
         mod = self.mod

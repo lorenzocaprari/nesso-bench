@@ -85,6 +85,7 @@ def quality_rows(suite: str, report: dict[str, Any], system: str = "overall") ->
     # Classes in report order, overall last.
     classes = [name for name in classes if name != "overall"] + (["overall"] if "overall" in classes else [])
     headline = scores.get((system, HEADLINE), {})
+    unstable = compare.unstable_rankers(report)
     rows = []
     for ranker in rankers:
         for class_name in classes:
@@ -102,6 +103,7 @@ def quality_rows(suite: str, report: dict[str, Any], system: str = "overall") ->
                 "third": flat.get((*key, third)),
                 "interval": None,
                 "verdict": "—",
+                "unstable": (system, ranker) in unstable,
             }
             if ranker != HEADLINE and headline:
                 differences = compare.paired_differences(headline, scores.get((system, ranker), {}), class_name)
@@ -117,6 +119,17 @@ def number(value: float | None, digits: int = 3) -> str:
     return "—" if value is None else f"{value:.{digits}f}"
 
 
+UNSTABLE_NOTE = (
+    "† The ranker's rankings changed between repeated quality runs; the median run is shown, "
+    "and the merged report's `quality_repeat` has the range."
+)
+
+
+def ranker_name(row: dict[str, Any]) -> str:
+    name = f"nesso/{row['ranker']}" if row["ranker"] in compare.NESSO_MODES else row["ranker"]
+    return name + " †" if row.get("unstable") else name
+
+
 def quality_section(suite: str, report: dict[str, Any], rows: list[dict[str, Any]]) -> list[str]:
     third = "p@10" if report.get("kind") == "needle" else "recall@10"
     body = []
@@ -128,17 +141,20 @@ def quality_section(suite: str, report: dict[str, Any], rows: list[dict[str, Any
         else:
             low, high = row["interval"]
             margin = f"{row['margin']:+.3f} [{low:+.3f}, {high:+.3f}]"
-        name = f"nesso/{row['ranker']}" if row["ranker"] in compare.NESSO_MODES else row["ranker"]
+        name = ranker_name(row)
         body.append(
             [name, row["class"], "—" if row["n"] is None else str(row["n"]), number(row["mrr"]), number(row["ndcg"]),
              number(row["third"]), margin, row["verdict"]]
         )
-    return [
+    lines = [
         f"### {suite}",
         "",
         *table(["ranker", "class", "n", "MRR", "nDCG@10", third, "nesso − ranker (95% CI)", "nesso"], body),
         "",
     ]
+    if any(row.get("unstable") for row in rows):
+        lines += [UNSTABLE_NOTE, ""]
+    return lines
 
 
 # ---- speed and memory --------------------------------------------------------
@@ -271,7 +287,7 @@ def render(results: Path) -> str:
     lines += ["## Where nesso loses", ""]
     if losses:
         body = [
-            [row["suite"], row["system"], row["class"], row["ranker"], number(row["mrr"]), f"{row['margin']:+.3f}",
+            [row["suite"], row["system"], row["class"], ranker_name(row), number(row["mrr"]), f"{row['margin']:+.3f}",
              f"[{row['interval'][0]:+.3f}, {row['interval'][1]:+.3f}]"]
             for row in losses
         ]
@@ -281,6 +297,8 @@ def render(results: Path) -> str:
             *table(["suite", "system", "class", "ranker", "ranker MRR", "nesso − ranker", "95% CI"], body),
             "",
         ]
+        if any(row.get("unstable") for row in losses):
+            lines += [UNSTABLE_NOTE, ""]
     else:
         lines += ["No ranker beats nesso's headline mode with a 95% interval entirely below 0.", ""]
 

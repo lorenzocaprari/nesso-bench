@@ -68,6 +68,9 @@ class Group:
     name: str
     engines: tuple[str, ...]
     threads: str | None = None  # NESSO_THREADS for this run; None keeps nesso's default
+    # Rankings that changed between runs of the same version: score quality as
+    # many times as the suite repeats its measurements, and report the spread.
+    repeat_quality: bool = False
 
 
 SUITES = (
@@ -86,8 +89,8 @@ GROUPS = (
     Group("opensearch", ("opensearch",)),
     Group("opensearch-knn", ("opensearch-knn",)),
     Group("xerj", ("xerj",)),
-    Group("xerj-neural", ("xerj-neural",)),
-    Group("xerj-semantic", ("xerj-semantic",)),
+    Group("xerj-neural", ("xerj-neural",), repeat_quality=True),
+    Group("xerj-semantic", ("xerj-semantic",), repeat_quality=True),
     Group("ck", ("ck",)),
     Group("vecgrep", ("vecgrep",)),
 )
@@ -146,6 +149,8 @@ class Run:
             argv += ["--modes", NESSO_MODES]
         if self.suite.prefix_lines is not None:
             argv += ["--log-prefix-lines", str(self.suite.prefix_lines)]
+        elif self.group.repeat_quality and self.suite.repeat > 1:
+            argv += ["--quality-repeat", str(self.suite.repeat)]
         if "xerj-neural" in self.group.engines and env.get("XERJ_MODEL_DIR"):
             argv += ["--xerj-model-dir", env["XERJ_MODEL_DIR"]]
         return argv
