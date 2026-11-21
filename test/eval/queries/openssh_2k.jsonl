@@ -6,13 +6,73 @@
 {"id":"exact_03","class":"exact_id","query":"64009","relevant_lines":[398]}
 {"id":"exact_04","class":"exact_id","query":"44414","relevant_lines":[650]}
 {"id":"exact_05","class":"exact_id","query":"52683","relevant_lines":[2000],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"39257","relevant_lines":[20]}
+{"id":"exact_07","class":"exact_id","query":"60608","relevant_lines":[395]}
+{"id":"exact_08","class":"exact_id","query":"53589","relevant_lines":[678]}
+{"id":"exact_09","class":"exact_id","query":"35457","relevant_lines":[1042]}
+{"id":"exact_10","class":"exact_id","query":"58028","relevant_lines":[1243]}
+{"id":"exact_11","class":"exact_id","query":"54699","relevant_lines":[1420]}
+{"id":"exact_12","class":"exact_id","query":"49096","relevant_lines":[1597]}
+{"id":"exact_13","class":"exact_id","query":"44412","relevant_lines":[1786]}
+{"id":"exact_14","class":"exact_id","query":"202.100.179.208","relevant_lines":[22,25,26,27,1087,1090,1094,1095]}
+{"id":"exact_15","class":"exact_id","query":"183.136.162.51","relevant_lines":[141,144,145,146,1011,1014,1015,1016]}
+{"id":"exact_16","class":"exact_id","query":"194.190.163.22","relevant_lines":[163,177,184,282]}
+{"id":"exact_17","class":"exact_id","query":"175.102.13.6","relevant_lines":[178,181,182,183]}
+{"id":"exact_18","class":"exact_id","query":"104.192.3.34","relevant_lines":[947,950,951,952,953,954,955]}
+{"id":"exact_19","class":"exact_id","query":"181.214.87.4","relevant_lines":[966,968,969,970]}
+{"id":"exact_20","class":"exact_id","query":"webmaster","relevant_lines":[2,3,6,16,17,20],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"anonymous","relevant_lines":[376,377,380,1891,1892,1898],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"PlcmSpIp","relevant_lines":[496,497,500],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"nagios","relevant_lines":[758,759,762],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"postgres1","relevant_lines":[873,874,877],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"cyrus","relevant_lines":[941,942,945],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"login attempted with an invalid username","relevant_events":["E13"]}
 {"id":"para_02","class":"paraphrase","query":"reverse DNS lookup failed with a break-in warning","relevant_events":["E27"]}
 {"id":"para_03","class":"paraphrase","query":"client disconnected with no auth methods left","relevant_events":["E7"]}
 {"id":"para_04","class":"paraphrase","query":"peer sent no SSH identification string","relevant_events":["E3"]}
 {"id":"para_05","class":"paraphrase","query":"PAM ignored further retries past the max","relevant_events":["E18"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"client said goodbye before authenticating","relevant_events":["E24"]}
+{"id":"para_07","class":"paraphrase","query":"pre-authentication disconnect initiated by the other side","relevant_events":["E24"]}
+{"id":"para_08","class":"paraphrase","query":"password rejected for an existing account","relevant_events":["E9"]}
+{"id":"para_09","class":"paraphrase","query":"bad password attempt from a remote address","relevant_events":["E9"]}
+{"id":"para_10","class":"paraphrase","query":"check of password failed because the user is not known","relevant_events":["E21"]}
+{"id":"para_11","class":"paraphrase","query":"wrong password for a user name that does not exist","relevant_events":["E10"]}
+{"id":"para_12","class":"paraphrase","query":"userauth request for an invalid user in preauth","relevant_events":["E12"]}
+{"id":"para_13","class":"paraphrase","query":"connection closed by the peer before authentication","relevant_events":["E2"],"split":"test"}
+{"id":"para_14","class":"paraphrase","query":"preauth connection teardown from remote host","relevant_events":["E2"],"split":"test"}
+{"id":"para_15","class":"paraphrase","query":"disconnect because the user asked to close","relevant_events":["E25"]}
+{"id":"para_16","class":"paraphrase","query":"authentication method none attempted for unknown user","relevant_events":["E8"],"split":"test"}
+{"id":"para_17","class":"paraphrase","query":"repeated failed password messages summarised for root","relevant_events":["E14"],"split":"test"}
+{"id":"para_18","class":"paraphrase","query":"disconnect after too many authentication failures for root","relevant_events":["E5"]}
+{"id":"para_19","class":"paraphrase","query":"server cut the session after repeated bad logins for the root account","relevant_events":["E5"]}
+{"id":"para_20","class":"paraphrase","query":"Java SSH client reported authentication failure","relevant_events":["E6"]}
+{"id":"para_21","class":"paraphrase","query":"password login succeeded","relevant_events":["E1"]}
+{"id":"para_22","class":"paraphrase","query":"PAM opened a session for a user","relevant_events":["E23"]}
+{"id":"para_23","class":"paraphrase","query":"peer disconnected by the user","relevant_events":["E26"],"split":"test"}
+{"id":"para_24","class":"paraphrase","query":"PAM session ended for a user","relevant_events":["E22"]}
+{"id":"para_25","class":"paraphrase","query":"fatal write failure because the connection was reset","relevant_events":["E11"],"split":"test"}
 {"id":"cause_01","class":"cause","query":"attacker probed SSH with a non-existent account name","relevant_events":["E13"]}
 {"id":"cause_02","class":"cause","query":"reverse DNS for the client hostname did not match","relevant_events":["E27"]}
 {"id":"cause_03","class":"cause","query":"SSH handshake ended after auth methods were exhausted","relevant_events":["E7"]}
 {"id":"cause_04","class":"cause","query":"remote peer never sent an SSH banner","relevant_events":["E3"]}
 {"id":"cause_05","class":"cause","query":"PAM saw more failures than the configured retry limit","relevant_events":["E18"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"the remote host closed the session during the pre-auth phase with a polite bye","relevant_events":["E24"]}
+{"id":"cause_07","class":"cause","query":"scanner dropped the connection right after the handshake","relevant_events":["E24"]}
+{"id":"cause_08","class":"cause","query":"someone typed the wrong password for a valid user","relevant_events":["E9"]}
+{"id":"cause_09","class":"cause","query":"brute-force guess against a real username","relevant_events":["E9"]}
+{"id":"cause_10","class":"cause","query":"login tried with a username the system does not have","relevant_events":["E21"]}
+{"id":"cause_11","class":"cause","query":"automated scan tried common usernames that are not real accounts","relevant_events":["E10"]}
+{"id":"cause_12","class":"cause","query":"the server rejected an authentication request naming a missing account","relevant_events":["E12"]}
+{"id":"cause_13","class":"cause","query":"client dropped the TCP connection without logging in","relevant_events":["E2"],"split":"test"}
+{"id":"cause_14","class":"cause","query":"a port scanner connected and left immediately","relevant_events":["E2"],"split":"test"}
+{"id":"cause_15","class":"cause","query":"the client program ended the session normally on request","relevant_events":["E25"]}
+{"id":"cause_16","class":"cause","query":"a client probed which auth methods the server offers using a nonexistent account","relevant_events":["E8"],"split":"test"}
+{"id":"cause_17","class":"cause","query":"syslog collapsed many identical root password failures into one line","relevant_events":["E14"],"split":"test"}
+{"id":"cause_18","class":"cause","query":"root exhausted its allowed login attempts","relevant_events":["E5"]}
+{"id":"cause_19","class":"cause","query":"brute force against root hit the attempt limit","relevant_events":["E5"]}
+{"id":"cause_20","class":"cause","query":"a JSch-based tool failed to log in and disconnected","relevant_events":["E6"]}
+{"id":"cause_21","class":"cause","query":"a legitimate user authenticated with a correct password","relevant_events":["E1"]}
+{"id":"cause_22","class":"cause","query":"a successful login started an interactive session","relevant_events":["E23"]}
+{"id":"cause_23","class":"cause","query":"the person closed their ssh client","relevant_events":["E26"],"split":"test"}
+{"id":"cause_24","class":"cause","query":"the user logged out and the session closed","relevant_events":["E22"]}
+{"id":"cause_25","class":"cause","query":"the remote side vanished while the server was sending data","relevant_events":["E11"],"split":"test"}

@@ -42,6 +42,13 @@ different event, one phrasing per class (E36, E89, E4, E107, E46, and E88 are th
 test events). Its exact-ID queries are PIDs, IP addresses, and other tokens that
 occur on exactly one line.
 
+OpenSSH_2k has 27 templates, and several of them differ only in the account or the
+reason (the PAM failure variants), which a query cannot tell apart, so those are left
+out. Its 20 new paraphrase and cause queries cover 16 events; E24, E9, E2, and E5 have
+two phrasings each, so those are not independent. E8, E14, E11, E26, and E2 are the test
+events. Its exact-ID queries are ports (one line each), IP addresses, and user names
+that occur on 2 to 8 lines, all of which are listed as relevant.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
