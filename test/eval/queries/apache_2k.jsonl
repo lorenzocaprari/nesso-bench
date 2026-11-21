@@ -6,13 +6,57 @@
 {"id":"exact_03","class":"exact_id","query":"1763","relevant_lines":[807]}
 {"id":"exact_04","class":"exact_id","query":"141.153.150.164","relevant_lines":[1421]}
 {"id":"exact_05","class":"exact_id","query":"6790","relevant_lines":[1998],"split":"test"}
+{"id":"exact_06","class":"exact_id","query":"6728","relevant_lines":[5]}
+{"id":"exact_07","class":"exact_id","query":"32425","relevant_lines":[195]}
+{"id":"exact_08","class":"exact_id","query":"32584","relevant_lines":[352]}
+{"id":"exact_09","class":"exact_id","query":"32711","relevant_lines":[482]}
+{"id":"exact_10","class":"exact_id","query":"1321","relevant_lines":[650]}
+{"id":"exact_11","class":"exact_id","query":"1788","relevant_lines":[814]}
+{"id":"exact_12","class":"exact_id","query":"1990","relevant_lines":[984]}
+{"id":"exact_13","class":"exact_id","query":"3685","relevant_lines":[1156]}
+{"id":"exact_14","class":"exact_id","query":"5008","relevant_lines":[1309]}
+{"id":"exact_15","class":"exact_id","query":"5495","relevant_lines":[1474]}
+{"id":"exact_16","class":"exact_id","query":"5939","relevant_lines":[1644]}
+{"id":"exact_17","class":"exact_id","query":"6280","relevant_lines":[1786]}
+{"id":"exact_18","class":"exact_id","query":"63.13.186.196","relevant_lines":[580]}
+{"id":"exact_19","class":"exact_id","query":"218.76.139.20","relevant_lines":[583]}
+{"id":"exact_20","class":"exact_id","query":"216.127.124.16","relevant_lines":[586],"split":"test"}
+{"id":"exact_21","class":"exact_id","query":"4.245.93.87","relevant_lines":[589],"split":"test"}
+{"id":"exact_22","class":"exact_id","query":"58.225.62.140","relevant_lines":[593],"split":"test"}
+{"id":"exact_23","class":"exact_id","query":"125.30.38.52","relevant_lines":[806],"split":"test"}
+{"id":"exact_24","class":"exact_id","query":"211.62.201.48","relevant_lines":[1053],"split":"test"}
+{"id":"exact_25","class":"exact_id","query":"221.232.178.24","relevant_lines":[1217],"split":"test"}
 {"id":"para_01","class":"paraphrase","query":"worker environment initialised successfully from its properties file","relevant_events":["E2"]}
 {"id":"para_02","class":"paraphrase","query":"connector worker environment reported a failure state","relevant_events":["E3"]}
 {"id":"para_03","class":"paraphrase","query":"directory listing denied by a configuration rule","relevant_events":["E4"]}
 {"id":"para_04","class":"paraphrase","query":"could not locate the child process in the scoreboard","relevant_events":["E5"]}
 {"id":"para_05","class":"paraphrase","query":"connector initialising a new child worker","relevant_events":["E6"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"connector found a child process registered in a scoreboard slot","relevant_events":["E1"]}
+{"id":"para_07","class":"paraphrase","query":"child pid recognised in a scoreboard slot at init","relevant_events":["E1"]}
+{"id":"para_08","class":"paraphrase","query":"worker environment initialised ok with the workers2 properties file","relevant_events":["E2"]}
+{"id":"para_09","class":"paraphrase","query":"workerEnv init succeeded","relevant_events":["E2"]}
+{"id":"para_10","class":"paraphrase","query":"connector child environment is broken with an error code","relevant_events":["E3"]}
+{"id":"para_11","class":"paraphrase","query":"worker environment entered error state in a child","relevant_events":["E3"]}
+{"id":"para_12","class":"paraphrase","query":"forbidden to list a directory index","relevant_events":["E4"]}
+{"id":"para_13","class":"paraphrase","query":"access denied to a folder listing by server rule","relevant_events":["E4"]}
+{"id":"para_14","class":"paraphrase","query":"child process missing from the scoreboard at init","relevant_events":["E5"]}
+{"id":"para_15","class":"paraphrase","query":"no scoreboard entry found for a child","relevant_events":["E5"]}
+{"id":"para_16","class":"paraphrase","query":"mod_jk initialising in a child process","relevant_events":["E6"],"split":"test"}
+{"id":"para_17","class":"paraphrase","query":"child init of the Tomcat connector","relevant_events":["E6"],"split":"test"}
 {"id":"cause_01","class":"cause","query":"client asked for a folder that has no index page while autoindex is off","relevant_events":["E4"]}
 {"id":"cause_02","class":"cause","query":"Tomcat connector failed to bring up its worker environment","relevant_events":["E3"]}
 {"id":"cause_03","class":"cause","query":"scoreboard has no entry for a forked httpd child","relevant_events":["E5"]}
 {"id":"cause_04","class":"cause","query":"new httpd child process registered in a scoreboard slot","relevant_events":["E1"]}
 {"id":"cause_05","class":"cause","query":"connector setup ran for a freshly spawned child process","relevant_events":["E6"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"a newly started httpd child was picked up by the connector","relevant_events":["E1"]}
+{"id":"cause_07","class":"cause","query":"mod_jk saw the httpd worker it needs and attached to its slot","relevant_events":["E1"]}
+{"id":"cause_08","class":"cause","query":"the connector read its configuration and started normally","relevant_events":["E2"]}
+{"id":"cause_09","class":"cause","query":"Apache restarted and the Tomcat bridge came up cleanly","relevant_events":["E2"]}
+{"id":"cause_10","class":"cause","query":"the Tomcat bridge in a child process failed and flagged an error","relevant_events":["E3"]}
+{"id":"cause_11","class":"cause","query":"initialisation of the connector failed in an httpd child, so requests cannot be forwarded","relevant_events":["E3"]}
+{"id":"cause_12","class":"cause","query":"a visitor requested a path without an index file and listing was disabled","relevant_events":["E4"]}
+{"id":"cause_13","class":"cause","query":"someone browsed to a directory the configuration protects from being listed","relevant_events":["E4"]}
+{"id":"cause_14","class":"cause","query":"the connector looked for its httpd child but it had already gone","relevant_events":["E5"]}
+{"id":"cause_15","class":"cause","query":"a child exited or was never registered, so the lookup failed","relevant_events":["E5"]}
+{"id":"cause_16","class":"cause","query":"a new httpd child started and the connector began its setup","relevant_events":["E6"],"split":"test"}
+{"id":"cause_17","class":"cause","query":"apache spawned a worker and the bridge module ran its startup hook","relevant_events":["E6"],"split":"test"}

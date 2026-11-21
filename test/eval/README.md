@@ -63,6 +63,12 @@ Its exact-ID queries are 8 hex addresses and 6 microsecond timestamps on one lin
 events differ only by a register name (the `program interrupt` and `machine check`
 families), so only ones a phrasing can tell apart are used.
 
+Apache_2k has only 6 event templates (three of them cover 1,944 of its 2,000 lines),
+so it cannot support 25 independent paraphrase or cause queries. It gets 12 new ones per
+class (two more phrasings of each event, 17 in all), and they are strongly correlated:
+the pooled interval overstates what 17 queries show. E6 is its only test event. Its
+exact-ID queries are 12 child PIDs and 8 client IP addresses, each on one line.
+
 These seed sets are for local development and CI-free smoke scoring. They are
 **not** the published retrieval benchmark; the full public set comes later from
 Product.
