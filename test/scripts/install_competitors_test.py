@@ -25,7 +25,8 @@ class InstallCompetitorsTest(unittest.TestCase):
             ("xerj-neural",): ["xerj", "minilm"],
             # Install order is fixed and a piece is listed once.
             ("xerj-neural", "diy-faiss", "xerj"): ["diy", "xerj", "minilm"],
-            ("all",): ["diy", "opensearch", "ck", "vecgrep", "xerj", "minilm"],
+            ("ripgrep",): ["ripgrep"],
+            ("all",): ["diy", "opensearch", "ck", "vecgrep", "xerj", "minilm", "ripgrep"],
         }
         for engines, pieces in cases.items():
             completed = run("--dry-run", *engines)
@@ -62,7 +63,7 @@ class InstallCompetitorsTest(unittest.TestCase):
         workflow = WORKFLOW.read_text(encoding="utf-8")
         self.assertIsNone(re.search(r"\b[0-9a-f]{64,}\b", workflow))
         self.assertIn("scripts/install-competitors", workflow)
-        for name in ("CK_SHA256", "XERJ_SHA256", "OPENSEARCH_SHA512", "MINILM_MODEL_SHA256", "VECGREP_REV"):
+        for name in ("CK_SHA256", "XERJ_SHA256", "OPENSEARCH_SHA512", "MINILM_MODEL_SHA256", "VECGREP_REV", "RIPGREP_SHA256"):
             self.assertNotIn(name, workflow)
 
 
