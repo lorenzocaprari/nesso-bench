@@ -2,6 +2,8 @@ import importlib.machinery
 import importlib.util
 import json
 import pathlib
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -208,6 +210,86 @@ class ScorecardRunTest(unittest.TestCase):
         self.assertEqual(outcome(1, "48G", "error: something else\n", False), "failed (exit 1)")
         # Without a cap, a kill is not attributed to memory.
         self.assertEqual(outcome(1, None, "exit -9", False), "failed (exit 1)")
+
+    def test_systemd_verdict_decides_out_of_memory(self) -> None:
+        outcome = self.mod.outcome
+        # The kernel kills one process and systemd stops the rest of the scope, so
+        # the run exits -15 (or 143), which is not a SIGKILL; the scope says why.
+        self.assertEqual(outcome(-15, "3G", "eval-retrieval: ... vecgrep: indexing\n", False, "oom-kill"), "out-of-memory (3G)")
+        self.assertEqual(outcome(143, "3G", "", False, "oom-kill"), "out-of-memory (3G)")
+        # Without that verdict a SIGTERM is just a failure, and a timeout is still a timeout.
+        self.assertEqual(outcome(-15, "3G", "", False, "success"), "failed (exit -15)")
+        self.assertEqual(outcome(-15, "3G", "", False, None), "failed (exit -15)")
+        # timeout exits 124 when it is SIGTERMed too: a memory kill is not a timeout, a real one is.
+        self.assertEqual(outcome(124, "3G", "", False, "oom-kill"), "out-of-memory (3G)")
+        self.assertEqual(outcome(124, "3G", "", True, "oom-kill"), "timeout")
+        self.assertEqual(outcome(124, "3G", "", False, "success"), "timeout")
+        self.assertEqual(outcome(0, "3G", "", False, "oom-kill"), "ok")
+        # No cap, no attribution.
+        self.assertEqual(outcome(-15, None, "", False, "oom-kill"), "failed (exit -15)")
+
+    def test_wrap_names_the_scope_and_unit_names_are_safe(self) -> None:
+        mod = self.mod
+        wrapped = mod.wrap(["cmd"], "3G", 1, "scorecard-1-2k-nesso")
+        self.assertIn("--unit=scorecard-1-2k-nesso", wrapped)
+        self.assertNotIn("--unit", " ".join(mod.wrap(["cmd"], "3G", 1)))
+        self.assertNotIn("--unit", " ".join(mod.wrap(["cmd"], None, 1, "x")))
+        name = mod.scope_name("bgl-needle-100k", "opensearch-knn")
+        self.assertRegex(name, r"^scorecard-\d+-bgl-needle-100k-opensearch-knn$")
+        self.assertRegex(mod.scope_name("a b/c", "d_e"), r"^[A-Za-z0-9-]+$")
+
+    def test_scope_result_reads_systemctl(self) -> None:
+        mod = self.mod
+        original = mod.subprocess.run
+        calls = []
+
+        def fake(argv, **kwargs):
+            calls.append(argv)
+            if "show" in argv:
+                # The first answer is a scope that has not settled yet; the second is final.
+                state = "deactivating\nResult=success\n" if len(calls) == 1 else "failed\nResult=oom-kill\n"
+                return subprocess.CompletedProcess(argv, 0, f"ActiveState={state}", "")
+            return subprocess.CompletedProcess(argv, 0, "", "")
+
+        mod.subprocess.run = fake
+        try:
+            self.assertEqual(mod.scope_result("scorecard-1-x"), "oom-kill")
+            mod.reset_scope("scorecard-1-x")
+        finally:
+            mod.subprocess.run = original
+        self.assertEqual(calls[0], ["systemctl", "--user", "show", "scorecard-1-x.scope", "-p", "ActiveState", "-p", "Result"])
+        # It waited for the final state, and then reset the unit.
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[2], ["systemctl", "--user", "reset-failed", "scorecard-1-x.scope"])
+
+        def failing(argv, **kwargs):
+            return subprocess.CompletedProcess(argv, 1, "", "no such unit")
+
+        mod.subprocess.run = failing
+        try:
+            self.assertIsNone(mod.scope_result("scorecard-1-x"))
+        finally:
+            mod.subprocess.run = original
+
+    @unittest.skipUnless(
+        shutil.which("systemd-run") and subprocess.run(["systemctl", "--user", "is-active", "default.target"], capture_output=True, check=False).returncode == 0,
+        "needs a systemd user manager",
+    )
+    def test_a_real_capped_scope_reports_oom_kill(self) -> None:
+        # A bounded allocation (600 MB) under a 200 MB cap, in a scope with a second process,
+        # like the scorecard's `timeout` plus a harness: systemd stops the scope with SIGTERM.
+        mod = self.mod
+        unit = mod.scope_name("test", "oom")
+        allocate = 'b = bytearray(b"x") * (600 * 1024 * 1024)'
+        script = f"python3 -c {shlex.quote(allocate)}; rc=$?; sleep 3; exit $rc"
+        done = subprocess.run(mod.wrap(["bash", "-c", script], "200M", 1, unit), capture_output=True, check=False, timeout=90)
+        try:
+            self.assertNotEqual(done.returncode, 0)
+            scope = mod.scope_result(unit)
+            self.assertEqual(scope, "oom-kill")
+            self.assertEqual(mod.outcome(done.returncode, "200M", "", False, scope), "out-of-memory (200M)")
+        finally:
+            mod.reset_scope(unit)
 
     def test_wrap(self) -> None:
         wrapped = self.mod.wrap(["cmd"], "48G", 2)
