@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Write HDFS_2k as JSON lines, with the same lines and labels.
+
+    scripts/derive-json [--out-dir build/bench]
+
+Loghub has no JSON logs, but a service that logs JSON writes the same events with
+the fields named. This takes the pinned HDFS_2k sample and its structured CSV
+(scripts/fetch-loghub --dataset hdfs-2k) and writes one object per line, the
+way such a service would:
+
+    {"ts":"2008-11-09T20:36:15","pid":148,"level":"INFO","component":"dfs.DataNode$PacketResponder","message":"PacketResponder 1 for block blk_38865049064139660 terminating"}
+
+as HDFS_2k_json.jsonl, with a copy of the structured CSV beside it
+(HDFS_2k_json.jsonl_structured.csv). Object n is line n, so the HDFS query
+set and its labels apply unchanged and any score difference comes from the
+format. The output is deterministic (fixed key order and separators); the
+`message` is the Loghub `Content` unchanged. nesso reads a .jsonl file's
+`message` field by default; every other engine reads the file as text lines,
+JSON syntax and field names included.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import shutil
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+BENCH_DIR = ROOT / "build" / "bench"
+SOURCE = "HDFS_2k.log"
+TARGET = "HDFS_2k_json.jsonl"
+
+
+def timestamp(date: str, time: str) -> str:
+    """Loghub HDFS writes yymmdd and hhmmss; 081109 203615 is 2008-11-09T20:36:15."""
+    if len(date) != 6 or len(time) != 6 or not (date + time).isdigit():
+        raise SystemExit(f"error: unexpected HDFS date/time {date!r} {time!r}")
+    return f"20{date[0:2]}-{date[2:4]}-{date[4:6]}T{time[0:2]}:{time[2:4]}:{time[4:6]}"
+
+
+def derive(out_dir: Path, source_dir: Path = BENCH_DIR) -> int:
+    structured = source_dir / f"{SOURCE}_structured.csv"
+    if not structured.is_file():
+        raise SystemExit(f"error: {structured} is missing; run scripts/fetch-loghub --dataset hdfs-2k")
+    lines: list[str] = []
+    with structured.open(encoding="utf-8", newline="") as handle:
+        for number, row in enumerate(csv.DictReader(handle), start=1):
+            if int(row["LineId"]) != number:
+                raise SystemExit(f"error: {structured}: LineId {row['LineId']} at row {number}")
+            record = {
+                "ts": timestamp(row["Date"], row["Time"]),
+                "pid": int(row["Pid"]),
+                "level": row["Level"],
+                "component": row["Component"],
+                "message": row["Content"],
+            }
+            lines.append(json.dumps(record, separators=(",", ":"), ensure_ascii=False))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / TARGET).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    shutil.copyfile(structured, out_dir / f"{TARGET}_structured.csv")
+    return len(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--out-dir", type=Path, default=BENCH_DIR, help=f"Directory for the output (default {BENCH_DIR})")
+    args = parser.parse_args(argv)
+    count = derive(args.out_dir)
+    print(f"derive-json: {count} lines in {args.out_dir / TARGET}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

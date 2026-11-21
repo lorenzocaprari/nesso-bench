@@ -53,9 +53,11 @@ for each tool is in [eval.md](eval.md).
   lines (OpenStack), and pipe-delimited app lines (HealthApp). One small dataset, the support
   bundle, puts six of the first group in a directory with `.gz`, `.tar`, `.tgz`, and `.zip`
   files; it scores quality only, and the other engines read it decoded, so it does not show
-  nesso's advantage of skipping extraction. JSON logs, multi-line records such as stack
-  traces, and container and journald output are not covered. Loghub has no JSON logs, so a
-  JSON result needs another source. Results say nothing about these shapes.
+  nesso's advantage of skipping extraction. Loghub has no JSON logs, so the one JSON dataset
+  is HDFS_2k rewritten by us as flat JSON lines with a `message` field, with the same labels;
+  nested objects and other schemas are not covered. Multi-line records such as stack traces,
+  and container and journald output, are not covered either. Results say nothing about these
+  shapes.
 - **One machine type.** Speed and memory hold for the machine in `machine.json`. Other CPUs,
   memory sizes, and disks will differ; the run-to-run spread on that machine is measured and
   published before any regression threshold is set from it.

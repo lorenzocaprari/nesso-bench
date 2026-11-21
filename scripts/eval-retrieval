@@ -223,6 +223,12 @@ DATASETS_2K: dict[str, DatasetSpec] = {
 }
 BUNDLE_SPEC = DatasetSpec(SUPPORT_BUNDLE, "SupportBundle_concat.log", "bundle.jsonl")
 
+# HDFS_2k written as JSON lines (scripts/derive-json): the same lines, labels, and
+# queries in another encoding. Selected by name only, so all-2k stays as it was.
+DATASETS_ENCODED: dict[str, DatasetSpec] = {
+    "hdfs-2k-json": DatasetSpec("hdfs-2k-json", "HDFS_2k_json.jsonl", "hdfs_2k.jsonl"),
+}
+
 # Log shapes beyond the six above: Java log4j with exceptions, request-id API
 # lines, and pipe-delimited app lines. Not part of all-2k, so its results stay
 # comparable; select them with all-formats or by name.
@@ -2382,10 +2388,10 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if part == ALL_FORMATS:
             names.extend(DATASETS_FORMATS)
             continue
-        if part not in DATASETS_2K and part not in DATASETS_FORMATS:
+        if part not in DATASETS_2K and part not in DATASETS_FORMATS and part not in DATASETS_ENCODED:
             raise SystemExit(
                 f"error: unknown dataset {part!r}; expected one of "
-                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + [ALL_2K, ALL_FORMATS, SUPPORT_BUNDLE]}"
+                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + sorted(DATASETS_ENCODED) + [ALL_2K, ALL_FORMATS, SUPPORT_BUNDLE]}"
             )
         names.append(part)
     # Preserve order, drop duplicates.
@@ -2395,7 +2401,7 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if name in seen:
             continue
         seen.add(name)
-        ordered.append(DATASETS_2K.get(name) or DATASETS_FORMATS[name])
+        ordered.append(DATASETS_2K.get(name) or DATASETS_FORMATS.get(name) or DATASETS_ENCODED[name])
     return ordered
 
 
@@ -2417,6 +2423,14 @@ def parse_engines(raw: list[str] | None) -> list[str]:
     if not ordered:
         raise SystemExit("error: --engine must list at least one engine")
     return ordered
+
+
+def ensure_encoded(spec: DatasetSpec) -> None:
+    """Write a dataset derived from HDFS_2k (and fetch HDFS_2k) when it is not there."""
+    if spec.log_path.is_file() and spec.structured_path.is_file():
+        return
+    run_checked([sys.executable, str(ROOT / "scripts" / "fetch-loghub"), "--dataset", "hdfs-2k"], label="fetch-loghub")
+    run_checked([sys.executable, str(ROOT / "scripts" / "derive-json")], label="derive-json")
 
 
 def ensure_bundle() -> None:
@@ -4645,7 +4659,8 @@ def main(argv: list[str] | None = None) -> None:
         "--dataset",
         default=None,
         help="Comma-separated 2k datasets, all-2k, the log-shape datasets (hadoop-2k, openstack-2k, "
-        "healthapp-2k), all-formats (maps log, CSV, and query file), or support-bundle "
+        "healthapp-2k), all-formats (maps log, CSV, and query file), hdfs-2k-json (HDFS_2k as JSON lines), "
+        "or support-bundle "
         "(nesso reads a directory of logs, gz, tar, tgz, and zip files; the others read it decoded); "
         "with --measure/--log-prefix-lines also hdfs-v1,bgl,thunderbird,all-full; "
         "or needle windows bgl-needle-100k,bgl-needle-1m,thunderbird-needle-1m,all-needle",
@@ -4876,6 +4891,8 @@ def main(argv: list[str] | None = None) -> None:
                         if not args.skip_fetch:
                             ensure_bundle()
                         bundle = SupportBundle.load(BUNDLE_DIR)
+                    elif not args.skip_fetch and spec.name in DATASETS_ENCODED:
+                        ensure_encoded(spec)
                     elif not args.skip_fetch:
                         ensure_inputs(spec.log_path, spec.structured_path, fetch_dataset=spec.name)
                     if not spec.log_path.is_file() or not spec.structured_path.is_file():
