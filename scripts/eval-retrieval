@@ -300,6 +300,22 @@ def logical_cpus() -> int:
         raise SystemExit(f"error: nproc failed: {exc}") from exc
 
 
+def parse_mem_total(text: str) -> int | None:
+    for line in text.splitlines():
+        if line.startswith("MemTotal:"):
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].isdigit():
+                return int(parts[1]) * 1024
+    return None
+
+
+def mem_total_bytes() -> int | None:
+    path = Path("/proc/meminfo")
+    if not path.is_file():
+        return None
+    return parse_mem_total(path.read_text(encoding="utf-8", errors="replace"))
+
+
 def threads_setting() -> str | None:
     value = os.environ.get("NESSO_THREADS")
     if value is None or value == "":
@@ -2664,6 +2680,25 @@ def median_optional_floats(values: list[float | None]) -> float | None:
     return median_value(present)
 
 
+MEASURE_INDEX_KEYS = ("indexWallSeconds", "indexPeakRssBytes", "timeToFirstResultSeconds")
+MEASURE_QUERY_KEYS = (
+    "queryWallSeconds",
+    "queryPeakRssBytes",
+    "queryLatencyMedianSeconds",
+    "queryLatencyP95Seconds",
+)
+
+
+def measure_range(items: list[dict[str, Any]], keys: tuple[str, ...]) -> dict[str, list[float | int]]:
+    """[min, max] across repeats for each key that has a value, so noise sits next to the median."""
+    spread: dict[str, list[float | int]] = {}
+    for key in keys:
+        present = [item[key] for item in items if item.get(key) is not None]
+        if present:
+            spread[key] = [min(present), max(present)]
+    return spread
+
+
 def merge_engine_measure_repeats(repeats: list[dict[str, Any]]) -> dict[str, Any]:
     if not repeats:
         raise SystemExit("error: measure produced no repeats")
@@ -2698,6 +2733,7 @@ def merge_engine_measure_repeats(repeats: list[dict[str, Any]]) -> dict[str, Any
             modes_out.append(
                 {
                     "mode": mode_name,
+                    "range": measure_range(mode_repeats, MEASURE_QUERY_KEYS),
                     **{
                         key: (
                             median_optional_ints([mode.get(key) for mode in mode_repeats])
@@ -2725,6 +2761,8 @@ def merge_engine_measure_repeats(repeats: list[dict[str, Any]]) -> dict[str, Any
                 merged[key] = median_optional_ints([item.get(key) for item in repeats])
             else:
                 merged[key] = median_optional_floats([item.get(key) for item in repeats])
+    keys = MEASURE_INDEX_KEYS if "modes" in first else MEASURE_INDEX_KEYS + MEASURE_QUERY_KEYS
+    merged["range"] = measure_range(repeats, keys)
     return merged
 
 
@@ -4262,6 +4300,7 @@ def measure_needle_datasets(
     return {
         "cpuModel": cpu_model(),
         "datasets": datasets,
+        "memTotalBytes": mem_total_bytes(),
         "nproc": logical_cpus(),
         "platform": platform.platform(),
         "repeat": repeats,
@@ -4643,6 +4682,7 @@ def main(argv: list[str] | None = None) -> None:
             payload["measure"] = {
                 "cpuModel": cpu_model(),
                 "datasets": measure_datasets,
+                "memTotalBytes": mem_total_bytes(),
                 "nproc": logical_cpus(),
                 "platform": platform.platform(),
                 "repeat": measure_repeats,

@@ -1984,6 +1984,42 @@ class EvalRetrievalMeasureStatsTest(unittest.TestCase):
         )
         self.assertIn("none", table)
 
+    def test_repeats_keep_min_and_max_next_to_the_median(self) -> None:
+        def run(wall: float, rss: int, query: float) -> dict:
+            return {
+                "engine": "nesso",
+                "status": "ok",
+                "indexWallSeconds": wall,
+                "indexPeakRssBytes": rss,
+                "indexBytes": 10,
+                "indexToLogRatio": 0.1,
+                "timeToFirstResultSeconds": None,
+                "modes": [
+                    {
+                        "mode": "auto",
+                        "queryWallSeconds": query,
+                        "queryPeakRssBytes": rss,
+                        "queryLatencyMedianSeconds": query / 10,
+                        "queryLatencyP95Seconds": query / 5,
+                    }
+                ],
+            }
+
+        merged = self.mod.merge_engine_measure_repeats([run(3.0, 300, 2.0), run(1.0, 100, 1.0), run(2.0, 200, 4.0)])
+        self.assertEqual(merged["indexWallSeconds"], 2.0)
+        # A key with no value in any repeat (time to first result here) has no range.
+        self.assertEqual(merged["range"], {"indexWallSeconds": [1.0, 3.0], "indexPeakRssBytes": [100, 300]})
+        mode = merged["modes"][0]
+        self.assertEqual(mode["queryWallSeconds"], 2.0)
+        self.assertEqual(mode["range"]["queryWallSeconds"], [1.0, 4.0])
+        self.assertEqual(mode["range"]["queryLatencyP95Seconds"], [0.2, 0.8])
+        skipped = self.mod.merge_engine_measure_repeats([{"engine": "ck", "status": "skipped", "reason": "missing"}])
+        self.assertNotIn("range", skipped)
+
+    def test_mem_total_from_meminfo(self) -> None:
+        self.assertEqual(self.mod.parse_mem_total("MemTotal:       16384 kB\nMemFree: 1 kB\n"), 16384 * 1024)
+        self.assertIsNone(self.mod.parse_mem_total("MemFree: 1 kB\n"))
+
 
 @unittest.skipUnless(
     pathlib.Path(os.environ.get("NESSO_BENCH_TIME", "/usr/bin/time")).is_file(),

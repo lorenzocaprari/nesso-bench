@@ -44,6 +44,29 @@ def retrieval_report(*engines: dict) -> dict:
     }
 
 
+def measured(report: dict, *rows: str, tool: dict | None = None, log_lines: int = 100, **machine: object) -> dict:
+    """Attach a measure section with one row per engine name."""
+    section = {
+        "cpuModel": "Test CPU",
+        "datasets": [
+            {
+                "engines": [{"engine": name, "indexWallSeconds": 1.0, "range": {}, "status": "ok"} for name in rows],
+                "logBytes": 1000,
+                "logLines": log_lines,
+                "name": report["datasets"][0]["dataset"],
+            }
+        ],
+        "memTotalBytes": 64 * 2**30,
+        "nproc": 8,
+        "platform": "Linux-test",
+        "repeat": 3,
+        "threads": None,
+        "tool": tool if tool is not None else {name: f"{name} 1.0" for name in rows},
+    }
+    section.update(machine)
+    return {**report, "measure": section}
+
+
 class EvalRetrievalMergeTest(unittest.TestCase):
     def run_merge(self, *reports: dict, markdown: bool = False) -> tuple[subprocess.CompletedProcess[str], dict | None, str]:
         with tempfile.TemporaryDirectory() as temp:
@@ -91,6 +114,41 @@ class EvalRetrievalMergeTest(unittest.TestCase):
             ((needle_report(engine("a", 1.0)), needle_report(engine("b", 1.0), dataset="other")), "has datasets"),
             ((needle_report(engine("a", 1.0)), needle_report(engine("b", 1.0), lines=5)), "differs outside engines"),
             (({"datasets": [], "schema_version": 3, "overall": {"engines": []}},), "schema_version 4"),
+        ]
+        for reports, message in cases:
+            result, _merged, _text = self.run_merge(*reports)
+            self.assertNotEqual(result.returncode, 0, message)
+            self.assertIn(message, result.stderr)
+
+    def test_merges_measure_sections(self) -> None:
+        result, merged, _text = self.run_merge(
+            measured(needle_report(engine("nesso", 0.6)), "nesso"),
+            measured(needle_report(engine("diy-faiss", 0.4)), "diy-faiss"),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        assert merged is not None
+        measure = merged["measure"]
+        self.assertEqual([row["engine"] for row in measure["datasets"][0]["engines"]], ["nesso", "diy-faiss"])
+        self.assertEqual(measure["tool"], {"diy-faiss": "diy-faiss 1.0", "nesso": "nesso 1.0"})
+        self.assertEqual(measure["cpuModel"], "Test CPU")
+
+    def test_rejects_measure_mismatches(self) -> None:
+        nesso = needle_report(engine("nesso", 0.6))
+        diy = needle_report(engine("diy-faiss", 0.4))
+        cases = [
+            ((measured(nesso, "nesso"), diy), "has a measure section and"),
+            ((nesso, measured(diy, "diy-faiss")), "has a measure section and"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", cpuModel="Other CPU")), "measure cpuModel"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", memTotalBytes=16 * 2**30)), "measure memTotalBytes"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", nproc=4)), "measure nproc"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", repeat=1)), "measure repeat"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", threads="1")), "measure threads"),
+            (
+                (measured(nesso, "nesso", tool={"nesso-model": "a"}), measured(diy, "diy-faiss", tool={"nesso-model": "b"})),
+                "measure tool nesso-model",
+            ),
+            ((measured(nesso, "nesso"), measured(diy, "nesso")), "measured engine nesso is in both"),
+            ((measured(nesso, "nesso"), measured(diy, "diy-faiss", log_lines=5)), "logLines differs"),
         ]
         for reports, message in cases:
             result, _merged, _text = self.run_merge(*reports)

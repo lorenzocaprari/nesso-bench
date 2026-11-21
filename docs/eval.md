@@ -117,7 +117,7 @@ python3 scripts/eval-retrieval --dataset thunderbird-needle-1m,bgl-needle-1m \
 
 Which model each semantic engine uses matters for reading the results. **Same-model controls** use all-MiniLM-L6-v2, the model nesso ships, so a difference comes from the engine, fusion, and routing rather than the model: diy-faiss (fp32, exact search), opensearch-knn (the same vectors, HNSW), and xerj-neural. xerj's neural mode is itself all-MiniLM-L6-v2: without `embedding.local_model_dir` it downloads those three files from Hugging Face. The workflow stages them at the revision diy-faiss pins, so the run is reproducible. xerj's release model bundle is its separate facts model and plays no part in search. **As shipped** engines use their own defaults: vecgrep bundles all-MiniLM-L6-v2, ck uses BAAI/bge-small-en-v1.5, and xerj-semantic is xerj's default `semantic` search, a lexical feature-hashing embedder with no model. A loss to an as-shipped engine can come from its model; that question belongs to a model comparison, not to ranking.
 
-`scripts/eval-retrieval-merge` combines engine reports (`schema_version` 4) or needle reports that cover the same datasets into one report, in input order. It refuses a mix of kinds, different datasets, and an engine that appears twice. `--markdown` also writes the overall table.
+`scripts/eval-retrieval-merge` combines engine reports (`schema_version` 4) or needle reports that cover the same datasets into one report, in input order. It refuses a mix of kinds, different datasets, and an engine that appears twice. Reports from `--measure` merge their `measure` sections too, so each engine can run in its own process on the benchmark machine and still end up in one report: every input must have one (or none may), the CPU model, RAM, `nproc`, platform, repeat count, and `NESSO_THREADS` must match, each measured dataset must have the same log size and line count, a measured engine may appear once, and tool versions are combined (the same tool with two versions is refused). `--markdown` also writes the overall table.
 
 ### nesso margin
 
@@ -129,7 +129,7 @@ The `eval-retrieval` workflow prints this table for the 2k report and the needle
 
 Off by default. Without it, quality JSON stays byte-identical with prior runs. With `--measure`, the report gains a top-level `measure` object that is machine-dependent and must not be used as a CI or nightly gate.
 
-Numbers (median across `--repeat`, default 3):
+Numbers (median across `--repeat`, default 3; each engine, and each nesso mode, also has a `range` object with `[min, max]` across the repeats for the timings and peak RSS that have a value, so run-to-run noise is visible next to the median):
 
 | Field | Meaning |
 | --- | --- |
@@ -142,7 +142,7 @@ Numbers (median across `--repeat`, default 3):
 
 Peak RSS always comes from GNU time on a child process. In-process Python engines (`bm25`, `diy-faiss`) run under `--measure-worker` so RSS is comparable. xerj measure requires a spawned node (`--xerj-bin` / `PATH`), not `--xerj-url`, so the server is inside the timed process tree. OpenSearch measure likewise requires `--opensearch-home` / `OPENSEARCH_HOME`, not `--opensearch-url`; `indexBytes` is the spawned node's data directory after a flush.
 
-Platform, CPU model, `nproc`, `NESSO_THREADS`, and tool versions are recorded in `measure`. Published numbers should come from one fixed machine with those fields kept beside the table.
+Platform, CPU model, total RAM (`memTotalBytes`, from `/proc/meminfo`), `nproc`, `NESSO_THREADS`, and tool versions are recorded in `measure`. Published numbers should come from one fixed machine with those fields kept beside the table.
 
 Larger inputs (speed/memory only, no quality labels):
 

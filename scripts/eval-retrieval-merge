@@ -7,6 +7,12 @@ order, with the same per-dataset fields apart from engines. The output lists
 every input's engines, in input order, per dataset and in overall. An engine
 that appears in two inputs is an error. Writes deterministic JSON.
 
+Reports from --measure carry a measure section. Either every input has one or
+none does. Measured inputs must come from one machine and one setting (CPU
+model, RAM, nproc, platform, repeat count, NESSO_THREADS); their measured
+engines are appended per dataset and their tool versions combined, so one
+engine per process on a fixed machine still yields one report.
+
 Used by the eval-competitors workflow, where each heavy engine runs in its own
 job, and for refreshing the committed reference report by hand.
 """
@@ -42,6 +48,45 @@ def without_engines(entry: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in entry.items() if key != "engines"}
 
 
+# Measured numbers are only comparable from one machine and one setting.
+MEASURE_SAME_KEYS = ("cpuModel", "memTotalBytes", "nproc", "platform", "repeat", "threads")
+
+
+def merge_measure(
+    merged: dict[str, Any], first_path: Path, path: Path, payload: dict[str, Any]
+) -> None:
+    target = merged.get("measure")
+    measure = payload.get("measure")
+    if (target is None) != (measure is None):
+        with_measure, without = (path, first_path) if target is None else (first_path, path)
+        raise SystemExit(f"error: {with_measure} has a measure section and {without} does not")
+    if target is None or measure is None:
+        return
+    for key in MEASURE_SAME_KEYS:
+        if target.get(key) != measure.get(key):
+            raise SystemExit(
+                f"error: {path} measure {key} is {measure.get(key)!r}; {first_path} has {target.get(key)!r}"
+            )
+    tools = target.setdefault("tool", {})
+    for name, version in sorted((measure.get("tool") or {}).items()):
+        if name in tools and tools[name] != version:
+            raise SystemExit(f"error: {path} measure tool {name} is {version!r}; {first_path} has {tools[name]!r}")
+        tools[name] = version
+    names = [entry.get("name") for entry in measure["datasets"]]
+    expected = [entry.get("name") for entry in target["datasets"]]
+    if names != expected:
+        raise SystemExit(f"error: {path} measures datasets {names}; expected {expected}")
+    for into, entry in zip(target["datasets"], measure["datasets"], strict=True):
+        for key in ("logBytes", "logLines"):
+            if into.get(key) != entry.get(key):
+                raise SystemExit(f"error: {path} measure dataset {entry['name']} {key} differs")
+        present = {row["engine"] for row in into["engines"]}
+        for row in entry["engines"]:
+            if row["engine"] in present:
+                raise SystemExit(f"error: measured engine {row['engine']} is in both {first_path} and {path}")
+        into["engines"].extend(entry["engines"])
+
+
 def merge(reports: list[tuple[Path, dict[str, Any]]]) -> dict[str, Any]:
     if not reports:
         raise SystemExit("error: no reports to merge")
@@ -63,6 +108,7 @@ def merge(reports: list[tuple[Path, dict[str, Any]]]) -> dict[str, Any]:
             if name in seen:
                 raise SystemExit(f"error: engine {name} is in both {seen[name]} and {path}")
             seen[name] = path
+        merge_measure(merged, first_path, path, payload)
         for target, entry in zip(merged["datasets"], payload["datasets"], strict=True):
             target["engines"].extend(entry["engines"])
         merged["overall"]["engines"].extend(payload["overall"]["engines"])
