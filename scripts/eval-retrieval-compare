@@ -18,7 +18,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -192,6 +194,87 @@ def headline_nesso_mode(flat: dict[tuple[str, str, str, str], float]) -> str | N
     return None
 
 
+# Paired bootstrap over queries for the margin's confidence interval.
+BOOTSTRAP_RESAMPLES = 5000
+CONFIDENCE = 0.95
+
+
+def query_scores(report: dict[str, Any], metric: str = "mrr") -> dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]]:
+    """(system, ranker) -> {(dataset, query id): (class, score)}; system "overall" pools every dataset."""
+    scores: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
+
+    def add(dataset: str, ranker: str, queries: Any) -> None:
+        if not isinstance(queries, list):
+            return
+        for query in queries:
+            if not isinstance(query, dict):
+                continue
+            value = (query.get("metrics") or {}).get(metric)
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                continue
+            entry = (str(query.get("class")), float(value))
+            key = (dataset, str(query.get("id")))
+            scores.setdefault((dataset, ranker), {})[key] = entry
+            scores.setdefault(("overall", ranker), {})[key] = entry
+
+    for entry in report.get("datasets") or []:
+        if not isinstance(entry, dict) or not isinstance(entry.get("dataset"), str):
+            continue
+        dataset = entry["dataset"]
+        if "engines" in entry:
+            for engine in entry.get("engines") or []:
+                if not isinstance(engine, dict) or engine.get("status") == "skipped":
+                    continue
+                name = engine.get("engine")
+                if not isinstance(name, str):
+                    continue
+                if "modes" in engine:
+                    for mode in engine.get("modes") or []:
+                        add(dataset, str(mode.get("mode")), mode.get("queries"))
+                else:
+                    add(dataset, ranker_label(name), engine.get("queries"))
+        else:
+            for mode in entry.get("modes") or []:
+                add(dataset, str(mode.get("mode")), mode.get("queries"))
+    return scores
+
+
+def paired_differences(
+    ours: dict[tuple[str, str], tuple[str, float]],
+    theirs: dict[tuple[str, str], tuple[str, float]],
+    class_name: str,
+) -> list[float]:
+    """Per-query score differences on the queries both rankers answered, in a stable order."""
+    shared = sorted(
+        key for key, (cls, _score) in ours.items() if key in theirs and (class_name == "overall" or cls == class_name)
+    )
+    return [ours[key][1] - theirs[key][1] for key in shared]
+
+
+def bootstrap_interval(differences: list[float], label: str) -> tuple[float, float] | None:
+    """Percentile interval of the mean difference. Seeded from the label, so reruns print the same bounds."""
+    if not differences:
+        return None
+    rng = random.Random(zlib.crc32(label.encode("utf-8")))
+    count = len(differences)
+    means = sorted(sum(rng.choices(differences, k=count)) / count for _ in range(BOOTSTRAP_RESAMPLES))
+    tail = (1.0 - CONFIDENCE) / 2.0
+    low = means[int(tail * BOOTSTRAP_RESAMPLES)]
+    high = means[min(BOOTSTRAP_RESAMPLES - 1, int((1.0 - tail) * BOOTSTRAP_RESAMPLES))]
+    return low, high
+
+
+def verdict(interval: tuple[float, float] | None) -> str:
+    if interval is None:
+        return "—"
+    low, high = interval
+    if low > 0:
+        return "win"
+    if high < 0:
+        return "loss"
+    return "tie"
+
+
 def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
     """Per system and class: nesso against the best other engine, by MRR."""
     cur = flatten(current)
@@ -201,8 +284,11 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
     if nesso is None:
         return f"### nesso margin ({family})\n\nno nesso rows in the current report\n"
     rivals: dict[tuple[str, str], dict[str, tuple[float, float, str]]] = {}
+    per_query = query_scores(current)
+    rival_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
 
-    def add_rivals(flat: dict[tuple[str, str, str, str], float], source: str) -> None:
+    def add_rivals(report: dict[str, Any], source: str) -> None:
+        flat = flatten(report)
         for (system, ranker, class_name, metric), value in flat.items():
             if metric != "mrr" or ranker in NESSO_MODES:
                 continue
@@ -210,14 +296,17 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
             if ranker in bucket:
                 continue
             bucket[ranker] = (value, flat.get((system, ranker, class_name, "ndcg_at_10"), 0.0), source)
+        for key, scores in query_scores(report).items():
+            if key[1] not in NESSO_MODES:
+                rival_queries.setdefault(key, scores)
 
-    add_rivals(cur, "this run")
+    add_rivals(current, "this run")
     used = 0
     for reference in references:
         if report_family(reference) != family:
             continue
         used += 1
-        add_rivals(flatten(reference), "reference")
+        add_rivals(reference, "reference")
 
     order: list[tuple[str, str]] = []
     for system, ranker, class_name, _bucket in iter_buckets(current):
@@ -227,8 +316,8 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
     lines = [
         f"### nesso margin ({family}, nesso `{nesso}` against the best other engine by MRR)",
         "",
-        "| system | class | n | nesso MRR | nesso nDCG@10 | best other | other MRR | other nDCG@10 | margin |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| system | class | n | nesso MRR | nesso nDCG@10 | best other | other MRR | other nDCG@10 | margin | 95% CI | verdict |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     small = False
     for system, class_name in order:
@@ -241,9 +330,21 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         if candidates:
             name, (other_mrr, other_ndcg, source) = max(candidates.items(), key=lambda item: (item[1][0], item[0]))
             label = name if source == "this run" else f"{name} (reference)"
-            other = [label, f"{other_mrr:.3f}", f"{other_ndcg:.3f}", f"{nesso_mrr - other_mrr:+.3f}"]
+            differences = paired_differences(
+                per_query.get((system, nesso), {}), rival_queries.get((system, name), {}), class_name
+            )
+            interval = bootstrap_interval(differences, f"{system}/{class_name}/{nesso}/{name}")
+            spread = "—" if interval is None else f"[{interval[0]:+.3f}, {interval[1]:+.3f}]"
+            other = [
+                label,
+                f"{other_mrr:.3f}",
+                f"{other_ndcg:.3f}",
+                f"{nesso_mrr - other_mrr:+.3f}",
+                spread,
+                verdict(interval),
+            ]
         else:
-            other = ["none", "—", "—", "—"]
+            other = ["none", "—", "—", "—", "—", "—"]
         lines.append(
             "| "
             + " | ".join(
@@ -253,7 +354,10 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         )
     lines.append("")
     lines.append(
-        f"Margin is nesso MRR minus the best other engine's MRR. References used: {used}."
+        f"Margin is nesso MRR minus the best other engine's MRR. References used: {used}. "
+        f"95% CI: paired bootstrap of the per-query MRR difference ({BOOTSTRAP_RESAMPLES} resamples, "
+        "seeded per row so it is reproducible) on the queries both engines answered. "
+        "win or loss when the interval excludes 0, tie when it contains 0."
         + (
             f" Some classes have fewer than {NOISE_QUERY_COUNT} queries; there one query moves MRR by more than 1/{NOISE_QUERY_COUNT}, so small margins are noise."
             if small
