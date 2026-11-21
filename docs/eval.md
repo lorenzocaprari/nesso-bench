@@ -204,3 +204,16 @@ scripts/scorecard --nesso-version 0.3.1 --suites 2k --groups nesso,bm25 --memory
 ```
 
 The full run takes many hours: the embedding engines index the 1,000,000-line windows slowly, and ck and vecgrep may hit the memory cap there. That outcome is a result to report, not a failure of the run.
+
+### Rendering the scorecard
+
+`scripts/eval-results-render results/<VERSION>` turns a `scripts/scorecard` results directory into one Markdown page, `docs/results/<VERSION>.md` by default (`--out` to change it). The page has, in order:
+
+- **Machine:** the fields from `machine.json`, and a development-only banner when the run used `--dev`.
+- **Where nesso loses:** every row, per system and pooled, where another ranker or nesso mode beats nesso's headline mode (`auto`) on the same queries with its whole 95% interval below 0. It uses the same paired bootstrap as `eval-retrieval-compare --margins`.
+- **Quality:** per suite, the pooled rows per ranker and class: MRR, nDCG@10, recall@10 (p@10 on needle suites), nesso `auto` minus the ranker with its 95% interval, and the verdict from nesso's side.
+- **Speed and memory:** per measured dataset: index lines/s, index wall, index peak RSS, index size and its ratio to the log, query p50 and p95, query peak RSS, and time to first result. Medians, with (min–max) when the repeats differ. The `NESSO_THREADS=1` reports follow when present.
+- **Runs that did not finish:** each run whose outcome was not `ok`, such as `out-of-memory (48G)`.
+- **Versions:** the tool versions the measured reports recorded.
+
+The page is deterministic for a given results directory, so a rerender shows as a real diff.

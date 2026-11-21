@@ -1,0 +1,356 @@
+#!/usr/bin/env python3
+"""Render a scorecard results directory as one Markdown page.
+
+    scripts/eval-results-render results/0.3.1 --out docs/results/0.3.1.md
+
+Reads what scripts/scorecard wrote (machine.json, status.json,
+merged/<suite>.json, and raw/<suite>/nesso-threads-1.json when present) and
+writes, in this order: the machine, where nesso loses, quality per suite,
+speed and memory per dataset, runs that did not finish, and tool versions.
+
+Quality rows compare every engine and nesso mode with nesso's headline mode
+(auto) on the same queries: the margin is nesso minus that ranker, with a 95%
+paired bootstrap interval and a verdict from nesso's side (win, loss, tie), as
+in eval-retrieval-compare --margins. "Where nesso loses" lists every row whose
+interval is entirely below 0. The output is deterministic for a given input.
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parent.parent
+HEADLINE = "auto"
+MIB = 1024 * 1024
+
+
+def load_compare():
+    loader = importlib.machinery.SourceFileLoader("eval_retrieval_compare", str(ROOT / "scripts" / "eval-retrieval-compare"))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+    return module
+
+
+compare = load_compare()
+
+
+def load_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"error: cannot read {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"error: malformed JSON in {path}: {exc}") from exc
+
+
+def table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    lines = ["| " + " | ".join(headers) + " |", "|" + " --- |" * len(headers)]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    return lines
+
+
+# ---- quality ---------------------------------------------------------------
+
+
+def systems(report: dict[str, Any]) -> list[str]:
+    names = [entry.get("dataset") for entry in report.get("datasets", []) if isinstance(entry.get("dataset"), str)]
+    return [*names, "overall"]
+
+
+def quality_rows(suite: str, report: dict[str, Any], system: str = "overall") -> list[dict[str, Any]]:
+    """Rows per ranker and class for one system, with the margin against nesso's headline mode."""
+    flat = compare.flatten(report)
+    counts = compare.query_counts(report)
+    scores = compare.query_scores(report)
+    needle = report.get("kind") == "needle"
+    third = "precision_at_10" if needle else "recall_at_10"
+    rankers: list[str] = []
+    classes: list[str] = []
+    for name, ranker, class_name, _bucket in compare.iter_buckets(report):
+        if name != system:
+            continue
+        if ranker not in rankers:
+            rankers.append(ranker)
+        if class_name not in classes:
+            classes.append(class_name)
+    # Classes in report order, overall last.
+    classes = [name for name in classes if name != "overall"] + (["overall"] if "overall" in classes else [])
+    headline = scores.get((system, HEADLINE), {})
+    rows = []
+    for ranker in rankers:
+        for class_name in classes:
+            key = (system, ranker, class_name)
+            if (*key, "mrr") not in flat:
+                continue
+            row: dict[str, Any] = {
+                "suite": suite,
+                "system": system,
+                "ranker": ranker,
+                "class": class_name,
+                "n": counts.get(key),
+                "mrr": flat[(*key, "mrr")],
+                "ndcg": flat.get((*key, "ndcg_at_10")),
+                "third": flat.get((*key, third)),
+                "interval": None,
+                "verdict": "—",
+            }
+            if ranker != HEADLINE and headline:
+                differences = compare.paired_differences(headline, scores.get((system, ranker), {}), class_name)
+                interval = compare.bootstrap_interval(differences, f"{suite}/{system}/{class_name}/{HEADLINE}/{ranker}")
+                row["interval"] = interval
+                row["verdict"] = compare.verdict(interval)
+                row["margin"] = flat.get((system, HEADLINE, class_name, "mrr"), 0.0) - row["mrr"]
+            rows.append(row)
+    return rows
+
+
+def number(value: float | None, digits: int = 3) -> str:
+    return "—" if value is None else f"{value:.{digits}f}"
+
+
+def quality_section(suite: str, report: dict[str, Any], rows: list[dict[str, Any]]) -> list[str]:
+    third = "p@10" if report.get("kind") == "needle" else "recall@10"
+    body = []
+    for row in rows:
+        if row["ranker"] == HEADLINE:
+            margin = "headline"
+        elif row["interval"] is None:
+            margin = "—"
+        else:
+            low, high = row["interval"]
+            margin = f"{row['margin']:+.3f} [{low:+.3f}, {high:+.3f}]"
+        name = f"nesso/{row['ranker']}" if row["ranker"] in compare.NESSO_MODES else row["ranker"]
+        body.append(
+            [name, row["class"], "—" if row["n"] is None else str(row["n"]), number(row["mrr"]), number(row["ndcg"]),
+             number(row["third"]), margin, row["verdict"]]
+        )
+    return [
+        f"### {suite}",
+        "",
+        *table(["ranker", "class", "n", "MRR", "nDCG@10", third, "nesso − ranker (95% CI)", "nesso"], body),
+        "",
+    ]
+
+
+# ---- speed and memory --------------------------------------------------------
+
+
+def with_range(value: float | None, spread: list[float] | None, scale: float = 1.0, digits: int = 2) -> str:
+    if value is None:
+        return "—"
+    text = f"{value * scale:.{digits}f}"
+    if spread and spread[0] != spread[1]:
+        text += f" ({spread[0] * scale:.{digits}f}–{spread[1] * scale:.{digits}f})"
+    return text
+
+
+def mib(value: float | None) -> str:
+    if value is None:
+        return "—"
+    size = value / MIB
+    return f"{size:.1f}" if size < 10 else f"{size:,.0f}"
+
+
+def measure_rows(dataset: dict[str, Any]) -> list[list[str]]:
+    lines = dataset.get("logLines") or 0
+    rows = []
+    for engine in dataset.get("engines", []):
+        name = engine["engine"]
+        if engine.get("status") == "skipped":
+            rows.append([name, f"skipped: {engine.get('reason', '')}", *["—"] * 8])
+            continue
+        spread = engine.get("range", {})
+        wall = engine.get("indexWallSeconds")
+        rate = "—" if not wall or not lines else f"{lines / wall:,.0f}"
+        ratio = engine.get("indexToLogRatio")
+        size = "—" if engine.get("indexBytes") is None else f"{mib(engine['indexBytes'])} ({number(ratio, 2)}×)"
+        index = [rate, with_range(wall, spread.get("indexWallSeconds")), mib(engine.get("indexPeakRssBytes")), size]
+        ttfr = with_range(engine.get("timeToFirstResultSeconds"), spread.get("timeToFirstResultSeconds"))
+        modes = engine.get("modes") or [{"mode": None, **engine}]
+        for mode in modes:
+            mode_spread = mode.get("range", spread)
+            label = name if mode["mode"] is None else f"{name}/{mode['mode']}"
+            rows.append(
+                [
+                    label,
+                    *index,
+                    with_range(mode.get("queryLatencyMedianSeconds"), mode_spread.get("queryLatencyMedianSeconds"), 1000, 1),
+                    with_range(mode.get("queryLatencyP95Seconds"), mode_spread.get("queryLatencyP95Seconds"), 1000, 1),
+                    mib(mode.get("queryPeakRssBytes")),
+                    ttfr,
+                ]
+            )
+    return rows
+
+
+MEASURE_HEADERS = [
+    "engine",
+    "index lines/s",
+    "index s",
+    "index peak RSS MiB",
+    "index MiB (× log)",
+    "query p50 ms",
+    "query p95 ms",
+    "query peak RSS MiB",
+    "first result s",
+]
+
+
+def measure_section(title: str, measure: dict[str, Any]) -> list[str]:
+    out = []
+    for dataset in measure.get("datasets", []):
+        out += [
+            f"### {title}: {dataset['name']} ({dataset.get('logLines', 0):,} lines, {mib(dataset.get('logBytes', 0))} MiB)",
+            "",
+            *table(MEASURE_HEADERS, measure_rows(dataset)),
+            "",
+        ]
+    return out
+
+
+# ---- page --------------------------------------------------------------------
+
+
+def machine_section(machine: dict[str, Any]) -> list[str]:
+    tools = machine.get("tools", {})
+    rows = [
+        ["CPU", f"{machine.get('cpuModel')} ({machine.get('nproc')} logical CPUs, SMT {machine.get('smtActive')})"],
+        ["RAM", f"{(machine.get('memTotalBytes') or 0) / 2**30:.1f} GiB, swap {(machine.get('swapTotalBytes') or 0) / 2**30:.1f} GiB"],
+        ["Kernel", f"{machine.get('kernel')} ({machine.get('platform')})"],
+        ["CPU governor", str(machine.get("cpuGovernor"))],
+        ["Memory cap per run", str(machine.get("memoryMax"))],
+        ["Timeout per run", f"{machine.get('timeoutHours')} h"],
+        ["Python, GNU time", f"{tools.get('python')}, {tools.get('gnuTime')}"],
+        ["nesso-bench commit", f"{machine.get('nessoBenchCommit')}{' (dirty)' if machine.get('nessoBenchDirty') else ''}"],
+        ["Started", str(machine.get("startedAt"))],
+    ]
+    return ["## Machine", "", *table(["field", "value"], rows), ""]
+
+
+def render(results: Path) -> str:
+    machine = load_json(results / "machine.json")
+    status = load_json(results / "status.json")
+    version = machine.get("nessoVersion", results.name)
+    merged: list[tuple[str, dict[str, Any]]] = []
+    for entry in status.get("merges", []):
+        if entry.get("merged"):
+            merged.append((entry["suite"], load_json(results / entry["merged"])))
+
+    lines = [f"# nesso {version} scorecard", ""]
+    if machine.get("developmentOnly"):
+        lines += ["> **Development only.** This run allowed WSL, a busy machine, or local changes; do not publish its numbers.", ""]
+    lines += [
+        f"nesso {version} (the released binary and its shipped int8 model) against the other engines, on one machine. "
+        "Quality is machine-independent; speed and memory hold for this machine only.",
+        "",
+    ]
+    lines += machine_section(machine)
+
+    quality: list[tuple[str, dict[str, Any], list[dict[str, Any]]]] = []
+    for suite, report in merged:
+        rows = quality_rows(suite, report)
+        if rows:
+            quality.append((suite, report, rows))
+    # Losses on any one system count, not only on the pooled rows the quality tables show.
+    losses = [
+        row
+        for suite, report, _rows in quality
+        for system in systems(report)
+        for row in quality_rows(suite, report, system)
+        if row["verdict"] == "loss"
+    ]
+    lines += ["## Where nesso loses", ""]
+    if losses:
+        body = [
+            [row["suite"], row["system"], row["class"], row["ranker"], number(row["mrr"]), f"{row['margin']:+.3f}",
+             f"[{row['interval'][0]:+.3f}, {row['interval'][1]:+.3f}]"]
+            for row in losses
+        ]
+        lines += [
+            "Rows, per system and pooled (`overall`), where another ranker beats nesso's headline mode (`auto`) on the same queries, with the whole 95% interval below 0.",
+            "",
+            *table(["suite", "system", "class", "ranker", "ranker MRR", "nesso − ranker", "95% CI"], body),
+            "",
+        ]
+    else:
+        lines += ["No ranker beats nesso's headline mode with a 95% interval entirely below 0.", ""]
+
+    lines += [
+        "## Quality",
+        "",
+        "Overall rows per suite. The margin is nesso `auto` minus the ranker on the queries both answered, with a 95% paired "
+        "bootstrap interval; `win` or `loss` when it excludes 0 (from nesso's side), `tie` when it contains 0.",
+        "",
+    ]
+    for suite, report, rows in quality:
+        lines += quality_section(suite, report, rows)
+
+    lines += [
+        "## Speed and memory",
+        "",
+        "Medians across repeats; (min–max) when the repeats differ. Peak RSS is from GNU time on the engine's own process tree. "
+        "OpenSearch and xerj include their server.",
+        "",
+    ]
+    for suite, report in merged:
+        if report.get("measure"):
+            lines += measure_section(suite, report["measure"])
+    for suite, _report in merged:
+        threads = results / "raw" / suite / "nesso-threads-1.json"
+        if threads.is_file():
+            measure = load_json(threads).get("measure")
+            if measure:
+                lines += measure_section(f"{suite} at NESSO_THREADS=1", measure)
+
+    unfinished = [run for run in status.get("runs", []) if run.get("outcome") != "ok"]
+    lines += ["## Runs that did not finish", ""]
+    if unfinished:
+        body = [[run["suite"], run["group"], run["outcome"], f"{run.get('wallSeconds', 0) / 3600:.2f} h"] for run in unfinished]
+        lines += [
+            "An engine that ran out of memory or time under the per-run limits is a result, not a gap: it could not do that task on this machine.",
+            "",
+            *table(["suite", "engine group", "outcome", "after"], body),
+            "",
+        ]
+    else:
+        lines += ["Every run finished.", ""]
+
+    tools: dict[str, str] = {}
+    for _suite, report in merged:
+        for name, value in sorted((report.get("measure") or {}).get("tool", {}).items()):
+            tools.setdefault(name, str(value))
+    if tools:
+        lines += ["## Versions", "", *table(["tool", "version"], [[name, tools[name]] for name in sorted(tools)]), ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("results", type=Path, help="scripts/scorecard results directory")
+    parser.add_argument("--out", type=Path, default=None, help="Markdown path (default docs/results/<version>.md)")
+    args = parser.parse_args(argv)
+    page = render(args.results)
+    out = args.out or ROOT / "docs" / "results" / f"{args.results.name}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page, encoding="utf-8")
+    print(f"wrote {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except SystemExit as exc:
+        if isinstance(exc.code, str):
+            print(exc.code, file=sys.stderr)
+            raise SystemExit(1) from exc
+        raise
