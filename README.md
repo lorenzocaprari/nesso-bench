@@ -19,7 +19,8 @@ what these results cannot show.
 
 ## Data
 
-- **Loghub 2k seed sets** (HDFS, BGL, Thunderbird, OpenSSH, Linux, Apache) from
+- **Loghub 2k seed sets** (HDFS, BGL, Thunderbird, OpenSSH, Linux, Apache), and three more
+  with other log shapes (Hadoop, OpenStack, HealthApp), from
   [logpai/loghub](https://github.com/logpai/loghub), with small labelled query sets. Good for
   regression checks; too small to show customers.
 - **Needle windows** from [Loghub 2.0](https://zenodo.org/records/8275861) (CC-BY-4.0): 100,000

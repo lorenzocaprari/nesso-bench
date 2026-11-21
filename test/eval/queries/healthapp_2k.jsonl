@@ -1,0 +1,39 @@
+# Queries for scripts/eval-retrieval on Loghub HealthApp_2k.
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"20171223-22:15:29:606","relevant_lines":[1]}
+{"id":"exact_02","class":"exact_id","query":"20171223-22:15:49:366","relevant_lines":[241]}
+{"id":"exact_03","class":"exact_id","query":"20171223-22:17:48:656","relevant_lines":[460]}
+{"id":"exact_04","class":"exact_id","query":"20171223-22:19:59:677","relevant_lines":[808]}
+{"id":"exact_05","class":"exact_id","query":"20171223-22:53:12:714","relevant_lines":[1195]}
+{"id":"exact_06","class":"exact_id","query":"20171223-23:37:14:441","relevant_lines":[1554]}
+{"id":"exact_07","class":"exact_id","query":"126775","relevant_lines":[9]}
+{"id":"exact_08","class":"exact_id","query":"127696","relevant_lines":[293]}
+{"id":"exact_09","class":"exact_id","query":"129045","relevant_lines":[580],"split":"test"}
+{"id":"exact_10","class":"exact_id","query":"3579","relevant_lines":[1,8,13],"split":"test"}
+{"id":"exact_11","class":"exact_id","query":"3620","relevant_lines":[282],"split":"test"}
+{"id":"exact_12","class":"exact_id","query":"3684","relevant_lines":[569],"split":"test"}
+{"id":"para_01","class":"paraphrase","query":"sync failed broadcast was sent","relevant_events":["E54"]}
+{"id":"para_02","class":"paraphrase","query":"cannot sync because there is no cloud version","relevant_events":["E23"]}
+{"id":"para_03","class":"paraphrase","query":"bulk save of detail health data failed with a data insert error","relevant_events":["E31"],"split":"test"}
+{"id":"para_04","class":"paraphrase","query":"saving one detail data item failed","relevant_events":["E50"]}
+{"id":"para_05","class":"paraphrase","query":"uploading statistics to the database failed","relevant_events":["E73"],"split":"test"}
+{"id":"para_06","class":"paraphrase","query":"timestamp moved backwards for the extended report","relevant_events":["E69"],"split":"test"}
+{"id":"para_07","class":"paraphrase","query":"flushing sensor data","relevant_events":["E12"]}
+{"id":"para_08","class":"paraphrase","query":"screen off broadcast received","relevant_events":["E40"]}
+{"id":"para_09","class":"paraphrase","query":"auto sync switch is open so sync is needed","relevant_events":["E36"]}
+{"id":"para_10","class":"paraphrase","query":"data privacy switch is open, pushing health data","relevant_events":["E25"]}
+{"id":"para_11","class":"paraphrase","query":"a new day comes and the sync condition is reset","relevant_events":["E5"],"split":"test"}
+{"id":"para_12","class":"paraphrase","query":"start of a sync with options for action, method, scope","relevant_events":["E64"]}
+{"id":"cause_01","class":"cause","query":"the app told other components that the cloud sync did not succeed","relevant_events":["E54"]}
+{"id":"cause_02","class":"cause","query":"synchronisation was skipped since the cloud service is unavailable in this build","relevant_events":["E23"]}
+{"id":"cause_03","class":"cause","query":"writing step detail rows to the database was rejected","relevant_events":["E31"],"split":"test"}
+{"id":"cause_04","class":"cause","query":"an individual health record could not be stored","relevant_events":["E50"]}
+{"id":"cause_05","class":"cause","query":"the periodic statistics upload did not complete","relevant_events":["E73"],"split":"test"}
+{"id":"cause_06","class":"cause","query":"the device clock went back so the report time was out of order","relevant_events":["E69"],"split":"test"}
+{"id":"cause_07","class":"cause","query":"buffered sensor readings were written out","relevant_events":["E12"]}
+{"id":"cause_08","class":"cause","query":"the user locked the phone so the app got a screen off event","relevant_events":["E40"]}
+{"id":"cause_09","class":"cause","query":"the user enabled automatic synchronisation so the app decided to sync","relevant_events":["E36"]}
+{"id":"cause_10","class":"cause","query":"the user agreed to data sharing so health records are being uploaded","relevant_events":["E25"]}
+{"id":"cause_11","class":"cause","query":"midnight passed so daily counters were reset","relevant_events":["E5"],"split":"test"}
+{"id":"cause_12","class":"cause","query":"a synchronisation job was launched with specific settings","relevant_events":["E64"]}

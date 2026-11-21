@@ -82,6 +82,7 @@ class Group:
 
 SUITES = (
     Suite("2k", "all-2k", 3),
+    Suite("formats", "all-formats", 3),
     Suite("bgl-needle-100k", "bgl-needle-100k", 3),
     Suite("bgl-needle-1m", "bgl-needle-1m", 1),
     Suite("thunderbird-needle-1m", "thunderbird-needle-1m", 1),
@@ -111,6 +112,7 @@ FP32 = Group("nesso-fp32", ("nesso",), fp32=True)
 # Loghub inputs each suite needs, as scripts/fetch-loghub arguments.
 FETCHES = {
     "2k": [["--dataset", "all-2k"]],
+    "formats": [["--dataset", "all-formats"]],
     "bgl-needle-100k": [["--dataset", "bgl-loghub2", "--window", "4100001:100000"]],
     "bgl-needle-1m": [["--dataset", "bgl-loghub2", "--window", "3200001:1000000"]],
     "thunderbird-needle-1m": [["--dataset", "thunderbird-loghub2", "--window", "8550001:1000000"]],
