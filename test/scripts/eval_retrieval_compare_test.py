@@ -394,6 +394,19 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         row = next(line for line in result.stdout.splitlines() if line.startswith("| hdfs-2k | cause |"))
         self.assertTrue(row.endswith("| tie |"), row)
 
+    def test_margins_mark_a_rival_whose_rankings_changed(self) -> None:
+        unstable = {**scored_entry("xerj-neural", [1.0] * 10), "quality_repeat": {"changed_queries": ["q1"], "identical": False, "runs": 3}}
+        current = engine_report([scored_entry("nesso/auto", [0.0] * 10), scored_entry("bm25", [0.0] * 10)])
+        result = self.run_margins(current, [engine_report([unstable])])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("| xerj-neural (reference) † | 1.000 |", result.stdout)
+        self.assertIn("† The engine's rankings changed between repeated quality runs", result.stdout)
+        # Identical repeats are not marked.
+        stable = {**unstable, "quality_repeat": {"changed_queries": [], "identical": True, "runs": 3}}
+        result = self.run_margins(current, [engine_report([stable])])
+        self.assertIn("| xerj-neural (reference) | 1.000 |", result.stdout)
+        self.assertNotIn("†", result.stdout)
+
     def test_bootstrap_helpers(self) -> None:
         mod = load_compare()
         differences = [0.5, -0.25, 0.0, 1.0, 0.25]

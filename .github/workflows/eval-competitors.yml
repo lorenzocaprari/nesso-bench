@@ -73,7 +73,7 @@ jobs:
     # Host runner, not the build container: OpenSearch refuses to run as root.
     # ubuntu-24.04 ships Python 3.12, the version diy-faiss.hashes.txt targets.
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: 360
     permissions:
       contents: read
     strategy:
@@ -82,6 +82,10 @@ jobs:
         engine: [diy-faiss, opensearch, opensearch-knn, ck, vecgrep, xerj, xerj-neural, xerj-semantic]
     env:
       ENGINE: ${{ matrix.engine }}
+      # xerj-neural and xerj-semantic rankings changed between runs of the same
+      # version, so they are scored three times; the report keeps the median run
+      # and the spread (quality_repeat).
+      QUALITY_REPEAT: ${{ (matrix.engine == 'xerj-neural' || matrix.engine == 'xerj-semantic') && 3 || 1 }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -123,6 +127,7 @@ jobs:
             --dataset all-2k \
             --engine "${ENGINE}" \
             "${extra[@]}" \
+            --quality-repeat "${QUALITY_REPEAT}" \
             --skip-fetch \
             --out "build/eval/competitors/2k-${ENGINE}.json"
 
@@ -131,13 +136,14 @@ jobs:
       # step), so they score the 2k seed sets only. The condition names them
       # explicitly: a matrix key that is absent for other engines compares equal
       # to false in an expression, which skipped this step for every engine.
-      # The slowest engines take about 45 minutes (diy-faiss) and 75 minutes
-      # (xerj-neural) on this step. The step timeout is about twice the slowest,
-      # so a hang fails here instead of at the job timeout. The harness prints
-      # one progress line per engine phase to stderr.
+      # The slowest engines take about 45 minutes (diy-faiss) and 75 minutes per
+      # run (xerj-neural, three runs) on this step. The step timeout is about
+      # twice diy-faiss and 1.2 times xerj-neural's three runs, so a hang fails
+      # here instead of at the job timeout. The harness prints one progress line
+      # per engine phase to stderr.
       - name: Score the BGL needle window
         if: matrix.engine != 'ck' && matrix.engine != 'vecgrep'
-        timeout-minutes: 150
+        timeout-minutes: ${{ matrix.engine == 'xerj-neural' && 270 || 150 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -149,6 +155,7 @@ jobs:
             --dataset bgl-needle-100k \
             --engine "${ENGINE}" \
             "${extra[@]}" \
+            --quality-repeat "${QUALITY_REPEAT}" \
             --skip-fetch \
             --out "build/eval/competitors/needle-${ENGINE}.json"
 

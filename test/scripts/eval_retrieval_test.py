@@ -1788,6 +1788,7 @@ class EvalRetrievalNeedleTest(unittest.TestCase):
                         workdir=directory / "work",
                         xerj=mod.XerjContext(),
                         opensearch=mod.OpenSearchContext(),
+                        quality_repeat=2,
                     )
             finally:
                 mod.BENCH_DIR, mod.NEEDLES_DIR = old_bench, old_needles
@@ -1795,9 +1796,13 @@ class EvalRetrievalNeedleTest(unittest.TestCase):
         logged = stderr.getvalue().splitlines()
         self.assertEqual(logged[0], "eval-retrieval: tiny-needle: 5 lines, 2 queries")
         for engine in ("grep", "bm25"):
-            self.assertIn(f"eval-retrieval: tiny-needle {engine}: indexing", logged)
-            self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine}: indexed in ") for line in logged))
-            self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine}: scored at ") for line in logged))
+            for run in ("run 1/2", "run 2/2"):
+                self.assertIn(f"eval-retrieval: tiny-needle {engine} {run}: indexing", logged)
+                self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine} {run}: indexed in ") for line in logged))
+                self.assertTrue(any(line.startswith(f"eval-retrieval: tiny-needle {engine} {run}: scored at ") for line in logged))
+        # grep and BM25 rank the same way every time.
+        for row in result["engines"]:
+            self.assertEqual(row["quality_repeat"], {"changed_queries": [], "identical": True, "reported_run": 1, "runs": 2})
         self.assertEqual(result["alert_counts"], {"APPSEV": 1, "KERNDTLB": 1, "KERNPAN": 1})
         self.assertEqual(result["queries_absent_alert"], ["KERNMICRO"])
         self.assertEqual(result["uncovered_alerts"], ["APPSEV", "KERNPAN"])
@@ -1814,6 +1819,7 @@ class EvalRetrievalNeedleTest(unittest.TestCase):
         self.assertEqual(symptom["overlap"], 0.0)
         overall = mod.aggregate_needle_overall([result])
         self.assertEqual([row["engine"] for row in overall], ["grep", "bm25"])
+        self.assertEqual(overall[0]["quality_repeat"], {"changed_queries": [], "identical": True, "runs": 2})
         self.assertEqual(overall[0]["overall"]["n"], 2)
         self.assertEqual(overall[0]["overall"]["found_at_depth"], 0.5)
         table = mod.format_needle_report(
@@ -1837,6 +1843,8 @@ class EvalRetrievalNeedleTest(unittest.TestCase):
                 (["--measure-only"], "--measure-only requires --measure"),
                 (["--measure", "--opensearch-url", "http://127.0.0.1:9200"], "not --opensearch-url"),
                 (["--measure", "--xerj-url", "http://127.0.0.1:9200"], "not --xerj-url"),
+                (["--quality-repeat", "0"], "--quality-repeat must be a positive integer"),
+                (["--measure", "--measure-only", "--quality-repeat", "2"], "--quality-repeat needs quality scoring"),
             ):
                 rejected = subprocess.run(
                     [sys.executable, str(SCRIPT), "--dataset", "all-needle", "--engine", "grep", *extra, "--out", str(out)],
@@ -2152,6 +2160,93 @@ class EvalRetrievalDiyFaissLiveTest(unittest.TestCase):
         self.assertTrue(versions["sentence_transformers"])
         self.assertTrue(versions["torch"])
         self.assertTrue(versions["faiss"])
+
+
+class EvalRetrievalQualityRepeatTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mod = load_eval()
+
+    class Flaky:
+        """Ranks "unstable" differently on each index build, like an engine whose index build order varies."""
+
+        name = "flaky"
+
+        def __init__(self) -> None:
+            self.builds = 0
+            self.cleaned = 0
+
+        def availability(self) -> tuple[bool, str]:
+            return True, ""
+
+        def prepare(self, log_path, lines, workdir) -> None:
+            del log_path, lines, workdir
+            self.builds += 1
+
+        def rank(self, query: str, *, k: int = 10) -> list[int]:
+            del k
+            if query == "stable":
+                return [1, 2, 3]
+            return {1: [2, 1, 3], 2: [1, 2, 3], 3: [1, 3, 2]}[self.builds]
+
+        def cleanup(self) -> None:
+            self.cleaned += 1
+
+    def score(self, engine, repeat: int) -> dict:
+        mod = self.mod
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            return mod.evaluate_keyword_engine(
+                engine,
+                queries=[
+                    mod.Query("q1", "exact_id", "stable", frozenset({1}), None),
+                    mod.Query("q2", "exact_id", "unstable", frozenset({2}), None),
+                ],
+                event_by_line={1: "E1", 2: "E2", 3: "E3"},
+                log_path=directory / "log",
+                lines=["a", "b", "c"],
+                workdir=directory,
+                quality_repeat=repeat,
+            )
+
+    def test_one_run_adds_nothing(self) -> None:
+        # The default keeps reports, and so the committed references, unchanged.
+        payload = self.score(self.Flaky(), 1)
+        self.assertNotIn("quality_repeat", payload)
+        self.assertEqual(payload["overall"]["metrics"]["mrr"], 1.0)
+
+    def test_repeats_report_the_median_run_and_the_spread(self) -> None:
+        mod = self.mod
+        engine = self.Flaky()
+        payload = self.score(engine, 3)
+        # Each run builds and drops its own index.
+        self.assertEqual((engine.builds, engine.cleaned), (3, 3))
+        repeat = payload["quality_repeat"]
+        # Overall MRR per run: 1.0, 0.75, 0.667; the median is run 2, reported whole.
+        self.assertEqual(repeat["runs"], 3)
+        self.assertFalse(repeat["identical"])
+        self.assertEqual(repeat["changed_queries"], ["q2"])
+        self.assertEqual(repeat["reported_run"], 2)
+        self.assertEqual(payload["overall"]["metrics"]["mrr"], 0.75)
+        self.assertEqual(payload["queries"][1]["ranked_lines"], [1, 2, 3])
+        low, high = repeat["range"]["overall"]["mrr"]
+        self.assertAlmostEqual(low, 2 / 3, places=5)
+        self.assertEqual(high, 1.0)
+        self.assertEqual(repeat["range"]["by_class"]["exact_id"]["recall_at_10"], [1.0, 1.0])
+        dataset = {"dataset": "tiny-2k", "engines": [payload], "query_count": 2}
+        overall = mod.aggregate_overall_engines([dataset], ["flaky"])["engines"][0]
+        self.assertEqual(overall["quality_repeat"], {"changed_queries": ["tiny-2k/q2"], "identical": False, "runs": 3})
+        text = mod.format_report({"datasets": [dataset], "overall": {"engines": [overall]}, "schema_version": 4})
+        self.assertIn("# tiny-2k/flaky: 3 quality runs, 1 queries changed, overall MRR 0.667-1.000; median run 2 shown", text)
+
+    def test_even_count_takes_the_lower_median(self) -> None:
+        runs = [
+            {"by_class": [], "overall": {"metrics": {"mrr": value}}, "queries": [{"id": "q", "metrics": {"mrr": value}}]}
+            for value in (0.9, 0.1, 0.5, 0.7)
+        ]
+        combined = self.mod.combine_quality_runs(runs)
+        self.assertEqual(combined["quality_repeat"]["reported_run"], 3)
+        self.assertEqual(combined["overall"]["metrics"]["mrr"], 0.5)
 
 
 if __name__ == "__main__":

@@ -160,6 +160,24 @@ def iter_buckets(report: dict[str, Any]) -> list[tuple[str, str, str, dict[str, 
     return found
 
 
+def unstable_rankers(report: dict[str, Any]) -> set[tuple[str, str]]:
+    """(system, ranker) rows whose rankings changed across repeated quality runs."""
+    found: set[tuple[str, str]] = set()
+    scopes: list[tuple[str, Any]] = []
+    for entry in report.get("datasets") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("dataset"), str):
+            scopes.append((entry["dataset"], entry.get("engines")))
+    overall = report.get("overall")
+    if isinstance(overall, dict):
+        scopes.append(("overall", overall.get("engines")))
+    for system, engines in scopes:
+        for engine in engines if isinstance(engines, list) else []:
+            repeat = engine.get("quality_repeat") if isinstance(engine, dict) else None
+            if isinstance(repeat, dict) and repeat.get("identical") is False and isinstance(engine.get("engine"), str):
+                found.add((system, ranker_label(engine["engine"])))
+    return found
+
+
 def flatten(report: dict[str, Any]) -> dict[tuple[str, str, str, str], float]:
     """Map (system, ranker, class, metric) -> score."""
     flat: dict[tuple[str, str, str, str], float] = {}
@@ -286,8 +304,10 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
     rivals: dict[tuple[str, str], dict[str, tuple[float, float, str]]] = {}
     per_query = query_scores(current)
     rival_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
+    unstable: set[tuple[str, str, str]] = set()
 
     def add_rivals(report: dict[str, Any], source: str) -> None:
+        unstable.update((system, ranker, source) for system, ranker in unstable_rankers(report))
         flat = flatten(report)
         for (system, ranker, class_name, metric), value in flat.items():
             if metric != "mrr" or ranker in NESSO_MODES:
@@ -320,6 +340,7 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     small = False
+    marked = False
     for system, class_name in order:
         count = counts.get((system, nesso, class_name))
         if count is not None and count < NOISE_QUERY_COUNT:
@@ -330,6 +351,9 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         if candidates:
             name, (other_mrr, other_ndcg, source) = max(candidates.items(), key=lambda item: (item[1][0], item[0]))
             label = name if source == "this run" else f"{name} (reference)"
+            if (system, name, source) in unstable:
+                label += " †"
+                marked = True
             differences = paired_differences(
                 per_query.get((system, nesso), {}), rival_queries.get((system, name), {}), class_name
             )
@@ -361,6 +385,12 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         + (
             f" Some classes have fewer than {NOISE_QUERY_COUNT} queries; there one query moves MRR by more than 1/{NOISE_QUERY_COUNT}, so small margins are noise."
             if small
+            else ""
+        )
+        + (
+            " † The engine's rankings changed between repeated quality runs (`--quality-repeat`); "
+            "its median run is shown, and the report's `quality_repeat` has the range."
+            if marked
             else ""
         )
     )

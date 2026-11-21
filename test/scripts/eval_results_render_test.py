@@ -148,6 +148,20 @@ class EvalResultsRenderTest(unittest.TestCase):
         self.assertIn("No ranker beats nesso's headline mode", page)
         self.assertIn("Every run finished.", page)
 
+    def test_unstable_ranker_is_marked(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            results = results_dir(directory)
+            report = json.loads((results / "merged" / "2k.json").read_text(encoding="utf-8"))
+            repeat = {"changed_queries": ["h1"], "identical": False, "runs": 3}
+            report["datasets"][0]["engines"][1]["quality_repeat"] = repeat
+            report["overall"]["engines"][1]["quality_repeat"] = repeat
+            (results / "merged" / "2k.json").write_text(json.dumps(report), encoding="utf-8")
+            page = self.render(results, directory / "page.md")
+        self.assertIn("| 2k | hdfs-2k | cause | bm25 † | 1.000 | -1.000 | [-1.000, -1.000] |", page)
+        self.assertIn("| bm25 † | cause | 2 |", page)
+        self.assertEqual(page.count("† The ranker's rankings changed between repeated quality runs"), 2)
+
     def test_missing_results_fail_clearly(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             completed = subprocess.run(
