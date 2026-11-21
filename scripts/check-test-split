@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Fail when a frozen test query changed.
+
+    scripts/check-test-split [--root DIR] [--update]
+
+Queries in test/eval/queries/*.jsonl and test/eval/needles/*.jsonl that set
+"split":"test" are frozen: the digest of every one of them (file, then the
+line's JSON with sorted keys) is committed in test/eval/test-split.sha256. Tune
+nesso on the dev queries (eval-retrieval --split dev). Editing, adding, moving,
+or dropping a test query changes the digest and fails this check, so a change
+to the test set is a visible decision: --update rewrites the digest, and the
+commit message should say why the test set changed.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+DIGEST = Path("test/eval/test-split.sha256")
+PATTERNS = ("test/eval/queries/*.jsonl", "test/eval/needles/*.jsonl")
+
+
+def test_queries(root: Path) -> list[str]:
+    """One canonical line per test query, sorted, each prefixed with its file."""
+    found = []
+    for pattern in PATTERNS:
+        for path in sorted(root.glob(pattern)):
+            for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                try:
+                    payload = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise SystemExit(f"error: {path}:{number}: invalid JSON: {exc}") from exc
+                if isinstance(payload, dict) and payload.get("split") == "test":
+                    found.append(f"{path.relative_to(root).as_posix()}\t{json.dumps(payload, sort_keys=True, separators=(',', ':'))}")
+    return sorted(found)
+
+
+def digest(entries: list[str]) -> str:
+    return hashlib.sha256(("\n".join(entries) + "\n").encode("utf-8")).hexdigest()
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--root", type=Path, default=ROOT, help="Repository root (default: this one)")
+    parser.add_argument("--update", action="store_true", help="Rewrite the committed digest")
+    args = parser.parse_args(argv)
+    entries = test_queries(args.root)
+    current = digest(entries)
+    target = args.root / DIGEST
+    if args.update:
+        target.write_text(f"{current}  {len(entries)} test queries\n", encoding="utf-8")
+        print(f"wrote {target}: {len(entries)} test queries")
+        return 0
+    try:
+        committed = target.read_text(encoding="utf-8").split()[0]
+    except (OSError, IndexError):
+        print(f"error: cannot read {target}; run scripts/check-test-split --update", file=sys.stderr)
+        return 1
+    if committed != current:
+        print(
+            f"error: the test queries changed ({len(entries)} now). They are frozen; if the change is "
+            "intended, run scripts/check-test-split --update and say in the commit message why.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"ok: {len(entries)} test queries match {DIGEST}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
