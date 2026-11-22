@@ -1,0 +1,24 @@
+eval-retrieval: bgl-needle-100k: 100000 lines, 34 queries
+eval-retrieval: bgl-needle-100k xerj-semantic: indexing
+eval-retrieval: bgl-needle-100k xerj-semantic: indexed in 15 s
+eval-retrieval: bgl-needle-100k xerj-semantic: scored at 15 s
+=== bgl-needle-100k (100000 lines, 17 alert categories, 21061 alert lines, 34 queries) ===
+engine         class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+-------------  -------  --  -----  -----  -------  ---------  ----------  -------
+xerj-semantic  keyword  17  0.435  0.588  0.529    0.588      1           1.00
+xerj-semantic  symptom  17  0.059  0.059  0.059    0.059      1           0.05
+xerj-semantic  overall  34  0.247  0.324  0.294    0.324      1           0.52
+=== overall ===
+engine         class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+-------------  -------  --  -----  -----  -------  ---------  ----------  -------
+xerj-semantic  keyword  17  0.435  0.588  0.529    0.588      1           1.00
+xerj-semantic  symptom  17  0.059  0.059  0.059    0.059      1           0.05
+xerj-semantic  overall  34  0.247  0.324  0.294    0.324      1           0.52
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 9V45 96-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure bgl-needle-100k ===
+engine         index_s    index_rss   index_bytes  ratio      q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+-------------  ---------  ----------  -----------  ---------  --------  ----------  --------  --------  ---------
+xerj-semantic  16.130000  1058189312  320666609    18.042790  0.095822  1090252800  0.002427  0.005724  15.180000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bgl-needle-100k/xerj-semantic.json

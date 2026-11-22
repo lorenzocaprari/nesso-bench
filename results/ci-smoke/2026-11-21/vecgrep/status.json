@@ -1,0 +1,83 @@
+{
+  "finishedAt": "2026-11-21T22:39:12Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "vecgrep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "vecgrep",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/vecgrep.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 463.5
+    },
+    {
+      "engines": [
+        "vecgrep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "vecgrep",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/vecgrep.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 211.9
+    },
+    {
+      "engines": [
+        "vecgrep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "vecgrep",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/vecgrep.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 112.2
+    },
+    {
+      "engines": [
+        "vecgrep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "vecgrep",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/vecgrep.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 84.7
+    }
+  ]
+}

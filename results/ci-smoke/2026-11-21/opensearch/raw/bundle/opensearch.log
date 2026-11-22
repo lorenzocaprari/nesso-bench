@@ -1,0 +1,16 @@
+=== support-bundle ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       18  0.538889   0.513889  0.518292
+opensearch  exact_id    18  1.000000   1.000000  1.000000
+opensearch  paraphrase  18  0.672222   0.722222  0.676185
+opensearch  overall     54  0.737037   0.745370  0.731492
+=== overall ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       18  0.538889   0.513889  0.518292
+opensearch  exact_id    18  1.000000   1.000000  1.000000
+opensearch  paraphrase  18  0.672222   0.722222  0.676185
+opensearch  overall     54  0.737037   0.745370  0.731492
+# support-bundle/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/opensearch.json

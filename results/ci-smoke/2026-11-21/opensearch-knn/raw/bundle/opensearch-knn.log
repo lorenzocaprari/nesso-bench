@@ -1,0 +1,20 @@
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8925.16it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== support-bundle ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       18  0.400000   0.416667  0.403907
+opensearch-knn  exact_id    18  0.166667   0.166667  0.166667
+opensearch-knn  paraphrase  18  0.500000   0.500000  0.500000
+opensearch-knn  overall     54  0.355556   0.361111  0.356858
+=== overall ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       18  0.400000   0.416667  0.403907
+opensearch-knn  exact_id    18  0.166667   0.166667  0.166667
+opensearch-knn  paraphrase  18  0.500000   0.500000  0.500000
+opensearch-knn  overall     54  0.355556   0.361111  0.356858
+# support-bundle/opensearch-knn: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g' knn_method=hnsw/lucene/cosinesimil
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/opensearch-knn.json

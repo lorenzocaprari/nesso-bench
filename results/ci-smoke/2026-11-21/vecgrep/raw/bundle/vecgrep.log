@@ -1,0 +1,15 @@
+=== support-bundle ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       18  0.434392   0.688889  0.451810
+vecgrep  exact_id    18  0.055556   0.027778  0.035052
+vecgrep  paraphrase  18  0.462169   0.675926  0.464156
+vecgrep  overall     54  0.317372   0.464198  0.317006
+=== overall ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       18  0.434392   0.688889  0.451810
+vecgrep  exact_id    18  0.055556   0.027778  0.035052
+vecgrep  paraphrase  18  0.462169   0.675926  0.464156
+vecgrep  overall     54  0.317372   0.464198  0.317006
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/vecgrep.json

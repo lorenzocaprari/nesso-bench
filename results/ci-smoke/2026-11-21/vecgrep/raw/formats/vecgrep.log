@@ -1,0 +1,44 @@
+=== hadoop-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       12  0.183333   0.277778  0.154633
+vecgrep  exact_id    12  0.027778   0.013889  0.013930
+vecgrep  paraphrase  12  0.550000   0.427083  0.400296
+vecgrep  overall     36  0.253704   0.239583  0.189620
+=== openstack-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       12  0.187963   0.250000  0.184788
+vecgrep  exact_id    12  0.083333   0.016667  0.032238
+vecgrep  paraphrase  12  0.337963   0.537037  0.348270
+vecgrep  overall     36  0.203086   0.267901  0.188432
+=== healthapp-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       12  0.266667   0.472222  0.259025
+vecgrep  exact_id    12  0.027778   0.041667  0.024673
+vecgrep  paraphrase  12  0.433333   0.525794  0.302394
+vecgrep  overall     36  0.242593   0.346561  0.195364
+=== overall ===
+engine   class       n    recall@10  MRR       nDCG@10
+-------  ----------  ---  ---------  --------  --------
+vecgrep  cause       36   0.212654   0.333333  0.199482
+vecgrep  exact_id    36   0.046296   0.024074  0.023614
+vecgrep  paraphrase  36   0.440432   0.496638  0.350320
+vecgrep  overall     108  0.233128   0.284682  0.191139
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 vecgrep=vecgrep 0.10.1
+=== measure hadoop-2k ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  16.160000  3042951168  2080786      5.405369  10.570000  259072000  0.288436  0.299813  16.840000
+=== measure openstack-2k ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  23.330000  3903164416  2322450      3.902497  10.890000  259043328  0.298096  0.314709  23.530000
+=== measure healthapp-2k ===
+engine   index_s   index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  --------  ----------  -----------  --------  ---------  ---------  --------  --------  --------
+vecgrep  9.690000  1916403712  1871890      9.985757  10.330000  259121152  0.283276  0.292158  9.790000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/vecgrep.json

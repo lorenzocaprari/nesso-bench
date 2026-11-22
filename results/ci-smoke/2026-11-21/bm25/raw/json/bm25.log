@@ -1,0 +1,22 @@
+=== hdfs-2k-json ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.212000   0.193333  0.203822
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.448000   0.448000  0.446358
+bm25    overall     75  0.553333   0.547111  0.550060
+=== overall ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.212000   0.193333  0.203822
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.448000   0.448000  0.446358
+bm25    overall     75  0.553333   0.547111  0.550060
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 sqlite3=3.45.1
+=== measure hdfs-2k-json ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  38453248   704512       1.770807  0.240000  37478400  0.001641  0.003426  0.140000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/bm25.json

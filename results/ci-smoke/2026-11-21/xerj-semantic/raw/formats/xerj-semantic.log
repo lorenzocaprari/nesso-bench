@@ -1,0 +1,47 @@
+=== hadoop-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       12  0.250000   0.155556  0.181414
+xerj-semantic  exact_id    12  0.640278   0.537500  0.481386
+xerj-semantic  paraphrase  12  0.833333   0.833333  0.833333
+xerj-semantic  overall     36  0.574537   0.508796  0.498711
+=== openstack-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       12  0.200000   0.145833  0.154825
+xerj-semantic  exact_id    12  0.908333   0.937500  0.899301
+xerj-semantic  paraphrase  12  0.900000   0.916667  0.902234
+xerj-semantic  overall     36  0.669444   0.666667  0.652120
+=== healthapp-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       12  0.141667   0.180556  0.128828
+xerj-semantic  exact_id    12  1.000000   0.958333  0.969244
+xerj-semantic  paraphrase  12  0.825000   0.647222  0.710838
+xerj-semantic  overall     36  0.655556   0.595370  0.602970
+=== overall ===
+engine         class       n    recall@10  MRR       nDCG@10
+-------------  ----------  ---  ---------  --------  --------
+xerj-semantic  cause       36   0.197222   0.160648  0.155022
+xerj-semantic  exact_id    36   0.849537   0.811111  0.783310
+xerj-semantic  paraphrase  36   0.852778   0.799074  0.815469
+xerj-semantic  overall     108  0.633179   0.590278  0.584600
+# hadoop-2k/xerj-semantic: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# openstack-2k/xerj-semantic: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# healthapp-2k/xerj-semantic: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 9V45 96-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hadoop-2k ===
+engine         index_s   index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  ---------  --------  ---------  --------  --------  --------
+xerj-semantic  0.470000  116289536  7937175      20.618824  0.076986  119447552  0.001768  0.002444  0.540000
+=== measure openstack-2k ===
+engine         index_s   index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  ---------  --------  ---------  --------  --------  --------
+xerj-semantic  0.640000  129003520  10776208     18.107652  0.087512  136159232  0.001993  0.002584  0.660000
+=== measure healthapp-2k ===
+engine         index_s   index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  ---------  --------  ---------  --------  --------  --------
+xerj-semantic  0.570000  120418304  10161172     54.205638  0.066339  119689216  0.001533  0.001930  0.540000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/xerj-semantic.json

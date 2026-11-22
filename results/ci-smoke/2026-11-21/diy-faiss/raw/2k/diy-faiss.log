@@ -1,0 +1,96 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 7925.40it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8699.25it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8234.79it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 7754.82it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8044.49it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8254.77it/s]
+=== hdfs-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       25  0.344000   0.358000  0.340268
+diy-faiss  exact_id    25  0.040000   0.004000  0.011563
+diy-faiss  paraphrase  25  0.528000   0.564000  0.530352
+diy-faiss  overall     75  0.304000   0.308667  0.294061
+=== bgl-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       25  0.523444   0.515667  0.494025
+diy-faiss  exact_id    25  0.400000   0.373333  0.380000
+diy-faiss  paraphrase  25  0.856000   0.913333  0.857146
+diy-faiss  overall     75  0.593148   0.600778  0.577057
+=== thunderbird-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       25  0.704000   0.607444  0.589687
+diy-faiss  exact_id    25  0.420000   0.240762  0.282103
+diy-faiss  paraphrase  25  0.812000   0.810000  0.806852
+diy-faiss  overall     75  0.645333   0.552735  0.559548
+=== openssh-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       25  0.376000   0.325000  0.351664
+diy-faiss  exact_id    25  0.362857   0.379048  0.335075
+diy-faiss  paraphrase  25  0.732000   0.760000  0.734388
+diy-faiss  overall     75  0.490286   0.488016  0.473709
+=== linux-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       25  0.872000   0.700000  0.749850
+diy-faiss  exact_id    25  0.240000   0.220000  0.225237
+diy-faiss  paraphrase  25  0.912000   0.873333  0.890879
+diy-faiss  overall     75  0.674667   0.597778  0.621989
+=== apache-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       17  0.405882   0.379412  0.393797
+diy-faiss  exact_id    25  0.640000   0.359381  0.425927
+diy-faiss  paraphrase  17  0.705882   0.717647  0.702529
+diy-faiss  overall     59  0.591525   0.468382  0.496368
+=== overall ===
+engine     class       n    recall@10  MRR       nDCG@10
+---------  ----------  ---  ---------  --------  --------
+diy-faiss  cause       142  0.544973   0.486639  0.491774
+diy-faiss  exact_id    150  0.350476   0.262754  0.276651
+diy-faiss  paraphrase  142  0.760563   0.776174  0.756574
+diy-faiss  overall     434  0.548289   0.503992  0.504062
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=1 threads=None repeat=1
+tools: diy-faiss=st=6.3.0 torch=2.15.0+cpu faiss=1.16.0 python=3.12.3
+=== measure hdfs-2k ===
+engine     index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+diy-faiss  24.540000  808398848  3072045      10.672456  4.730000  597454848  0.008068  0.009453  24.980000
+=== measure bgl-2k ===
+engine     index_s    index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  --------  --------  ---------  --------  --------  ---------
+diy-faiss  30.010000  820736000  3072045      9.686410  4.680000  596901888  0.008263  0.009368  29.300000
+=== measure thunderbird-2k ===
+engine     index_s    index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  --------  --------  ---------  --------  --------  ---------
+diy-faiss  26.380000  875147264  3072045      9.446865  4.610000  594063360  0.007807  0.009195  26.610000
+=== measure openssh-2k ===
+engine     index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+diy-faiss  17.590000  682831872  3072045      13.640439  4.630000  597426176  0.007774  0.008953  17.690000
+=== measure linux-2k ===
+engine     index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+diy-faiss  17.470000  671961088  3072045      14.190567  4.780000  594657280  0.007947  0.009517  17.340000
+=== measure apache-2k ===
+engine     index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+diy-faiss  13.240000  636829696  3072045      17.940101  4.430000  593764352  0.007910  0.009362  13.450000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/diy-faiss.json

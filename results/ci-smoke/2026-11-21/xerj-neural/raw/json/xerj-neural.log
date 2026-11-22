@@ -1,0 +1,23 @@
+=== hdfs-2k-json ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.372000   0.358000  0.363694
+xerj-neural  exact_id    25  0.080000   0.014444  0.029268
+xerj-neural  paraphrase  25  0.548000   0.530159  0.537896
+xerj-neural  overall     75  0.333333   0.300868  0.310286
+=== overall ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.372000   0.358000  0.363694
+xerj-neural  exact_id    25  0.080000   0.014444  0.029268
+xerj-neural  paraphrase  25  0.548000   0.530159  0.537896
+xerj-neural  overall     75  0.333333   0.300868  0.310286
+# hdfs-2k-json/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hdfs-2k-json ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  82.570000  493125632  12958371     32.571160  0.997743  496078848  0.012626  0.015748  82.760000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/xerj-neural.json

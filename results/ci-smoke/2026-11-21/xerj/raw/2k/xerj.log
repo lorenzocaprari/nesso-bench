@@ -1,0 +1,83 @@
+=== hdfs-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       25  0.192000   0.133333  0.171569
+xerj    exact_id    25  1.000000   1.000000  1.000000
+xerj    paraphrase  25  0.452000   0.390000  0.430333
+xerj    overall     75  0.548000   0.507778  0.533967
+=== bgl-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       25  0.380000   0.373000  0.370961
+xerj    exact_id    25  0.960000   0.960000  0.960000
+xerj    paraphrase  25  0.867556   0.861333  0.861672
+xerj    overall     75  0.735852   0.731444  0.730878
+=== thunderbird-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       25  0.440000   0.379048  0.378571
+xerj    exact_id    25  0.920000   0.920000  0.920000
+xerj    paraphrase  25  0.892000   0.848000  0.872004
+xerj    overall     75  0.750667   0.715683  0.723525
+=== openssh-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       25  0.212000   0.146667  0.175199
+xerj    exact_id    25  0.960000   0.960000  0.960000
+xerj    paraphrase  25  0.644000   0.611667  0.621297
+xerj    overall     75  0.605333   0.572778  0.585499
+=== linux-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       25  0.608000   0.383714  0.470737
+xerj    exact_id    25  0.960000   0.960000  0.960000
+xerj    paraphrase  25  0.772000   0.723333  0.742571
+xerj    overall     75  0.780000   0.689016  0.724436
+=== apache-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       17  0.352941   0.352941  0.352941
+xerj    exact_id    25  1.000000   1.000000  1.000000
+xerj    paraphrase  17  0.705882   0.705882  0.705882
+xerj    overall     59  0.728814   0.728814  0.728814
+=== overall ===
+engine  class       n    recall@10  MRR       nDCG@10
+------  ----------  ---  ---------  --------  --------
+xerj    cause       142  0.364789   0.291507  0.318140
+xerj    exact_id    150  0.966667   0.966667  0.966667
+xerj    paraphrase  142  0.723161   0.689143  0.705612
+xerj    overall     434  0.690067   0.654959  0.669062
+# hdfs-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# bgl-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# thunderbird-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# openssh-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# linux-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# apache-2k/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hdfs-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  ---------  --------  --------  --------
+xerj    0.310000  74145792   764772       2.656861  0.076654  102363136  0.001042  0.001147  0.290000
+=== measure bgl-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  ---------  --------  --------  --------
+xerj    0.290000  75943936   808966       2.550736  0.075827  103006208  0.001017  0.001153  0.300000
+=== measure thunderbird-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  ---------  --------  --------  --------
+xerj    0.290000  76996608   740155       2.276055  0.073303  102371328  0.000981  0.001150  0.290000
+=== measure openssh-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  ---------  --------  --------  --------
+xerj    0.280000  73437184   590460       2.621750  0.072743  101253120  0.000969  0.001147  0.280000
+=== measure linux-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+xerj    0.280000  75476992   589463       2.722881  0.071613  98877440  0.000965  0.001128  0.270000
+=== measure apache-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+xerj    0.270000  72437760   513735       3.000105  0.056116  92020736  0.000945  0.001150  0.280000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/xerj.json

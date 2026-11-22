@@ -1,0 +1,22 @@
+=== hdfs-2k-json ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.184000   0.234667  0.188735
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.100000   0.154667  0.104206
+ripgrep  overall     75  0.428000   0.463111  0.430980
+=== overall ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.184000   0.234667  0.188735
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.100000   0.154667  0.104206
+ripgrep  overall     75  0.428000   0.463111  0.430980
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 rg=ripgrep 15.2.0 (rev e89fff89ac)
+=== measure hdfs-2k-json ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.430000  37822464  0.005754  0.006270  0.100000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/ripgrep.json

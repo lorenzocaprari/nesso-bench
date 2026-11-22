@@ -1,0 +1,15 @@
+=== support-bundle ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       18  0.500000   0.500000  0.488793
+bm25    exact_id    18  1.000000   1.000000  1.000000
+bm25    paraphrase  18  0.650000   0.722222  0.662184
+bm25    overall     54  0.716667   0.740741  0.716992
+=== overall ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       18  0.500000   0.500000  0.488793
+bm25    exact_id    18  1.000000   1.000000  1.000000
+bm25    paraphrase  18  0.650000   0.722222  0.662184
+bm25    overall     54  0.716667   0.740741  0.716992
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/bm25.json

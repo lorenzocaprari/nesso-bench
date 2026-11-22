@@ -1,0 +1,57 @@
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8019.11it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 7813.31it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 9255.18it/s]
+=== hadoop-2k ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       12  0.666667   0.600000  0.615571
+opensearch-knn  exact_id    12  0.155556   0.129960  0.101201
+opensearch-knn  paraphrase  12  1.000000   0.888889  0.929449
+opensearch-knn  overall     36  0.607407   0.539616  0.548741
+=== openstack-2k ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       12  0.275000   0.333333  0.282026
+opensearch-knn  exact_id    12  0.000000   0.000000  0.000000
+opensearch-knn  paraphrase  12  0.875000   0.916667  0.885837
+opensearch-knn  overall     36  0.383333   0.416667  0.389288
+=== healthapp-2k ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       12  0.833333   0.652778  0.703646
+opensearch-knn  exact_id    12  0.166667   0.091667  0.107422
+opensearch-knn  paraphrase  12  1.000000   0.877778  0.921146
+opensearch-knn  overall     36  0.666667   0.540741  0.577405
+=== overall ===
+engine          class       n    recall@10  MRR       nDCG@10
+--------------  ----------  ---  ---------  --------  --------
+opensearch-knn  cause       36   0.591667   0.528704  0.533748
+opensearch-knn  exact_id    36   0.107407   0.073876  0.069541
+opensearch-knn  paraphrase  36   0.958333   0.894444  0.912144
+opensearch-knn  overall     108  0.552469   0.499008  0.505144
+# hadoop-2k/opensearch-knn: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g' knn_method=hnsw/lucene/cosinesimil
+# openstack-2k/opensearch-knn: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g' knn_method=hnsw/lucene/cosinesimil
+# healthapp-2k/opensearch-knn: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g' knn_method=hnsw/lucene/cosinesimil
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=1 threads=None repeat=1
+tools: diy-faiss=st=6.3.0 torch=2.15.0+cpu faiss=1.16.0 opensearch=3.10.0 python=3.12.3
+=== measure hadoop-2k ===
+engine          index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+--------------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch-knn  43.560000  1628704768  3817790      9.917677  0.771572  1614688256  0.016117  0.039663  43.720000
+=== measure openstack-2k ===
+engine          index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+--------------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch-knn  72.190000  1590890496  3547142      5.960391  0.668284  1603403776  0.014871  0.032847  69.340000
+=== measure healthapp-2k ===
+engine          index_s    index_rss   index_bytes  ratio      q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+--------------  ---------  ----------  -----------  ---------  --------  ----------  --------  --------  ---------
+opensearch-knn  32.060000  1568702464  3443496      18.369623  0.562413  1571774464  0.012096  0.037079  32.160000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/opensearch-knn.json

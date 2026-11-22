@@ -1,0 +1,51 @@
+eval-retrieval: bgl-needle-100k: 100000 lines, 34 queries
+eval-retrieval: bgl-needle-100k nesso: indexing
+eval-retrieval: bgl-needle-100k nesso: indexed in 69 s
+eval-retrieval: bgl-needle-100k nesso/auto: scored at 85 s
+eval-retrieval: bgl-needle-100k nesso/dense: scored at 100 s
+eval-retrieval: bgl-needle-100k nesso/lexical: scored at 117 s
+eval-retrieval: bgl-needle-100k grep: indexing
+eval-retrieval: bgl-needle-100k grep: indexed in 0 s
+eval-retrieval: bgl-needle-100k grep: scored at 1 s
+=== bgl-needle-100k (100000 lines, 17 alert categories, 21061 alert lines, 34 queries) ===
+engine         class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+-------------  -------  --  -----  -----  -------  ---------  ----------  -------
+nesso/auto     keyword  17  0.759  1.000  0.992    1.000      1           1.00
+nesso/auto     symptom  17  0.071  0.204  0.205    0.353      2           0.05
+nesso/auto     overall  34  0.415  0.602  0.598    0.676      1           0.52
+nesso/dense    keyword  17  0.747  1.000  0.984    1.000      1           1.00
+nesso/dense    symptom  17  0.129  0.295  0.278    0.353      1           0.05
+nesso/dense    overall  34  0.438  0.648  0.631    0.676      1           0.52
+nesso/lexical  keyword  17  0.771  1.000  1.000    1.000      1           1.00
+nesso/lexical  symptom  17  0.047  0.071  0.084    0.118      3           0.05
+nesso/lexical  overall  34  0.409  0.535  0.542    0.559      1           0.52
+grep           keyword  17  0.535  0.706  0.602    0.706      1           1.00
+grep           symptom  17  0.000  0.000  0.000    0.000      none        0.05
+grep           overall  34  0.268  0.353  0.301    0.353      1           0.52
+=== overall ===
+engine         class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+-------------  -------  --  -----  -----  -------  ---------  ----------  -------
+nesso/auto     keyword  17  0.759  1.000  0.992    1.000      1           1.00
+nesso/auto     symptom  17  0.071  0.204  0.205    0.353      2           0.05
+nesso/auto     overall  34  0.415  0.602  0.598    0.676      1           0.52
+nesso/dense    keyword  17  0.747  1.000  0.984    1.000      1           1.00
+nesso/dense    symptom  17  0.129  0.295  0.278    0.353      1           0.05
+nesso/dense    overall  34  0.438  0.648  0.631    0.676      1           0.52
+nesso/lexical  keyword  17  0.771  1.000  1.000    1.000      1           1.00
+nesso/lexical  symptom  17  0.047  0.071  0.084    0.118      3           0.05
+nesso/lexical  overall  34  0.409  0.535  0.542    0.559      1           0.52
+grep           keyword  17  0.535  0.706  0.602    0.706      1           1.00
+grep           symptom  17  0.000  0.000  0.000    0.000      none        0.05
+grep           overall  34  0.268  0.353  0.301    0.353      1           0.52
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: grep=grep (GNU grep) 3.11 nesso=0.3.1 nesso-model=nesso onnx afdb6f1a0e45 22972370B python=3.12.3
+=== measure bgl-needle-100k ===
+engine         index_s    index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  ---------  ---------  -----------  --------  ---------  ---------  --------  --------  ---------
+nesso          68.760000  330059776  52050624     2.928707  -          -          -         -         68.320000
+nesso/auto     -          -          -            -         16.090000  222466048  0.469443  0.475678  -
+nesso/dense    -          -          -            -         15.670000  222158848  0.456840  0.461264  -
+nesso/lexical  -          -          -            -         16.270000  230461440  0.472771  0.489795  -
+grep           none       none       none         none      0.630000   76644352   0.015456  0.023816  0.140000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bgl-needle-100k/nesso.json

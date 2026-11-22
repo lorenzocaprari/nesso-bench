@@ -1,0 +1,102 @@
+{
+  "finishedAt": "2026-11-21T22:21:25Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bgl-needle-100k.json",
+      "suite": "bgl-needle-100k"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "bm25"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "bm25",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/bm25.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 3.4
+    },
+    {
+      "engines": [
+        "bm25"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "bm25",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/bm25.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 2.0
+    },
+    {
+      "engines": [
+        "bm25"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "bm25",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/bm25.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 0.8
+    },
+    {
+      "engines": [
+        "bm25"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "bm25",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/bm25.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 0.3
+    },
+    {
+      "engines": [
+        "bm25"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "bm25",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bgl-needle-100k/bm25.json",
+      "suite": "bgl-needle-100k",
+      "threads": null,
+      "wallSeconds": 4.0
+    }
+  ]
+}

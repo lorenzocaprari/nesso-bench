@@ -1,0 +1,44 @@
+=== hadoop-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       12  0.000000   0.000000  0.000000
+ripgrep  exact_id    12  1.000000   1.000000  1.000000
+ripgrep  paraphrase  12  0.000000   0.000000  0.000000
+ripgrep  overall     36  0.333333   0.333333  0.333333
+=== openstack-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       12  0.016667   0.023148  0.012054
+ripgrep  exact_id    12  1.000000   1.000000  1.000000
+ripgrep  paraphrase  12  0.116667   0.139683  0.112246
+ripgrep  overall     36  0.377778   0.387610  0.374767
+=== healthapp-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       12  0.166667   0.093750  0.109622
+ripgrep  exact_id    12  1.000000   1.000000  1.000000
+ripgrep  paraphrase  12  0.033333   0.111111  0.048254
+ripgrep  overall     36  0.400000   0.401620  0.385959
+=== overall ===
+engine   class       n    recall@10  MRR       nDCG@10
+-------  ----------  ---  ---------  --------  --------
+ripgrep  cause       36   0.061111   0.038966  0.040559
+ripgrep  exact_id    36   1.000000   1.000000  1.000000
+ripgrep  paraphrase  36   0.050000   0.083598  0.053500
+ripgrep  overall     108  0.370370   0.374188  0.364686
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 rg=ripgrep 15.2.0 (rev e89fff89ac)
+=== measure hadoop-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.260000  38264832  0.005766  0.006825  0.090000
+=== measure openstack-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.270000  39538688  0.006081  0.007654  0.090000
+=== measure healthapp-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.220000  36810752  0.004237  0.005802  0.090000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/ripgrep.json

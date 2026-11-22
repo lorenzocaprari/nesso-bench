@@ -1,0 +1,77 @@
+=== hdfs-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.184000   0.234667  0.188735
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.100000   0.154667  0.104206
+ripgrep  overall     75  0.428000   0.463111  0.430980
+=== bgl-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.024000   0.085000  0.034132
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.200000   0.181333  0.190698
+ripgrep  overall     75  0.408000   0.422111  0.408277
+=== thunderbird-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.056000   0.080000  0.058075
+ripgrep  exact_id    25  0.960000   0.930000  0.937227
+ripgrep  paraphrase  25  0.040000   0.073333  0.040000
+ripgrep  overall     75  0.352000   0.361111  0.345101
+=== openssh-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.104000   0.115429  0.068492
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.092000   0.155444  0.079051
+ripgrep  overall     75  0.398667   0.423624  0.382515
+=== linux-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       25  0.004000   0.020000  0.005554
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  25  0.120000   0.100000  0.100845
+ripgrep  overall     75  0.374667   0.373333  0.368800
+=== apache-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       17  0.111765   0.147059  0.103968
+ripgrep  exact_id    25  1.000000   1.000000  1.000000
+ripgrep  paraphrase  17  0.188235   0.333333  0.193859
+ripgrep  overall     59  0.510169   0.562147  0.509543
+=== overall ===
+engine   class       n    recall@10  MRR       nDCG@10
+-------  ----------  ---  ---------  --------  --------
+ripgrep  cause       142  0.078873   0.111813  0.074945
+ripgrep  exact_id    150  0.993333   0.988333  0.989538
+ripgrep  paraphrase  142  0.119718   0.156944  0.113842
+ripgrep  overall     434  0.408295   0.429524  0.403775
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 rg=ripgrep 15.2.0 (rev e89fff89ac)
+=== measure hdfs-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.430000  37564416  0.005603  0.006332  0.090000
+=== measure bgl-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.400000  37842944  0.004496  0.006647  0.090000
+=== measure thunderbird-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.400000  37994496  0.004843  0.006282  0.090000
+=== measure openssh-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.390000  37097472  0.004932  0.006005  0.090000
+=== measure linux-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.380000  37089280  0.004559  0.006014  0.090000
+=== measure apache-2k ===
+engine   index_s  index_rss  index_bytes  ratio  q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+-------  -------  ---------  -----------  -----  --------  --------  --------  --------  --------
+ripgrep  none     none       none         none   0.310000  37060608  0.005112  0.006116  0.090000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/ripgrep.json

@@ -1,0 +1,22 @@
+=== hdfs-2k-json ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.268000   0.349667  0.265972
+vecgrep  exact_id    25  0.040000   0.005000  0.012619
+vecgrep  paraphrase  25  0.348000   0.550667  0.375398
+vecgrep  overall     75  0.218667   0.301778  0.217996
+=== overall ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.268000   0.349667  0.265972
+vecgrep  exact_id    25  0.040000   0.005000  0.012619
+vecgrep  paraphrase  25  0.348000   0.550667  0.375398
+vecgrep  overall     75  0.218667   0.301778  0.217996
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 vecgrep=vecgrep 0.10.1
+=== measure hdfs-2k-json ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  22.920000  3861934080  2105362      5.291875  21.570000  259072000  0.285541  0.293780  23.210000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/vecgrep.json

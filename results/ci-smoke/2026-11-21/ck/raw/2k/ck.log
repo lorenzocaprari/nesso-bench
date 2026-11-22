@@ -1,0 +1,77 @@
+=== hdfs-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.220000   0.532825  0.243068
+ck      exact_id    25  0.000000   0.000000  0.000000
+ck      paraphrase  25  0.208000   0.553714  0.244783
+ck      overall     75  0.142667   0.362180  0.162617
+=== bgl-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.193333   0.351667  0.225202
+ck      exact_id    25  0.040000   0.008000  0.015474
+ck      paraphrase  25  0.489889   0.766667  0.535795
+ck      overall     75  0.241074   0.375444  0.258824
+=== thunderbird-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.218667   0.355714  0.190350
+ck      exact_id    25  0.080000   0.019048  0.033333
+ck      paraphrase  25  0.432444   0.518000  0.364101
+ck      overall     75  0.243704   0.297587  0.195928
+=== openssh-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.123429   0.220111  0.104023
+ck      exact_id    25  0.126667   0.086667  0.091141
+ck      paraphrase  25  0.113143   0.303000  0.126924
+ck      overall     75  0.121079   0.203259  0.107362
+=== linux-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.235667   0.249714  0.168190
+ck      exact_id    25  0.080000   0.033333  0.045237
+ck      paraphrase  25  0.471667   0.331143  0.298338
+ck      overall     75  0.262444   0.204730  0.170588
+=== apache-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       17  0.264706   0.383824  0.265725
+ck      exact_id    25  0.080000   0.014444  0.029268
+ck      paraphrase  17  0.270588   0.573529  0.326271
+ck      overall     59  0.188136   0.281968  0.182977
+=== overall ===
+engine  class       n    recall@10  MRR       nDCG@10
+------  ----------  ---  ---------  --------  --------
+ck      cause       142  0.206179   0.347013  0.195691
+ck      exact_id    150  0.067778   0.026915  0.035742
+ck      paraphrase  142  0.334356   0.503965  0.315459
+ck      overall     434  0.200283   0.287733  0.179596
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: ck=ck 0.8.1 python=3.12.3
+=== measure hdfs-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      31.320000  7793778688  439436       1.526625  32.590000  226377728  0.432698  0.452041  30.980000
+=== measure bgl-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      35.350000  7791509504  509699       1.607123  31.830000  226607104  0.419592  0.446436  35.880000
+=== measure thunderbird-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      37.980000  7865393152  539837       1.660056  32.970000  226553856  0.437304  0.451195  38.070000
+=== measure openssh-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      29.980000  7545073664  414350       1.839789  31.700000  226443264  0.421509  0.440049  29.680000
+=== measure linux-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      27.340000  6991024128  382557       1.767129  31.800000  226840576  0.423492  0.436238  27.500000
+=== measure apache-2k ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      22.520000  5822328832  313967       1.833502  24.450000  226492416  0.413278  0.421993  22.860000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/ck.json

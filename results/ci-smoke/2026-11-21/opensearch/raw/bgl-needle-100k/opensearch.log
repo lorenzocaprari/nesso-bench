@@ -1,0 +1,24 @@
+eval-retrieval: bgl-needle-100k: 100000 lines, 34 queries
+eval-retrieval: bgl-needle-100k opensearch: indexing
+eval-retrieval: bgl-needle-100k opensearch: indexed in 4 s
+eval-retrieval: bgl-needle-100k opensearch: scored at 4 s
+=== bgl-needle-100k (100000 lines, 17 alert categories, 21061 alert lines, 34 queries) ===
+engine      class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+----------  -------  --  -----  -----  -------  ---------  ----------  -------
+opensearch  keyword  17  0.771  1.000  1.000    1.000      1           1.00
+opensearch  symptom  17  0.024  0.018  0.034    0.118      7           0.05
+opensearch  overall  34  0.397  0.509  0.517    0.559      1           0.52
+=== overall ===
+engine      class    n   p@10   MRR    nDCG@10  found@100  median 1st  overlap
+----------  -------  --  -----  -----  -------  ---------  ----------  -------
+opensearch  keyword  17  0.771  1.000  1.000    1.000      1           1.00
+opensearch  symptom  17  0.024  0.018  0.034    0.118      7           0.05
+opensearch  overall  34  0.397  0.509  0.517    0.559      1           0.52
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: opensearch=3.10.0 python=3.12.3
+=== measure bgl-needle-100k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  18.040000  1553121280  8564103      0.481872  0.280451  1549549568  0.005950  0.031428  17.940000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bgl-needle-100k/opensearch.json

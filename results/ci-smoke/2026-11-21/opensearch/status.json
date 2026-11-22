@@ -1,0 +1,102 @@
+{
+  "finishedAt": "2026-11-21T22:31:12Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bgl-needle-100k.json",
+      "suite": "bgl-needle-100k"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "opensearch"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/opensearch.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 281.8
+    },
+    {
+      "engines": [
+        "opensearch"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/opensearch.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 149.7
+    },
+    {
+      "engines": [
+        "opensearch"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/opensearch.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 60.8
+    },
+    {
+      "engines": [
+        "opensearch"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/opensearch.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 15.5
+    },
+    {
+      "engines": [
+        "opensearch"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bgl-needle-100k/opensearch.json",
+      "suite": "bgl-needle-100k",
+      "threads": null,
+      "wallSeconds": 72.3
+    }
+  ]
+}

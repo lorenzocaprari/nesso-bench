@@ -1,0 +1,185 @@
+=== hdfs-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       25  0.372000   0.290000  0.346025
+nesso/auto     exact_id    25  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  25  0.676000   0.590000  0.647211
+nesso/auto     overall     75  0.682667   0.626667  0.664412
+nesso/dense    cause       25  0.380000   0.313333  0.359231
+nesso/dense    exact_id    25  0.080000   0.026667  0.039485
+nesso/dense    paraphrase  25  0.500000   0.433333  0.479231
+nesso/dense    overall     75  0.320000   0.257778  0.292649
+nesso/lexical  cause       25  0.260000   0.180000  0.235982
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  25  0.624000   0.508000  0.585812
+nesso/lexical  overall     75  0.628000   0.562667  0.607264
+grep           cause       25  0.184000   0.234667  0.188735
+grep           exact_id    25  1.000000   1.000000  1.000000
+grep           paraphrase  25  0.100000   0.154667  0.104206
+grep           overall     75  0.428000   0.463111  0.430980
+=== bgl-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       25  0.625413   0.558095  0.579978
+nesso/auto     exact_id    25  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  25  0.911556   0.940000  0.912190
+nesso/auto     overall     75  0.845656   0.832698  0.830723
+nesso/dense    cause       25  0.568000   0.535000  0.534593
+nesso/dense    exact_id    25  0.440000   0.303714  0.336509
+nesso/dense    paraphrase  25  0.847556   0.920000  0.854849
+nesso/dense    overall     75  0.618519   0.586238  0.575317
+nesso/lexical  cause       25  0.384000   0.369000  0.373506
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  25  0.880000   0.900000  0.877983
+nesso/lexical  overall     75  0.754667   0.756333  0.750496
+grep           cause       25  0.024000   0.085000  0.034132
+grep           exact_id    25  1.000000   1.000000  1.000000
+grep           paraphrase  25  0.200000   0.181333  0.190698
+grep           overall     75  0.408000   0.422111  0.408277
+=== thunderbird-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       25  0.732000   0.642048  0.643787
+nesso/auto     exact_id    25  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  25  0.936000   0.932000  0.929011
+nesso/auto     overall     75  0.889333   0.858016  0.857599
+nesso/dense    cause       25  0.686667   0.569111  0.565623
+nesso/dense    exact_id    25  0.460000   0.275714  0.319136
+nesso/dense    paraphrase  25  0.816000   0.814000  0.809117
+nesso/dense    overall     75  0.654222   0.552942  0.564625
+nesso/lexical  cause       25  0.484000   0.445714  0.432611
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  25  0.947556   0.913333  0.933026
+nesso/lexical  overall     75  0.810519   0.786349  0.788546
+grep           cause       25  0.056000   0.080000  0.058075
+grep           exact_id    25  0.960000   0.930000  0.937227
+grep           paraphrase  25  0.040000   0.073333  0.040000
+grep           overall     75  0.352000   0.361111  0.345101
+=== openssh-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       25  0.350286   0.256000  0.296449
+nesso/auto     exact_id    25  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  25  0.700000   0.640714  0.667581
+nesso/auto     overall     75  0.683429   0.632238  0.654677
+nesso/dense    cause       25  0.420000   0.352778  0.372497
+nesso/dense    exact_id    25  0.255714   0.285000  0.254988
+nesso/dense    paraphrase  25  0.676000   0.685000  0.673237
+nesso/dense    overall     75  0.450571   0.440926  0.433574
+nesso/lexical  cause       25  0.276000   0.240000  0.256434
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  25  0.680000   0.573000  0.625023
+nesso/lexical  overall     75  0.652000   0.604333  0.627152
+grep           cause       25  0.104000   0.115429  0.068492
+grep           exact_id    25  1.000000   1.000000  1.000000
+grep           paraphrase  25  0.092000   0.155444  0.079051
+grep           overall     75  0.398667   0.423624  0.382515
+=== linux-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       25  0.876000   0.693714  0.747477
+nesso/auto     exact_id    25  1.000000   0.980000  0.985237
+nesso/auto     paraphrase  25  0.908000   0.841333  0.873752
+nesso/auto     overall     75  0.928000   0.838349  0.868822
+nesso/dense    cause       25  0.832000   0.693333  0.735602
+nesso/dense    exact_id    25  0.240000   0.220000  0.225237
+nesso/dense    paraphrase  25  0.908000   0.853333  0.882075
+nesso/dense    overall     75  0.660000   0.588889  0.614305
+nesso/lexical  cause       25  0.616000   0.406159  0.480750
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  25  0.768000   0.723333  0.739435
+nesso/lexical  overall     75  0.794667   0.709831  0.740062
+grep           cause       25  0.004000   0.020000  0.005554
+grep           exact_id    25  1.000000   1.000000  1.000000
+grep           paraphrase  25  0.120000   0.100000  0.100845
+grep           overall     75  0.374667   0.373333  0.368800
+=== apache-2k ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       17  0.529412   0.529412  0.529412
+nesso/auto     exact_id    25  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  17  0.764706   0.764706  0.764706
+nesso/auto     overall     59  0.796610   0.796610  0.796610
+nesso/dense    cause       17  0.494118   0.478992  0.486628
+nesso/dense    exact_id    25  0.000000   0.000000  0.000000
+nesso/dense    paraphrase  17  0.776471   0.823529  0.791451
+nesso/dense    overall     59  0.366102   0.375303  0.368260
+nesso/lexical  cause       17  0.470588   0.470588  0.470588
+nesso/lexical  exact_id    25  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  17  0.705882   0.705882  0.705882
+nesso/lexical  overall     59  0.762712   0.762712  0.762712
+grep           cause       17  0.111765   0.147059  0.103968
+grep           exact_id    25  1.000000   1.000000  1.000000
+grep           paraphrase  17  0.188235   0.333333  0.193859
+grep           overall     59  0.510169   0.562147  0.509543
+=== overall ===
+engine         class       n    recall@10  MRR       nDCG@10
+-------------  ----------  ---  ---------  --------  --------
+nesso/auto     cause       142  0.583750   0.492933  0.523542
+nesso/auto     exact_id    150  1.000000   0.996667  0.997540
+nesso/auto     paraphrase  142  0.818936   0.785924  0.801012
+nesso/auto     overall     434  0.804565   0.762898  0.778151
+nesso/dense    cause       142  0.567371   0.491069  0.510291
+nesso/dense    exact_id    150  0.245952   0.185183  0.195893
+nesso/dense    paraphrase  142  0.752739   0.750998  0.745897
+nesso/dense    overall     434  0.516932   0.470394  0.478716
+nesso/lexical  cause       142  0.411972   0.345224  0.369592
+nesso/lexical  exact_id    150  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  142  0.771049   0.721420  0.746704
+nesso/lexical  overall     434  0.732693   0.694616  0.710862
+grep           cause       142  0.078873   0.111813  0.074945
+grep           exact_id    150  0.993333   0.988333  0.989538
+grep           paraphrase  142  0.119718   0.156944  0.113842
+grep           overall     434  0.408295   0.429524  0.403775
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: grep=grep (GNU grep) 3.11 nesso=0.3.1 nesso-model=nesso onnx afdb6f1a0e45 22972370B python=3.12.3
+=== measure hdfs-2k ===
+engine         index_s   index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  --------  ---------  ---------  --------  --------  --------
+nesso          0.430000  163667968  404736       1.406075  -          -          -         -         0.330000
+nesso/auto     -         -          -            -         16.950000  118632448  0.224654  0.227053  -
+nesso/dense    -         -          -            -         16.780000  119205888  0.221996  0.226484  -
+nesso/lexical  -         -          -            -         16.760000  118648832  0.222502  0.224809  -
+grep           none      none       none         none      0.300000   37625856   0.003533  0.004067  0.090000
+=== measure bgl-2k ===
+engine         index_s   index_rss  index_bytes  ratio      q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  ---------  ---------  ---------  --------  --------  --------
+nesso          5.790000  203714560  3532672      11.138805  -          -          -         -         5.870000
+nesso/auto     -         -          -            -          17.760000  121835520  0.235715  0.237619  -
+nesso/dense    -         -          -            -          17.730000  121815040  0.234965  0.237593  -
+nesso/lexical  -         -          -            -          17.920000  121827328  0.237590  0.241097  -
+grep           none      none       none         none       0.300000   37642240   0.002886  0.004213  0.100000
+=== measure thunderbird-2k ===
+engine         index_s   index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  --------  ---------  ---------  --------  --------  --------
+nesso          2.540000  234156032  1723136      5.298827  -          -          -         -         2.450000
+nesso/auto     -         -          -            -         17.430000  119738368  0.230918  0.233664  -
+nesso/dense    -         -          -            -         17.440000  120483840  0.230893  0.234014  -
+nesso/lexical  -         -          -            -         17.530000  119930880  0.232515  0.235316  -
+grep           none      none       none         none      0.300000   37793792   0.003165  0.004037  0.100000
+=== measure openssh-2k ===
+engine         index_s   index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  --------  ---------  ---------  --------  --------  --------
+nesso          0.690000  185102336  574080       2.549020  -          -          -         -         0.600000
+nesso/auto     -         -          -            -         17.170000  118239232  0.227932  0.229860  -
+nesso/dense    -         -          -            -         17.240000  118079488  0.228583  0.231087  -
+nesso/lexical  -         -          -            -         17.330000  118394880  0.229440  0.234217  -
+grep           none      none       none         none      0.280000   37380096   0.002880  0.003315  0.100000
+=== measure linux-2k ===
+engine         index_s   index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  --------  ---------  ---------  --------  --------  --------
+nesso          0.630000  169136128  496960       2.295586  -          -          -         -         0.500000
+nesso/auto     -         -          -            -         17.190000  118272000  0.227846  0.230643  -
+nesso/dense    -         -          -            -         17.060000  118099968  0.225865  0.229572  -
+nesso/lexical  -         -          -            -         16.990000  118788096  0.225177  0.228308  -
+grep           none      none       none         none      0.270000   37322752   0.002674  0.003328  0.090000
+=== measure apache-2k ===
+engine         index_s   index_rss  index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  --------  ---------  ---------  --------  --------  --------
+nesso          0.360000  125673472  232704       1.358943  -          -          -         -         0.270000
+nesso/auto     -         -          -            -         13.300000  117792768  0.223750  0.226568  -
+nesso/dense    -         -          -            -         13.340000  117624832  0.224124  0.227300  -
+nesso/lexical  -         -          -            -         13.270000  117985280  0.223462  0.225573  -
+grep           none      none       none         none      0.220000   37076992   0.002796  0.003209  0.090000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/nesso.json
