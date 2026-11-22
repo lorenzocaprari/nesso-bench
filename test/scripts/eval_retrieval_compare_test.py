@@ -475,6 +475,29 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         better = self.run_compare(previous, worse)
         self.assertIn("| hdfs-2k | auto | cause | 10 | +1.000 | [+1.000, +1.000] | better |", better.stdout)
 
+    def test_a_changed_query_set_gets_no_verdict(self) -> None:
+        # The previous run scored 5 queries, this one 10: the 5 shared ones did not move, the class did.
+        previous = engine_report([scored_entry("nesso/auto", [1.0] * 5)])
+        current = engine_report([scored_entry("nesso/auto", [1.0] * 5 + [0.0] * 5)])
+        result = self.run_compare(current, previous)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "| hdfs-2k | auto | cause | 5 | +0.000 | — | query set changed: 5 shared of 10 current, 5 previous |",
+            result.stdout,
+        )
+        self.assertIn(
+            "DROP hdfs-2k auto cause mrr: 1.000000 -> 0.500000 (-50.0%, query set changed: 5 shared of 10 current, 5 previous)",
+            result.stdout,
+        )
+        self.assertNotIn("| within noise |", result.stdout)
+        self.assertNotIn("] within noise", result.stdout)
+        # No shared query at all: the change column is empty.
+        renamed = engine_report([scored_entry("nesso/auto", [1.0] * 5)])
+        for query in renamed["datasets"][0]["engines"][0]["modes"][0]["queries"]:
+            query["id"] = "new-" + query["id"]
+        result = self.run_compare(renamed, previous)
+        self.assertIn("| hdfs-2k | auto | cause | 0 | — | — | query set changed: 0 shared of 5 current, 5 previous |", result.stdout)
+
     def test_mrr_change_is_omitted_when_no_query_moved(self) -> None:
         payload = engine_report([scored_entry("nesso/auto", [1.0, 0.5])])
         result = self.run_compare(payload, payload)

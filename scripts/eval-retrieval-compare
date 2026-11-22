@@ -450,6 +450,11 @@ def resolve_tolerance(explicit: float | None) -> float:
 MOVED_QUERY_LIMIT = 30
 
 
+def class_queries(scores: dict[tuple[str, str], tuple[str, float]], class_name: str) -> set[tuple[str, str]]:
+    """The query keys of one class, or of every class for "overall"."""
+    return {key for key, (cls, _score) in scores.items() if class_name == "overall" or cls == class_name}
+
+
 def change_interval(
     cur_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
     prev_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
@@ -468,6 +473,44 @@ def change_verdict(interval: tuple[float, float]) -> str:
     return {"win": "better", "loss": "worse", "tie": "within noise"}[verdict(interval)]
 
 
+def query_set_change(
+    ours: dict[tuple[str, str], tuple[str, float]],
+    theirs: dict[tuple[str, str], tuple[str, float]],
+    class_name: str,
+) -> str | None:
+    """A note when the two runs scored different queries in this class, else None.
+
+    The class score then moves with the query set, so an interval over the shared queries says
+    nothing about it.
+    """
+    current = class_queries(ours, class_name)
+    previous = class_queries(theirs, class_name)
+    if current == previous:
+        return None
+    return f"query set changed: {len(current & previous)} shared of {len(current)} current, {len(previous)} previous"
+
+
+def change_note(
+    cur_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
+    prev_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
+    system: str,
+    ranker: str,
+    class_name: str,
+) -> str:
+    """What a DROP line adds for MRR: the query-set change, or the interval and verdict."""
+    ours = cur_queries.get((system, ranker))
+    theirs = prev_queries.get((system, ranker))
+    if not ours or not theirs:
+        return ""
+    changed = query_set_change(ours, theirs, class_name)
+    if changed is not None:
+        return f", {changed}"
+    interval = change_interval(cur_queries, prev_queries, system, ranker, class_name)
+    if interval is None:
+        return ""
+    return f", 95% CI [{interval[0]:+.3f}, {interval[1]:+.3f}] {change_verdict(interval)}"
+
+
 def format_rank(rank: int | None) -> str:
     return "not found" if rank is None else str(rank)
 
@@ -481,17 +524,21 @@ def mrr_changes(current: dict[str, Any], previous: dict[str, Any]) -> list[str]:
     for system, ranker in sorted(set(cur_queries) & set(prev_queries)):
         ours = cur_queries[(system, ranker)]
         theirs = prev_queries[(system, ranker)]
-        classes = sorted({cls for cls, _score in ours.values()})
+        classes = sorted({cls for cls, _score in [*ours.values(), *theirs.values()]})
         for class_name in [*classes, "overall"]:
             differences = paired_differences(ours, theirs, class_name)
-            if not any(differences):
+            changed = query_set_change(ours, theirs, class_name)
+            if changed is None and not any(differences):
                 continue
-            interval = change_interval(cur_queries, prev_queries, system, ranker, class_name)
-            assert interval is not None
-            mean = sum(differences) / len(differences)
+            mean = f"{sum(differences) / len(differences):+.3f}" if differences else "—"
+            if changed is not None:
+                spread, label = "—", changed
+            else:
+                interval = change_interval(cur_queries, prev_queries, system, ranker, class_name)
+                assert interval is not None
+                spread, label = f"[{interval[0]:+.3f}, {interval[1]:+.3f}]", change_verdict(interval)
             rows.append(
-                f"| {system} | {ranker} | {class_name} | {len(differences)} | {mean:+.3f} "
-                f"| [{interval[0]:+.3f}, {interval[1]:+.3f}] | {change_verdict(interval)} |"
+                f"| {system} | {ranker} | {class_name} | {len(differences)} | {mean} | {spread} | {label} |"
             )
         if system == "overall":
             continue
@@ -504,9 +551,11 @@ def mrr_changes(current: dict[str, Any], previous: dict[str, Any]) -> list[str]:
         "",
         "#### MRR change by query",
         "",
-        "Rows only for classes where at least one query's MRR changed. 95% CI: paired bootstrap of the "
+        "Rows only for classes where at least one query's MRR changed or the two runs scored different "
+        "queries. n and change count the queries both runs scored. 95% CI: paired bootstrap of the "
         f"per-query MRR difference (current minus previous, {BOOTSTRAP_RESAMPLES} resamples, seeded per row). "
-        "better or worse when the interval excludes 0, within noise when it contains 0.",
+        "better or worse when the interval excludes 0, within noise when it contains 0. "
+        "When the query set changed, the class score moved with it, so no interval or verdict is given.",
         "",
         "| system | ranker | class | n | change | 95% CI | verdict |",
         "| --- | --- | --- | --- | --- | --- | --- |",
@@ -562,11 +611,7 @@ def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float)
         elif c_val is not None and p_val is not None and p_val > 0 and c_val < p_val * (1.0 - tolerance):
             status = "drop"
             change = format_change(c_val, p_val)
-            note = ""
-            if metric == "mrr":
-                interval = change_interval(cur_queries, prev_queries, system, mode, class_name)
-                if interval is not None:
-                    note = f", 95% CI [{interval[0]:+.3f}, {interval[1]:+.3f}] {change_verdict(interval)}"
+            note = change_note(cur_queries, prev_queries, system, mode, class_name) if metric == "mrr" else ""
             drops.append(
                 f"DROP {system} {mode} {class_name} {metric}: "
                 f"{format_score(p_val)} -> {format_score(c_val)} ({change}{note})"
