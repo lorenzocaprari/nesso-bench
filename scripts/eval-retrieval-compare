@@ -5,8 +5,10 @@ Prints a Markdown table of current vs previous scores per system, ranker,
 class (or overall), and metric, plus one DROP line per relative drop beyond
 the tolerance. When both reports carry per-query results, it also prints a
 paired bootstrap interval for each class whose per-query MRR changed and lists
-the queries that moved. Scores never fail the process: exit 0 whenever both reports
-parse. Exit non-zero only on unreadable or malformed input.
+the queries that moved. Scores never fail the process unless --fail-on-worse is given: exit 0
+whenever both reports parse. With --fail-on-worse, exit 3 and print one WORSE
+line per nesso ranker, system, class, and metric (MRR, nDCG@10) that got worse
+beyond noise on an unchanged query set. Exit non-zero only on unreadable or malformed input.
 
 A ranker is a nesso mode (auto, hybrid, dense, lexical) or another engine
 (grep, bm25, ...). Retrieval reports with schema_version 3 (nesso only) and 4
@@ -645,6 +647,45 @@ def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float)
     return "\n".join(lines) + "\n", drops
 
 
+# Exit status of --fail-on-worse when a nesso ranker got worse, distinct from errors (1, 2).
+WORSE_EXIT = 3
+
+
+# Metrics --fail-on-worse checks: the first relevant hit and the quality of the top 10.
+GATE_METRICS = ("mrr", "ndcg_at_10")
+
+
+def worse_changes(current: dict[str, Any], previous: dict[str, Any]) -> list[str]:
+    """One WORSE line per nesso ranker, system, class, and gate metric that got worse beyond noise.
+
+    Only classes where both runs scored the same queries count: there the paired interval of the
+    per-query change lies entirely below 0. A changed query set never counts.
+    """
+    found: list[str] = []
+    for metric in GATE_METRICS:
+        cur_queries = query_scores(current, metric)
+        prev_queries = query_scores(previous, metric)
+        for system, ranker in sorted(set(cur_queries) & set(prev_queries)):
+            if ranker not in NESSO_MODES:
+                continue
+            ours = cur_queries[(system, ranker)]
+            theirs = prev_queries[(system, ranker)]
+            classes = sorted({cls for cls, _score in [*ours.values(), *theirs.values()]})
+            for class_name in [*classes, "overall"]:
+                if query_set_change(ours, theirs, class_name) is not None:
+                    continue
+                differences = paired_differences(ours, theirs, class_name)
+                interval = bootstrap_interval(differences, f"worse/{metric}/{system}/{ranker}/{class_name}")
+                if interval is None or verdict(interval) != "loss":
+                    continue
+                mean = sum(differences) / len(differences)
+                found.append(
+                    f"WORSE {system} {ranker} {class_name} {metric}: {mean:+.3f} over {len(differences)} queries, "
+                    f"95% CI [{interval[0]:+.3f}, {interval[1]:+.3f}]"
+                )
+    return found
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--current", type=Path, required=True, help="Current eval JSON report")
@@ -660,6 +701,11 @@ def main() -> int:
         action="append",
         default=None,
         help="Report with more engines for --margins (repeatable; other report kinds are ignored)",
+    )
+    parser.add_argument(
+        "--fail-on-worse",
+        action="store_true",
+        help=f"With --previous: exit {WORSE_EXIT} when a nesso ranker's MRR or nDCG@10 got worse beyond noise on an unchanged query set",
     )
     parser.add_argument(
         "--tolerance",
@@ -678,6 +724,8 @@ def main() -> int:
 
     if args.previous is None and not args.margins:
         raise SystemExit("error: pass --previous, --margins, or both")
+    if args.fail_on_worse and args.previous is None:
+        raise SystemExit("error: --fail-on-worse needs --previous")
     current = load_report(args.current)
     if args.margins:
         references = [load_report(path) for path in args.reference or []]
@@ -686,6 +734,11 @@ def main() -> int:
         previous = load_report(args.previous)
         text, _drops = compare(current, previous, tolerance)
         sys.stdout.write(text)
+        if args.fail_on_worse:
+            worse = worse_changes(current, previous)
+            if worse:
+                sys.stdout.write("\n" + "\n".join(worse) + "\n")
+                return WORSE_EXIT
     return 0
 
 

@@ -498,6 +498,58 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         result = self.run_compare(renamed, previous)
         self.assertIn("| hdfs-2k | auto | cause | 0 | — | — | query set changed: 0 shared of 5 current, 5 previous |", result.stdout)
 
+    def test_fail_on_worse_exits_3_only_for_a_nesso_loss_beyond_noise(self) -> None:
+        previous = engine_report([scored_entry("nesso/auto", [1.0] * 10), scored_entry("bm25", [1.0] * 10)])
+        worse = engine_report([scored_entry("nesso/auto", [0.0] * 10), scored_entry("bm25", [1.0] * 10)])
+        result = self.run_compare(worse, previous, ["--fail-on-worse"])
+        self.assertEqual(result.returncode, 3, result.stderr)
+        self.assertIn("WORSE hdfs-2k auto cause mrr: -1.000 over 10 queries, 95% CI [-1.000, -1.000]", result.stdout)
+        self.assertIn("WORSE overall auto overall mrr:", result.stdout)
+        # Without the flag the same reports exit 0.
+        self.assertEqual(self.run_compare(worse, previous).returncode, 0)
+        # One query of ten: within noise.
+        noise = engine_report([scored_entry("nesso/auto", [0.0] + [1.0] * 9), scored_entry("bm25", [1.0] * 10)])
+        result = self.run_compare(noise, previous, ["--fail-on-worse"])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertNotIn("WORSE", result.stdout)
+        # Another engine getting worse does not fail nesso.
+        rival = engine_report([scored_entry("nesso/auto", [1.0] * 10), scored_entry("bm25", [0.0] * 10)])
+        self.assertEqual(self.run_compare(rival, previous, ["--fail-on-worse"]).returncode, 0)
+        # Better is not worse.
+        self.assertEqual(self.run_compare(previous, worse, ["--fail-on-worse"]).returncode, 0)
+
+    def test_fail_on_worse_checks_ndcg_when_mrr_holds(self) -> None:
+        # The first hit stays at rank 1, but the rest of the top 10 gets worse.
+        previous = engine_report([scored_entry("nesso/auto", [1.0] * 10)])
+        current = engine_report([scored_entry("nesso/auto", [1.0] * 10)])
+        for query in current["datasets"][0]["engines"][0]["modes"][0]["queries"]:
+            query["metrics"]["ndcg_at_10"] = 0.4
+        result = self.run_compare(current, previous, ["--fail-on-worse"])
+        self.assertEqual(result.returncode, 3, result.stdout)
+        self.assertIn("WORSE hdfs-2k auto cause ndcg_at_10: -0.600 over 10 queries", result.stdout)
+        self.assertNotIn("auto cause mrr:", result.stdout.split("WORSE", 1)[1])
+
+    def test_fail_on_worse_ignores_a_changed_query_set(self) -> None:
+        previous = engine_report([scored_entry("nesso/auto", [1.0] * 10)])
+        grown = engine_report([scored_entry("nesso/auto", [1.0] * 10 + [0.0] * 20)])
+        result = self.run_compare(grown, previous, ["--fail-on-worse"])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("query set changed: 10 shared of 30 current, 10 previous", result.stdout)
+
+    def test_fail_on_worse_needs_previous(self) -> None:
+        payload = engine_report([scored_entry("nesso/auto", [1.0])])
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp) / "r.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            result = subprocess.run(
+                ["python3", str(COMPARE), "--current", str(path), "--margins", "--fail-on-worse"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--fail-on-worse needs --previous", result.stderr)
+
     def test_mrr_change_is_omitted_when_no_query_moved(self) -> None:
         payload = engine_report([scored_entry("nesso/auto", [1.0, 0.5])])
         result = self.run_compare(payload, payload)
