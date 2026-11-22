@@ -265,6 +265,62 @@ class EvalRetrievalLabelsTest(unittest.TestCase):
                     )
 
 
+class EvalRetrievalJobsTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mod = load_eval()
+
+    def test_parse_jobs_rejects_non_positive(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            self.mod.parse_jobs(0)
+        self.assertIn("--jobs", str(ctx.exception))
+
+    def test_map_in_order_preserves_order_with_jobs(self) -> None:
+        seen: list[int] = []
+        lock = threading.Lock()
+
+        def work(value: int) -> int:
+            with lock:
+                seen.append(value)
+            return value * 2
+
+        result = self.mod.map_in_order(work, list(range(8)), jobs=4)
+        self.assertEqual(result, [0, 2, 4, 6, 8, 10, 12, 14])
+        self.assertEqual(sorted(seen), list(range(8)))
+
+    def test_score_queries_jobs_matches_serial(self) -> None:
+        queries = [
+            self.mod.Query(
+                id="q1",
+                class_name="exact_id",
+                query="alpha",
+                relevant_lines=frozenset({1}),
+                relevant_events=frozenset(),
+                split="dev",
+            ),
+            self.mod.Query(
+                id="q2",
+                class_name="paraphrase",
+                query="beta",
+                relevant_lines=frozenset(),
+                relevant_events=frozenset({"E7"}),
+                split="dev",
+            ),
+        ]
+        event_by_line = {1: "E10", 2: "E1", 3: "E10", 4: "E7", 5: "E3"}
+
+        def rank_fn(text: str) -> list[int]:
+            return [1, 2, 3] if text == "alpha" else [4, 5, 2]
+
+        serial = self.mod.score_queries(
+            queries=queries, event_by_line=event_by_line, rank_fn=rank_fn, jobs=1
+        )
+        parallel = self.mod.score_queries(
+            queries=queries, event_by_line=event_by_line, rank_fn=rank_fn, jobs=4
+        )
+        self.assertEqual(serial, parallel)
+
+
 class EvalRetrievalEndToEndTest(unittest.TestCase):
     def test_fake_nesso_report_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -357,6 +413,14 @@ class EvalRetrievalEndToEndTest(unittest.TestCase):
             second = subprocess.run(command, capture_output=True, text=True, check=False)
             self.assertEqual(second.returncode, 0, second.stderr + second.stdout)
             self.assertEqual(out.read_bytes(), payload)
+            with_jobs = subprocess.run(
+                [*command, "--jobs", "4"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(with_jobs.returncode, 0, with_jobs.stderr + with_jobs.stdout)
+            self.assertEqual(out.read_bytes(), NESSO_ONLY_GOLDEN)
             with_engine = subprocess.run(
                 [*command, "--engine", "nesso"],
                 capture_output=True,
