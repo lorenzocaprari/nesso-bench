@@ -3,7 +3,9 @@
 
 Indexes each selected Loghub 2k sample once (nesso), runs every query, and
 reports recall@10, MRR, and nDCG@10. Relevance is a set of lines: the listed
-LineIds, or every line whose EventId is listed.
+LineIds, or every line whose EventId is listed. Optional --jobs N runs nesso
+search processes in parallel (NESSO_THREADS=1 per child); quality JSON stays
+byte-identical to a serial run.
 
 Engines (--engine, repeatable; default nesso only):
   nesso     nesso search --json -k 10 for each --modes value
@@ -38,6 +40,7 @@ With --measure the report is machine-dependent. Never a CI or nightly gate.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import csv
 import hashlib
 import importlib.util
@@ -57,10 +60,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 ROOT = Path(__file__).resolve().parent.parent
 BENCH_DIR = ROOT / "build" / "bench"
@@ -813,6 +816,7 @@ def run_command(
     label: str,
     ok_codes: frozenset[int] = frozenset({0}),
     cwd: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     try:
         completed = subprocess.run(
@@ -821,6 +825,7 @@ def run_command(
             text=True,
             check=False,
             cwd=cwd,
+            env=env,
         )
     except OSError as exc:
         raise SystemExit(f"error: failed to run {label}: {exc}") from exc
@@ -828,6 +833,24 @@ def run_command(
         detail = completed.stderr.strip() or completed.stdout.strip() or f"exit {completed.returncode}"
         raise SystemExit(f"error: {label} failed: {detail}")
     return completed
+
+
+T = TypeVar("T")
+R = TypeVar("R")
+
+
+def map_in_order(fn: Callable[[T], R], items: Sequence[T], *, jobs: int) -> list[R]:
+    """Apply fn to each item, preserving input order. jobs>1 uses a thread pool."""
+    if jobs <= 1 or len(items) <= 1:
+        return [fn(item) for item in items]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(fn, items))
+
+
+def parse_jobs(raw: int) -> int:
+    if raw < 1:
+        raise SystemExit("error: --jobs must be a positive integer")
+    return raw
 
 
 def run_checked(
@@ -936,9 +959,19 @@ class NessoEngine:
     model_dir: Path = Path()
     corpus: Path | None = None
     bundle: SupportBundle | None = None
+    # When True, each search subprocess gets NESSO_THREADS=1 so --jobs can
+    # parallelize processes without oversubscribing the ONNX runtime.
+    force_single_thread: bool = False
 
     def availability(self) -> tuple[bool, str]:
         return True, ""
+
+    def _search_env(self) -> dict[str, str] | None:
+        if not self.force_single_thread:
+            return None
+        env = os.environ.copy()
+        env["NESSO_THREADS"] = "1"
+        return env
 
     def prepare(self, log_path: Path, lines: list[str], workdir: Path) -> None:
         workdir.mkdir(parents=True, exist_ok=True)
@@ -998,6 +1031,7 @@ class NessoEngine:
             ],
             label=f"nesso search ({mode})",
             ok_codes=frozenset({0, 1}),
+            env=self._search_env(),
         )
         hits = parse_search_json(completed.stdout)
         if self.bundle is not None:
@@ -2485,13 +2519,14 @@ def score_queries(
     queries: list[Query],
     event_by_line: dict[int, str],
     rank_fn,
+    jobs: int = 1,
 ) -> dict:
     resolved = [(query, relevant_set(query, event_by_line)) for query in queries]
+    ranked_lists = map_in_order(lambda pair: rank_fn(pair[0].query), resolved, jobs=jobs)
     per_query: list[dict] = []
     by_class: dict[str, list[Metrics]] = {name: [] for name in sorted(VALID_CLASSES)}
     all_metrics: list[Metrics] = []
-    for query, relevant in resolved:
-        ranked = rank_fn(query.query)
+    for (query, relevant), ranked in zip(resolved, ranked_lists, strict=True):
         metrics = score_ranking(ranked, relevant)
         all_metrics.append(metrics)
         by_class[query.class_name].append(metrics)
@@ -2534,8 +2569,15 @@ def evaluate_modes(
     modes: list[str],
     corpus: Path,
     bundle: SupportBundle | None = None,
+    jobs: int = 1,
 ) -> list[dict]:
-    engine = NessoEngine(binary=binary, model_dir=model_dir, corpus=corpus, bundle=bundle)
+    engine = NessoEngine(
+        binary=binary,
+        model_dir=model_dir,
+        corpus=corpus,
+        bundle=bundle,
+        force_single_thread=jobs > 1,
+    )
     engine.prepare(log_path, read_log_lines(log_path), corpus.parent)
     mode_results = []
     for mode in modes:
@@ -2543,6 +2585,7 @@ def evaluate_modes(
             queries=queries,
             event_by_line=event_by_line,
             rank_fn=lambda q, mode=mode: engine.rank_mode(q, mode),
+            jobs=jobs,
         )
         mode_results.append(
             {
@@ -2800,6 +2843,7 @@ def evaluate_dataset(
     opensearch: OpenSearchContext | None = None,
     quality_repeat: int = 1,
     bundle: SupportBundle | None = None,
+    jobs: int = 1,
 ) -> dict:
     workdir.mkdir(parents=True, exist_ok=True)
     nesso_only = engines == ["nesso"]
@@ -2814,6 +2858,7 @@ def evaluate_dataset(
             modes=modes,
             corpus=workdir / corpus_name,
             bundle=bundle,
+            jobs=jobs,
         )
         return {
             "dataset": dataset_name,
@@ -2834,6 +2879,7 @@ def evaluate_dataset(
                 modes=modes,
                 corpus=workdir / corpus_name,
                 bundle=bundle,
+                jobs=jobs,
             )
             engine_payloads.append(
                 {
@@ -4280,11 +4326,14 @@ def score_needle_queries(
     relevant_by_alert: dict[str, frozenset[int]],
     overlaps: dict[str, float],
     rank_fn: Callable[[str], list[int]],
+    *,
+    jobs: int = 1,
 ) -> dict:
+    ranked_lists = map_in_order(lambda query: rank_fn(query.query), queries, jobs=jobs)
     rows = []
-    for query in queries:
+    for query, ranked in zip(queries, ranked_lists, strict=True):
         relevant = relevant_by_alert[query.alert]
-        rows.append(needle_query_row(query, relevant, rank_fn(query.query), overlaps[query.id]))
+        rows.append(needle_query_row(query, relevant, ranked, overlaps[query.id]))
     return {**needle_buckets(rows), "queries": rows}
 
 
@@ -4349,6 +4398,7 @@ def evaluate_needle_dataset(
     opensearch: OpenSearchContext,
     quality_repeat: int = 1,
     split: str = "all",
+    jobs: int = 1,
 ) -> dict:
     lines = read_log_lines(spec.log_path)
     labels = load_labels(spec.labels_path, len(lines))
@@ -4369,7 +4419,12 @@ def evaluate_needle_dataset(
         started = time.monotonic()
         if engine_name == "nesso":
             assert binary is not None and model_dir is not None
-            engine = NessoEngine(binary=binary, model_dir=model_dir, corpus=workdir / spec.corpus_name)
+            engine = NessoEngine(
+                binary=binary,
+                model_dir=model_dir,
+                corpus=workdir / spec.corpus_name,
+                force_single_thread=jobs > 1,
+            )
             progress(f"{spec.name} nesso: indexing")
             engine.prepare(spec.log_path, lines, workdir)
             progress(f"{spec.name} nesso: indexed in {time.monotonic() - started:.0f} s")
@@ -4379,6 +4434,7 @@ def evaluate_needle_dataset(
                     relevant_by_alert,
                     overlaps,
                     lambda text, mode=mode: engine.rank_mode(text, mode, k=NEEDLE_DEPTH),
+                    jobs=jobs,
                 )
                 rows.append({"engine": f"nesso/{mode}", "status": "ok", **scored})
                 progress(f"{spec.name} nesso/{mode}: scored at {time.monotonic() - started:.0f} s")
@@ -4611,6 +4667,7 @@ def run_needles(args: argparse.Namespace, engines: list[str], modes: list[str]) 
                     opensearch=opensearch,
                     quality_repeat=args.quality_repeat,
                     split=args.split,
+                    jobs=args.jobs,
                 )
                 for spec in specs
             ]
@@ -4677,6 +4734,13 @@ def main(argv: list[str] | None = None) -> None:
         "--modes",
         default=",".join(DEFAULT_MODES),
         help="Comma-separated search modes for nesso (default: auto,hybrid,dense,lexical)",
+    )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help="Parallel nesso search processes per mode (default 1). When >1, each child gets "
+        "NESSO_THREADS=1. Quality JSON stays byte-identical to a serial run.",
     )
     parser.add_argument(
         "--engine",
@@ -4779,6 +4843,7 @@ def main(argv: list[str] | None = None) -> None:
         )
     if args.quality_repeat <= 0:
         raise SystemExit("error: --quality-repeat must be a positive integer")
+    args.jobs = parse_jobs(args.jobs)
     if args.quality_repeat > 1 and (args.measure_only or args.log_prefix_lines is not None):
         raise SystemExit("error: --quality-repeat needs quality scoring; not with --measure-only or --log-prefix-lines")
     if args.dataset is not None and SUPPORT_BUNDLE in [part.strip() for part in args.dataset.split(",")]:
@@ -4879,6 +4944,7 @@ def main(argv: list[str] | None = None) -> None:
                         xerj=xerj,
                         opensearch=opensearch,
                         quality_repeat=args.quality_repeat,
+                        jobs=args.jobs,
                     )
                 )
                 measure_targets.append(
@@ -4923,6 +4989,7 @@ def main(argv: list[str] | None = None) -> None:
                             opensearch=opensearch,
                             quality_repeat=args.quality_repeat,
                             bundle=bundle,
+                            jobs=args.jobs,
                         )
                     )
                     measure_targets.append(
