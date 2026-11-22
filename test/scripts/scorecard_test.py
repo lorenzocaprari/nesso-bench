@@ -1,3 +1,4 @@
+import hashlib
 import importlib.machinery
 import importlib.util
 import json
@@ -331,6 +332,169 @@ class ScorecardRunTest(unittest.TestCase):
         rows = [json.loads(line) for line in completed.stdout.splitlines()]
         self.assertEqual([(row["suite"], row["group"]) for row in rows], [("2k", "nesso"), ("2k", "bm25")])
         self.assertIn("/results/0.3.1/raw/2k/nesso.json", rows[0]["argv"][rows[0]["argv"].index("--out") + 1])
+
+
+def fake_nesso(directory: pathlib.Path, version: str) -> tuple[pathlib.Path, pathlib.Path]:
+    """A stub binary that prints VERSION for -V, and a model directory beside it."""
+    binary = directory / "bin" / "nesso"
+    binary.parent.mkdir(parents=True)
+    binary.write_text(f"#!/bin/sh\necho {shlex.quote(version)}\n", encoding="utf-8")
+    binary.chmod(0o755)
+    model_dir = directory / "models"
+    model_dir.mkdir()
+    (model_dir / "model.onnx").write_bytes(b"onnx")
+    (model_dir / "vocab.txt").write_text("[PAD]\n", encoding="utf-8")
+    return binary, model_dir
+
+
+class ScorecardNessoBinaryTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mod = load_scorecard()
+
+    def scorecard(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False)
+
+    def test_version_and_binary_are_exclusive_and_the_binary_needs_its_model(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "0.3.1+gabc")
+            for args, message in (
+                ([], "exactly one of --nesso-version or --nesso-binary"),
+                (["--nesso-version", "0.3.1", "--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir)], "exactly one of"),
+                (["--nesso-binary", str(binary)], "--nesso-binary and --nesso-model-dir go together"),
+                (["--nesso-version", "0.3.1", "--nesso-model-dir", str(model_dir)], "--nesso-binary and --nesso-model-dir go together"),
+                (["--nesso-version", "0.3.1", "--nesso-fp32-model-dir", str(model_dir)], "--nesso-fp32-model-dir goes with --nesso-binary"),
+                (["--nesso-binary", str(model_dir / "vocab.txt"), "--nesso-model-dir", str(model_dir)], "is not an executable file"),
+                (["--nesso-binary", str(binary), "--nesso-model-dir", temp], "has no model.onnx"),
+            ):
+                done = self.scorecard(*args, "--dry-run")
+                self.assertEqual(done.returncode, 1, args)
+                self.assertIn(message, done.stderr, args)
+
+    def test_fp32_with_a_binary_needs_its_model_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "0.3.1+gabc")
+            base = ["--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir), "--suites", "2k", "--groups", "nesso", "--dry-run"]
+            refused = self.scorecard(*base, "--nesso-fp32")
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("--nesso-fp32 with --nesso-binary needs --nesso-fp32-model-dir", refused.stderr)
+            done = self.scorecard(*base, "--nesso-fp32", "--nesso-fp32-model-dir", str(model_dir))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        fp32 = [json.loads(line) for line in done.stdout.splitlines() if json.loads(line)["fp32"]]
+        self.assertEqual(len(fp32), 1)
+        self.assertEqual(fp32[0]["argv"][fp32[0]["argv"].index("--model-dir") + 1], str(model_dir.resolve()))
+
+    def test_dry_run_shows_the_binary_and_names_out_after_its_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "0.3.1+gb20ff665cbb6")
+            done = self.scorecard(
+                "--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir),
+                "--suites", "2k", "--groups", "nesso", "--nesso-threads-1", "--dry-run",
+            )
+        self.assertEqual(done.returncode, 0, done.stderr)
+        rows = [json.loads(line) for line in done.stdout.splitlines()]
+        self.assertEqual([row["group"] for row in rows], ["nesso", "nesso-threads-1"])
+        for row in rows:
+            self.assertEqual(row["nessoBinary"], str(binary.resolve()))
+            self.assertEqual(row["nessoModelDir"], str(model_dir.resolve()))
+            self.assertNotIn("nessoVersion", row)
+            self.assertEqual(row["argv"][row["argv"].index("--out") + 1], str(ROOT / "results" / "0.3.1+gb20ff665cbb6" / "raw" / "2k" / f"{row['group']}.json"))
+        self.assertEqual(rows[1]["threads"], "1")
+        release = self.scorecard("--nesso-version", "0.3.1", "--suites", "2k", "--groups", "nesso", "--dry-run")
+        self.assertEqual(json.loads(release.stdout.splitlines()[0])["nessoVersion"], "0.3.1")
+
+    def test_out_name_is_a_safe_path_component(self) -> None:
+        path_name = self.mod.path_name
+        self.assertEqual(path_name("0.3.1+gb20ff665cbb6"), "0.3.1+gb20ff665cbb6")
+        self.assertEqual(path_name("nesso 0.4.0-rc.1/dirty"), "nesso_0.4.0-rc.1_dirty")
+        self.assertEqual(path_name("../.."), "nesso")
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "nesso 0.4.0/x")
+            done = self.scorecard("--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir), "--suites", "2k", "--groups", "nesso", "--dry-run")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        argv = json.loads(done.stdout.splitlines()[0])["argv"]
+        self.assertEqual(pathlib.Path(argv[argv.index("--out") + 1]).parents[2], ROOT / "results" / "nesso_0.4.0_x")
+
+    def test_pinned_versions_come_from_install_nesso(self) -> None:
+        self.assertTrue({"0.3.0", "0.3.1"} <= self.mod.pinned_versions())
+
+    def run_main(self, args: list[str], install_version: str = "0.3.1") -> tuple[dict, list[dict]]:
+        """Runs main() with the machine, installers, fetches, and runs faked; returns machine.json and run envs."""
+        mod = self.mod
+        envs: list[dict] = []
+        saved = {name: getattr(mod, name) for name in ("machine_info", "install", "execute", "merge_suite", "FETCHES")}
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        base = pathlib.Path(temp.name)
+        release_binary, release_models = fake_nesso(base / "release", install_version)
+
+        def install(script, arguments, env):
+            self.assertEqual(script, "install-nesso")
+            env.update({"NESSO_BINARY": str(release_binary), "NESSO_MODEL_DIR": str(release_models)})
+
+        def execute(run, out, python, env, memory_max, timeout_hours):
+            envs.append(dict(env))
+            return {"suite": run.suite.name, "group": run.group.name, "outcome": "ok", "report": None, "merged": run.merged}
+
+        mod.machine_info = lambda out, dev: {"developmentOnly": dev, "wsl": False, "loadAverage1m": 0.0, "nessoBenchDirty": False}
+        mod.install = install
+        mod.execute = execute
+        mod.merge_suite = lambda suite, entries, out: {"suite": suite.name, "merged": None}
+        mod.FETCHES = {name: [] for name in mod.FETCHES}
+        try:
+            code = mod.main([*args, "--out", str(base / "out"), "--suites", "2k", "--groups", "nesso", "--memory-max", "none"])
+        finally:
+            for name, value in saved.items():
+                setattr(mod, name, value)
+        self.assertEqual(code, 0)
+        machine = json.loads((base / "out" / "machine.json").read_text(encoding="utf-8"))
+        return machine, envs
+
+    def test_machine_json_for_a_release(self) -> None:
+        machine, envs = self.run_main(["--nesso-version", "0.3.1"])
+        self.assertEqual(machine["nessoVersion"], "0.3.1")
+        self.assertEqual(machine["nessoSource"], "release")
+        self.assertFalse(machine["developmentOnly"])
+        self.assertEqual(machine["developmentReasons"], [])
+        self.assertEqual(machine["nessoVersionOutput"], "0.3.1")
+        self.assertRegex(machine["nessoBinarySha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(machine["nessoModel"]["model_onnx_bytes"], 4)
+        self.assertEqual(envs[0]["NESSO_BINARY"], machine["nessoBinary"])
+
+    def test_machine_json_for_a_binary_marks_it_development_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "0.3.1+gb20ff665cbb6")
+            expected_sha = hashlib.sha256(binary.read_bytes()).hexdigest()
+            machine, envs = self.run_main(["--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir), "--nesso-threads-1"])
+        self.assertEqual(machine["nessoSource"], "binary")
+        self.assertEqual(machine["nessoVersion"], "0.3.1+gb20ff665cbb6")
+        self.assertEqual(machine["nessoVersionOutput"], "0.3.1+gb20ff665cbb6")
+        self.assertEqual(machine["nessoBinary"], str(binary.resolve()))
+        self.assertEqual(machine["nessoBinarySha256"], expected_sha)
+        self.assertEqual(machine["nessoModel"], {
+            "dir": "models",
+            "model_onnx_bytes": 4,
+            "model_onnx_sha256": hashlib.sha256(b"onnx").hexdigest(),
+            "vocab_bytes": 6,
+            "vocab_sha256": hashlib.sha256(b"[PAD]\n").hexdigest(),
+        })
+        self.assertTrue(machine["developmentOnly"])
+        self.assertEqual(len(machine["developmentReasons"]), 1)
+        self.assertIn("built outside a pinned release (0.3.1+gb20ff665cbb6)", machine["developmentReasons"][0])
+        # Every run, threads-1 included, gets the binary the way install-nesso exports it.
+        self.assertEqual([env.get("NESSO_THREADS") for env in envs], [None, None])
+        for env in envs:
+            self.assertEqual(env["NESSO_BINARY"], str(binary.resolve()))
+            self.assertEqual(env["NESSO_MODEL_DIR"], str(model_dir.resolve()))
+            self.assertTrue(env["PATH"].startswith(f"{binary.resolve().parent}:"))
+
+    def test_a_binary_reporting_a_pinned_version_is_not_development_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            binary, model_dir = fake_nesso(pathlib.Path(temp), "0.3.1")
+            machine, _envs = self.run_main(["--nesso-binary", str(binary), "--nesso-model-dir", str(model_dir)])
+        self.assertEqual(machine["nessoSource"], "binary")
+        self.assertFalse(machine["developmentOnly"])
+        self.assertEqual(machine["developmentReasons"], [])
 
 
 if __name__ == "__main__":

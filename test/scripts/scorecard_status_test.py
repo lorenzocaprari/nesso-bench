@@ -53,7 +53,19 @@ class ScorecardStatusTest(unittest.TestCase):
         self.assertIn("3 of 4 runs ok.", out)
         # What did not finish is listed with its exit code.
         self.assertIn("| bgl-needle-100k | vecgrep | out-of-memory (3G) | 137 |", out)
-        self.assertIn("| scorecard-smoke-nesso | Test CPU | 4 | 16 GiB | 12G | yes |", out)
+        self.assertIn("| results | nesso | CPU | logical CPUs | RAM | memory cap | development only |", out)
+        self.assertIn("| scorecard-smoke-nesso | ? | Test CPU | 4 | 16 GiB | 12G | yes |", out)
+
+    def test_machine_row_names_the_nesso_and_a_binary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp)
+            run = [{"suite": "2k", "group": "nesso", "outcome": "ok", "exitCode": 0, "wallSeconds": 1.0}]
+            release = results(base / "release", run, {**MACHINE, "nessoVersion": "0.3.1", "nessoSource": "release", "developmentOnly": False})
+            built = results(base / "built", run, {**MACHINE, "nessoVersion": "0.3.1+gb20ff665cbb6", "nessoSource": "binary"})
+            done = run_status(release, built)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("| release | 0.3.1 | Test CPU | 4 | 16 GiB | 12G | no |", done.stdout)
+        self.assertIn("| built | 0.3.1+gb20ff665cbb6 (binary) | Test CPU | 4 | 16 GiB | 12G | yes |", done.stdout)
 
     def test_a_missing_cell_is_a_dash_and_unreadable_directories_are_named(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
