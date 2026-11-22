@@ -1,0 +1,44 @@
+=== hadoop-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       12  0.250000   0.180556  0.196351
+bm25    exact_id    12  1.000000   1.000000  1.000000
+bm25    paraphrase  12  0.908333   0.812500  0.850882
+bm25    overall     36  0.719444   0.664352  0.682411
+=== openstack-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       12  0.166667   0.180556  0.158831
+bm25    exact_id    12  1.000000   1.000000  1.000000
+bm25    paraphrase  12  0.991667   0.958333  0.981659
+bm25    overall     36  0.719444   0.712963  0.713497
+=== healthapp-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       12  0.250000   0.180556  0.211750
+bm25    exact_id    12  1.000000   1.000000  1.000000
+bm25    paraphrase  12  0.666667   0.666667  0.666667
+bm25    overall     36  0.638889   0.615741  0.626139
+=== overall ===
+engine  class       n    recall@10  MRR       nDCG@10
+------  ----------  ---  ---------  --------  --------
+bm25    cause       36   0.222222   0.180556  0.188977
+bm25    exact_id    36   1.000000   1.000000  1.000000
+bm25    paraphrase  36   0.855556   0.812500  0.833069
+bm25    overall     108  0.692593   0.664352  0.674015
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 sqlite3=3.45.1
+=== measure hadoop-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.480000  37601280   651264       1.691823  0.160000  37130240  0.000733  0.001543  0.140000
+=== measure openstack-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.150000  39489536   999424       1.679368  0.170000  37507072  0.000765  0.002247  0.150000
+=== measure healthapp-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  37314560   348160       1.857289  0.150000  37138432  0.000522  0.000820  0.140000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/bm25.json

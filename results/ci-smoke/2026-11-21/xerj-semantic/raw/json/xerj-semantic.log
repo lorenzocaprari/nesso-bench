@@ -1,0 +1,23 @@
+=== hdfs-2k-json ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       25  0.260000   0.273333  0.254283
+xerj-semantic  exact_id    25  0.680000   0.157111  0.280984
+xerj-semantic  paraphrase  25  0.416000   0.496667  0.423340
+xerj-semantic  overall     75  0.452000   0.309037  0.319535
+=== overall ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       25  0.260000   0.273333  0.254283
+xerj-semantic  exact_id    25  0.680000   0.157111  0.280984
+xerj-semantic  paraphrase  25  0.416000   0.496667  0.423340
+xerj-semantic  overall     75  0.452000   0.309037  0.319535
+# hdfs-2k-json/xerj-semantic: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 9V45 96-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hdfs-2k-json ===
+engine         index_s   index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-------------  --------  ---------  -----------  ---------  --------  ---------  --------  --------  --------
+xerj-semantic  0.540000  122146816  9779829      24.581823  0.131084  134365184  0.001563  0.001858  0.560000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/xerj-semantic.json

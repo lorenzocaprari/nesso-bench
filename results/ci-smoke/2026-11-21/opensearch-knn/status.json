@@ -1,0 +1,83 @@
+{
+  "finishedAt": "2026-11-21T22:51:03Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "opensearch-knn"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch-knn",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/opensearch-knn.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 851.5
+    },
+    {
+      "engines": [
+        "opensearch-knn"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch-knn",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/opensearch-knn.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 557.8
+    },
+    {
+      "engines": [
+        "opensearch-knn"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch-knn",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/opensearch-knn.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 202.8
+    },
+    {
+      "engines": [
+        "opensearch-knn"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "opensearch-knn",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/opensearch-knn.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 121.5
+    }
+  ]
+}

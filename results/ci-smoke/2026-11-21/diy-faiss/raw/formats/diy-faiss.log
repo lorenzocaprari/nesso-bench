@@ -1,0 +1,54 @@
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8822.90it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8355.51it/s]
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8383.40it/s]
+=== hadoop-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       12  0.666667   0.600000  0.615571
+diy-faiss  exact_id    12  0.155556   0.129960  0.101201
+diy-faiss  paraphrase  12  1.000000   0.888889  0.929449
+diy-faiss  overall     36  0.607407   0.539616  0.548741
+=== openstack-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       12  0.275000   0.333333  0.282026
+diy-faiss  exact_id    12  0.000000   0.000000  0.000000
+diy-faiss  paraphrase  12  0.875000   0.916667  0.885837
+diy-faiss  overall     36  0.383333   0.416667  0.389288
+=== healthapp-2k ===
+engine     class       n   recall@10  MRR       nDCG@10
+---------  ----------  --  ---------  --------  --------
+diy-faiss  cause       12  0.833333   0.652778  0.703646
+diy-faiss  exact_id    12  0.166667   0.091667  0.107422
+diy-faiss  paraphrase  12  1.000000   0.877778  0.921146
+diy-faiss  overall     36  0.666667   0.540741  0.577405
+=== overall ===
+engine     class       n    recall@10  MRR       nDCG@10
+---------  ----------  ---  ---------  --------  --------
+diy-faiss  cause       36   0.591667   0.528704  0.533748
+diy-faiss  exact_id    36   0.107407   0.073876  0.069541
+diy-faiss  paraphrase  36   0.958333   0.894444  0.912144
+diy-faiss  overall     108  0.552469   0.499008  0.505144
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=1 threads=None repeat=1
+tools: diy-faiss=st=6.3.0 torch=2.15.0+cpu faiss=1.16.0 python=3.12.3
+=== measure hadoop-2k ===
+engine     index_s    index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  --------  --------  ---------  --------  --------  ---------
+diy-faiss  27.600000  764055552  3072045      7.980416  4.200000  591822848  0.008024  0.010601  27.430000
+=== measure openstack-2k ===
+engine     index_s    index_rss  index_bytes  ratio     q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  --------  --------  ---------  --------  --------  ---------
+diy-faiss  60.880000  819269632  3072045      5.162068  4.340000  597245952  0.008883  0.011880  61.160000
+=== measure healthapp-2k ===
+engine     index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+---------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+diy-faiss  17.430000  677212160  3072045      16.388086  4.300000  594481152  0.007875  0.010594  17.590000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/diy-faiss.json

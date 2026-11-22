@@ -1,0 +1,26 @@
+{
+  "finishedAt": "2026-11-21T22:25:48Z",
+  "merges": [
+    {
+      "merged": null,
+      "reason": "no finished runs",
+      "suite": "bgl-needle-100k"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "vecgrep"
+      ],
+      "exitCode": -15,
+      "fp32": false,
+      "group": "vecgrep",
+      "merged": true,
+      "outcome": "out-of-memory (3G)",
+      "report": null,
+      "suite": "bgl-needle-100k",
+      "threads": null,
+      "wallSeconds": 8.1
+    }
+  ]
+}

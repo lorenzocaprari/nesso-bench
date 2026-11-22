@@ -1,0 +1,107 @@
+{
+  "finishedAt": "2026-11-21T22:42:03Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bgl-needle-100k.json",
+      "suite": "bgl-needle-100k"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "nesso",
+        "grep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "nesso",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/nesso.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 624.5
+    },
+    {
+      "engines": [
+        "nesso",
+        "grep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "nesso",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/nesso.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 156.1
+    },
+    {
+      "engines": [
+        "nesso",
+        "grep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "nesso",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/nesso.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 102.8
+    },
+    {
+      "engines": [
+        "nesso",
+        "grep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "nesso",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/nesso.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 50.5
+    },
+    {
+      "engines": [
+        "nesso",
+        "grep"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "nesso",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bgl-needle-100k/nesso.json",
+      "suite": "bgl-needle-100k",
+      "threads": null,
+      "wallSeconds": 303.4
+    }
+  ]
+}

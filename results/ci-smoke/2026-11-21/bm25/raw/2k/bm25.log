@@ -1,0 +1,77 @@
+=== hdfs-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.212000   0.193333  0.203822
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.448000   0.448000  0.446358
+bm25    overall     75  0.553333   0.547111  0.550060
+=== bgl-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.328000   0.297000  0.310954
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.880000   0.900000  0.880000
+bm25    overall     75  0.736000   0.732333  0.730318
+=== thunderbird-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.444000   0.399048  0.387374
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.911556   0.893333  0.901830
+bm25    overall     75  0.785185   0.764127  0.763068
+=== openssh-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.240000   0.220000  0.225237
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.672000   0.588000  0.625854
+bm25    overall     75  0.637333   0.602667  0.617030
+=== linux-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       25  0.616000   0.362825  0.456644
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  25  0.772000   0.723333  0.742571
+bm25    overall     75  0.796000   0.695386  0.733072
+=== apache-2k ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+bm25    cause       17  0.294118   0.294118  0.294118
+bm25    exact_id    25  1.000000   1.000000  1.000000
+bm25    paraphrase  17  0.823529   0.823529  0.823529
+bm25    overall     59  0.745763   0.745763  0.745763
+=== overall ===
+engine  class       n    recall@10  MRR       nDCG@10
+------  ----------  ---  ---------  --------  --------
+bm25    cause       142  0.359155   0.294403  0.314090
+bm25    exact_id    150  1.000000   1.000000  1.000000
+bm25    paraphrase  142  0.747105   0.724061  0.731798
+bm25    overall     434  0.707578   0.678852  0.687825
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 sqlite3=3.45.1
+=== measure hdfs-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  38240256   552960       1.921014  0.230000  37388288  0.001659  0.002374  0.140000
+=== measure bgl-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  38289408   602112       1.898509  0.180000  36909056  0.000666  0.001963  0.140000
+=== measure thunderbird-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  38346752   610304       1.876750  0.190000  36909056  0.000560  0.001644  0.140000
+=== measure openssh-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  37339136   434176       1.927820  0.190000  37109760  0.000828  0.001789  0.140000
+=== measure linux-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.140000  37109760   425984       1.967730  0.180000  37154816  0.000511  0.001380  0.140000
+=== measure apache-2k ===
+engine  index_s   index_rss  index_bytes  ratio     q_wall_s  q_rss     q_p50_s   q_p95_s   ttfr_s
+------  --------  ---------  -----------  --------  --------  --------  --------  --------  --------
+bm25    0.130000  36966400   344064       2.009262  0.180000  37048320  0.000518  0.002404  0.130000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/bm25.json

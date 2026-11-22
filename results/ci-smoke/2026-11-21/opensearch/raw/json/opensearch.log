@@ -1,0 +1,23 @@
+=== hdfs-2k-json ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.192000   0.133333  0.171569
+opensearch  exact_id    25  1.000000   1.000000  1.000000
+opensearch  paraphrase  25  0.456000   0.370000  0.426095
+opensearch  overall     75  0.549333   0.501111  0.532555
+=== overall ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.192000   0.133333  0.171568
+opensearch  exact_id    25  1.000000   1.000000  1.000000
+opensearch  paraphrase  25  0.456000   0.370000  0.426095
+opensearch  overall     75  0.549333   0.501111  0.532554
+# hdfs-2k-json/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: opensearch=3.10.0 python=3.12.3
+=== measure hdfs-2k-json ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.980000  1531572224  526437       1.323211  0.412267  1536110592  0.004466  0.007883  15.100000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/opensearch.json

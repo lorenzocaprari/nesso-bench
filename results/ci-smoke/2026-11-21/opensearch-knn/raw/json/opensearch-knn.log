@@ -1,0 +1,27 @@
+
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 8514.26it/s]
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== hdfs-2k-json ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       25  0.372000   0.358000  0.363694
+opensearch-knn  exact_id    25  0.080000   0.014444  0.029268
+opensearch-knn  paraphrase  25  0.548000   0.530159  0.537896
+opensearch-knn  overall     75  0.333333   0.300868  0.310286
+=== overall ===
+engine          class       n   recall@10  MRR       nDCG@10
+--------------  ----------  --  ---------  --------  --------
+opensearch-knn  cause       25  0.372000   0.358000  0.363694
+opensearch-knn  exact_id    25  0.080000   0.014444  0.029268
+opensearch-knn  paraphrase  25  0.548000   0.530159  0.537896
+opensearch-knn  overall     75  0.333333   0.300868  0.310286
+# hdfs-2k-json/opensearch-knn: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g' knn_method=hnsw/lucene/cosinesimil
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=1 threads=None repeat=1
+tools: diy-faiss=st=6.3.0 torch=2.15.0+cpu faiss=1.16.0 opensearch=3.10.0 python=3.12.3
+=== measure hdfs-2k-json ===
+engine          index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+--------------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch-knn  50.200000  1591496704  3529074      8.870408  1.002234  1583349760  0.011548  0.027006  50.270000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/opensearch-knn.json

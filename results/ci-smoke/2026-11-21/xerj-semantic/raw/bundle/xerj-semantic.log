@@ -1,0 +1,17 @@
+=== support-bundle ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       18  0.216667   0.330556  0.219587
+xerj-semantic  exact_id    18  0.611111   0.355710  0.415436
+xerj-semantic  paraphrase  18  0.572222   0.620370  0.570254
+xerj-semantic  overall     54  0.466667   0.435545  0.401759
+=== overall ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+xerj-semantic  cause       18  0.216667   0.330556  0.219587
+xerj-semantic  exact_id    18  0.611111   0.355710  0.415436
+xerj-semantic  paraphrase  18  0.572222   0.620370  0.570254
+xerj-semantic  overall     54  0.466667   0.435545  0.401759
+# support-bundle/xerj-semantic: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+# support-bundle/xerj-semantic: 3 quality runs, identical rankings
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/xerj-semantic.json

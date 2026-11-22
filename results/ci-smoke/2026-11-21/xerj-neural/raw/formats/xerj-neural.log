@@ -1,0 +1,47 @@
+=== hadoop-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       12  0.666667   0.597222  0.613017
+xerj-neural  exact_id    12  0.155556   0.107639  0.092865
+xerj-neural  paraphrase  12  1.000000   0.888889  0.929449
+xerj-neural  overall     36  0.607407   0.531250  0.545111
+=== openstack-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       12  0.275000   0.333333  0.282026
+xerj-neural  exact_id    12  0.000000   0.000000  0.000000
+xerj-neural  paraphrase  12  0.875000   0.916667  0.885837
+xerj-neural  overall     36  0.383333   0.416667  0.389288
+=== healthapp-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       12  0.833333   0.652778  0.703646
+xerj-neural  exact_id    12  0.166667   0.091667  0.107422
+xerj-neural  paraphrase  12  1.000000   0.877778  0.921146
+xerj-neural  overall     36  0.666667   0.540741  0.577405
+=== overall ===
+engine       class       n    recall@10  MRR       nDCG@10
+-----------  ----------  ---  ---------  --------  --------
+xerj-neural  cause       36   0.591667   0.527778  0.532896
+xerj-neural  exact_id    36   0.107407   0.066435  0.066762
+xerj-neural  paraphrase  36   0.958333   0.894444  0.912144
+xerj-neural  overall     108  0.552469   0.496219  0.503934
+# hadoop-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# openstack-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# healthapp-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hadoop-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  63.330000  413917184  11120561     28.888476  0.545008  413691904  0.013758  0.017331  62.820000
+=== measure openstack-2k ===
+engine       index_s     index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ----------  ---------  -----------  ---------  --------  ---------  --------  --------  ----------
+xerj-neural  152.780000  478191616  13922826     23.395029  0.602061  473751552  0.013903  0.022290  147.910000
+=== measure healthapp-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  44.580000  417136640  13347414     71.202917  0.544046  410939392  0.014152  0.015976  45.850000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/xerj-neural.json

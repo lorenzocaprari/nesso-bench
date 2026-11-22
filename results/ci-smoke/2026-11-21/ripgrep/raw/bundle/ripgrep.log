@@ -1,0 +1,15 @@
+=== support-bundle ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       18  0.027778   0.111111  0.043549
+ripgrep  exact_id    18  1.000000   0.890741  0.921127
+ripgrep  paraphrase  18  0.111111   0.069444  0.091255
+ripgrep  overall     54  0.379630   0.357099  0.351977
+=== overall ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+ripgrep  cause       18  0.027778   0.111111  0.043549
+ripgrep  exact_id    18  1.000000   0.890741  0.921127
+ripgrep  paraphrase  18  0.111111   0.069444  0.091255
+ripgrep  overall     54  0.379630   0.357099  0.351977
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/ripgrep.json

@@ -1,0 +1,83 @@
+=== hdfs-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.344000   0.358000  0.340268
+xerj-neural  exact_id    25  0.040000   0.004000  0.011563
+xerj-neural  paraphrase  25  0.528000   0.564000  0.530352
+xerj-neural  overall     75  0.304000   0.308667  0.294061
+=== bgl-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.523444   0.515667  0.494025
+xerj-neural  exact_id    25  0.400000   0.373333  0.380000
+xerj-neural  paraphrase  25  0.856000   0.913333  0.857146
+xerj-neural  overall     75  0.593148   0.600778  0.577057
+=== thunderbird-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.704000   0.607444  0.589687
+xerj-neural  exact_id    25  0.420000   0.240762  0.282103
+xerj-neural  paraphrase  25  0.812000   0.810000  0.806852
+xerj-neural  overall     75  0.645333   0.552735  0.559548
+=== openssh-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.376000   0.325000  0.351664
+xerj-neural  exact_id    25  0.362857   0.379048  0.335075
+xerj-neural  paraphrase  25  0.732000   0.760000  0.734388
+xerj-neural  overall     75  0.490286   0.488016  0.473709
+=== linux-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       25  0.872000   0.700000  0.749850
+xerj-neural  exact_id    25  0.240000   0.220000  0.225237
+xerj-neural  paraphrase  25  0.912000   0.873333  0.890879
+xerj-neural  overall     75  0.674667   0.597778  0.621989
+=== apache-2k ===
+engine       class       n   recall@10  MRR       nDCG@10
+-----------  ----------  --  ---------  --------  --------
+xerj-neural  cause       17  0.405882   0.379412  0.393797
+xerj-neural  exact_id    25  0.640000   0.359381  0.425927
+xerj-neural  paraphrase  17  0.705882   0.717647  0.702529
+xerj-neural  overall     59  0.591525   0.468382  0.496368
+=== overall ===
+engine       class       n    recall@10  MRR       nDCG@10
+-----------  ----------  ---  ---------  --------  --------
+xerj-neural  cause       142  0.544973   0.486639  0.491774
+xerj-neural  exact_id    150  0.350476   0.262754  0.276651
+xerj-neural  paraphrase  142  0.760563   0.776174  0.756574
+xerj-neural  overall     434  0.548289   0.503992  0.504062
+# hdfs-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# bgl-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# thunderbird-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# openssh-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# linux-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+# apache-2k/xerj-neural: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned neural_model_download_size=~90 MB
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: python=3.12.3 xerj=xerj v1.0.0-rc.104
+=== measure hdfs-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  53.490000  533704704  12803933     44.481577  1.088079  532803584  0.013892  0.016626  52.510000
+=== measure bgl-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  63.180000  500654080  13637100     42.998896  0.928198  500887552  0.011751  0.013809  61.260000
+=== measure thunderbird-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  69.680000  523128832  12195979     37.503933  0.912476  522432512  0.011567  0.013635  70.590000
+=== measure openssh-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  44.200000  413593600  13381859     59.417888  0.915914  413323264  0.011634  0.013618  44.460000
+=== measure linux-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  40.470000  413679616  13342652     61.633148  0.912295  413462528  0.011562  0.013385  41.520000
+=== measure apache-2k ===
+engine       index_s    index_rss  index_bytes  ratio      q_wall_s  q_rss      q_p50_s   q_p95_s   ttfr_s
+-----------  ---------  ---------  -----------  ---------  --------  ---------  --------  --------  ---------
+xerj-neural  26.490000  417435648  12767626     74.560270  0.733650  413360128  0.011646  0.014361  26.200000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/xerj-neural.json

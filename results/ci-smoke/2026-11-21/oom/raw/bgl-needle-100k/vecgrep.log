@@ -1,0 +1,2 @@
+eval-retrieval: bgl-needle-100k: 100000 lines, 34 queries
+eval-retrieval: bgl-needle-100k vecgrep: indexing

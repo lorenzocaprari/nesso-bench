@@ -1,0 +1,47 @@
+=== hadoop-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       12  0.250000   0.141667  0.168149
+opensearch  exact_id    12  1.000000   1.000000  1.000000
+opensearch  paraphrase  12  0.908333   0.812500  0.850882
+opensearch  overall     36  0.719444   0.651389  0.673010
+=== openstack-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       12  0.158333   0.178571  0.152297
+opensearch  exact_id    12  0.750000   0.750000  0.750000
+opensearch  paraphrase  12  0.941667   0.886905  0.921048
+opensearch  overall     36  0.616667   0.605159  0.607782
+=== healthapp-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       12  0.250000   0.180556  0.211750
+opensearch  exact_id    12  1.000000   1.000000  1.000000
+opensearch  paraphrase  12  0.500000   0.500000  0.500000
+opensearch  overall     36  0.583333   0.560185  0.570583
+=== overall ===
+engine      class       n    recall@10  MRR       nDCG@10
+----------  ----------  ---  ---------  --------  --------
+opensearch  cause       36   0.219444   0.166931  0.177399
+opensearch  exact_id    36   0.916667   0.916667  0.916667
+opensearch  paraphrase  36   0.783333   0.733135  0.757310
+opensearch  overall     108  0.639815   0.605578  0.617125
+# hadoop-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# openstack-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# healthapp-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: opensearch=3.10.0 python=3.12.3
+=== measure hadoop-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.700000  1540243456  389960       1.013020  0.246259  1544015872  0.004975  0.020434  13.940000
+=== measure openstack-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  15.120000  1549479936  580361       0.975202  0.266747  1537318912  0.004903  0.021020  14.980000
+=== measure healthapp-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.760000  1541267456  389981       2.080387  0.266300  1539641344  0.004617  0.014087  15.000000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/formats/opensearch.json

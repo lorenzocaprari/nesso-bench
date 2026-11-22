@@ -1,0 +1,83 @@
+{
+  "finishedAt": "2026-11-21T22:37:53Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/formats.json",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/bundle.json",
+      "suite": "bundle"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "diy-faiss"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "diy-faiss",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/diy-faiss.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 402.9
+    },
+    {
+      "engines": [
+        "diy-faiss"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "diy-faiss",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/formats/diy-faiss.json",
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 322.4
+    },
+    {
+      "engines": [
+        "diy-faiss"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "diy-faiss",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/diy-faiss.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 116.5
+    },
+    {
+      "engines": [
+        "diy-faiss"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "diy-faiss",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/bundle/diy-faiss.json",
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 113.0
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+=== hdfs-2k-json ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.272000   0.456492  0.282463
+ck      exact_id    25  0.000000   0.000000  0.000000
+ck      paraphrase  25  0.268000   0.496000  0.280910
+ck      overall     75  0.180000   0.317497  0.187791
+=== overall ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+ck      cause       25  0.272000   0.456492  0.282463
+ck      exact_id    25  0.000000   0.000000  0.000000
+ck      paraphrase  25  0.268000   0.496000  0.280910
+ck      overall     75  0.180000   0.317497  0.187791
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: ck=ck 0.8.1 python=3.12.3
+=== measure hdfs-2k-json ===
+engine  index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+ck      50.980000  7832432640  738924       1.857302  31.590000  226353152  0.420437  0.432448  51.530000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/json/ck.json

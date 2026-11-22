@@ -1,0 +1,16 @@
+=== support-bundle ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       18  0.538889   0.513889  0.518292
+xerj    exact_id    18  1.000000   1.000000  1.000000
+xerj    paraphrase  18  0.672222   0.722222  0.675176
+xerj    overall     54  0.737037   0.745370  0.731156
+=== overall ===
+engine  class       n   recall@10  MRR       nDCG@10
+------  ----------  --  ---------  --------  --------
+xerj    cause       18  0.538889   0.513889  0.518292
+xerj    exact_id    18  1.000000   1.000000  1.000000
+xerj    paraphrase  18  0.672222   0.722222  0.675176
+xerj    overall     54  0.737037   0.745370  0.731156
+# support-bundle/xerj: xerj_version=xerj v1.0.0-rc.104 url_mode=spawned
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/xerj.json

@@ -1,0 +1,83 @@
+=== hdfs-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.192000   0.133333  0.171569
+opensearch  exact_id    25  1.000000   1.000000  1.000000
+opensearch  paraphrase  25  0.452000   0.390000  0.430333
+opensearch  overall     75  0.548000   0.507778  0.533967
+=== bgl-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.380000   0.373000  0.370961
+opensearch  exact_id    25  0.960000   0.960000  0.960000
+opensearch  paraphrase  25  0.867556   0.861333  0.861672
+opensearch  overall     75  0.735852   0.731444  0.730878
+=== thunderbird-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.440000   0.379048  0.378571
+opensearch  exact_id    25  0.920000   0.920000  0.920000
+opensearch  paraphrase  25  0.892000   0.848000  0.872004
+opensearch  overall     75  0.750667   0.715683  0.723525
+=== openssh-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.232000   0.166667  0.199725
+opensearch  exact_id    25  0.960000   0.960000  0.960000
+opensearch  paraphrase  25  0.664000   0.613000  0.630785
+opensearch  overall     75  0.618667   0.579889  0.596837
+=== linux-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       25  0.608000   0.383714  0.470737
+opensearch  exact_id    25  0.960000   0.960000  0.960000
+opensearch  paraphrase  25  0.772000   0.723333  0.742571
+opensearch  overall     75  0.780000   0.689016  0.724436
+=== apache-2k ===
+engine      class       n   recall@10  MRR       nDCG@10
+----------  ----------  --  ---------  --------  --------
+opensearch  cause       17  0.352941   0.352941  0.352941
+opensearch  exact_id    25  1.000000   1.000000  1.000000
+opensearch  paraphrase  17  0.705882   0.705882  0.705882
+opensearch  overall     59  0.728814   0.728814  0.728814
+=== overall ===
+engine      class       n    recall@10  MRR       nDCG@10
+----------  ----------  ---  ---------  --------  --------
+opensearch  cause       142  0.368310   0.295028  0.322458
+opensearch  exact_id    150  0.966667   0.966667  0.966667
+opensearch  paraphrase  142  0.726682   0.689378  0.707283
+opensearch  overall     434  0.692371   0.656188  0.671021
+# hdfs-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# bgl-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# thunderbird-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# openssh-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# linux-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+# apache-2k/opensearch: opensearch_version=3.10.0 url_mode=spawned java_opts='-Xms1g -Xmx1g'
+=== measure ===
+platform=Linux-7.0.0-1014-aws-x86_64-with-glibc2.39 cpu=Intel(R) Xeon(R) 6975P-C nproc=4 threads=None repeat=1
+tools: opensearch=3.10.0 python=3.12.3
+=== measure hdfs-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.980000  1543475200  776642       2.698098  0.466206  1542193152  0.004656  0.011523  15.080000
+=== measure bgl-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.720000  1534722048  527605       1.663582  0.412858  1545089024  0.004460  0.009463  14.420000
+=== measure thunderbird-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.620000  1542303744  435405       1.338917  0.418337  1545191424  0.004564  0.011589  14.500000
+=== measure openssh-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.200000  1519005696  342848       1.522307  0.444293  1539534848  0.004965  0.010524  13.960000
+=== measure linux-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.350000  1527238656  397662       1.836903  0.436078  1529884672  0.004331  0.010178  14.380000
+=== measure apache-2k ===
+engine      index_s    index_rss   index_bytes  ratio     q_wall_s  q_rss       q_p50_s   q_p95_s   ttfr_s
+----------  ---------  ----------  -----------  --------  --------  ----------  --------  --------  ---------
+opensearch  14.290000  1565102080  321649       1.878363  0.416328  1545048064  0.005412  0.018534  14.220000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/opensearch.json

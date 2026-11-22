@@ -1,0 +1,77 @@
+=== hdfs-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.192000   0.389111  0.197761
+vecgrep  exact_id    25  0.000000   0.000000  0.000000
+vecgrep  paraphrase  25  0.288000   0.536667  0.294819
+vecgrep  overall     75  0.160000   0.308593  0.164193
+=== bgl-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.366302   0.488762  0.342729
+vecgrep  exact_id    25  0.120000   0.090000  0.097227
+vecgrep  paraphrase  25  0.578619   0.893333  0.610916
+vecgrep  overall     75  0.354974   0.490698  0.350291
+=== thunderbird-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.521333   0.543333  0.436457
+vecgrep  exact_id    25  0.200000   0.089048  0.118297
+vecgrep  paraphrase  25  0.558667   0.704444  0.541790
+vecgrep  overall     75  0.426667   0.445608  0.365515
+=== openssh-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.173143   0.283492  0.166638
+vecgrep  exact_id    25  0.186429   0.246667  0.153463
+vecgrep  paraphrase  25  0.257143   0.458095  0.225862
+vecgrep  overall     75  0.205571   0.329418  0.181988
+=== linux-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       25  0.494333   0.496000  0.366135
+vecgrep  exact_id    25  0.080000   0.053333  0.060000
+vecgrep  paraphrase  25  0.470333   0.442667  0.349721
+vecgrep  overall     75  0.348222   0.330667  0.258618
+=== apache-2k ===
+engine   class       n   recall@10  MRR       nDCG@10
+-------  ----------  --  ---------  --------  --------
+vecgrep  cause       17  0.347059   0.519608  0.364940
+vecgrep  exact_id    25  0.200000   0.046825  0.082087
+vecgrep  paraphrase  17  0.382353   0.558824  0.402052
+vecgrep  overall     59  0.294915   0.330576  0.255780
+=== overall ===
+engine   class       n    recall@10  MRR       nDCG@10
+-------  ----------  ---  ---------  --------  --------
+vecgrep  cause       142  0.349139   0.449653  0.309486
+vecgrep  exact_id    150  0.131071   0.087645  0.085179
+vecgrep  paraphrase  142  0.424782   0.601269  0.404314
+vecgrep  overall     434  0.298520   0.374142  0.262987
+=== measure ===
+platform=Linux-7.0.0-1017-azure-x86_64-with-glibc2.39 cpu=AMD EPYC 7763 64-Core Processor nproc=4 threads=None repeat=1
+tools: python=3.12.3 vecgrep=vecgrep 0.10.1
+=== measure hdfs-2k ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  13.570000  2113875968  1974290      6.858794  22.240000  259108864  0.292070  0.314211  12.650000
+=== measure bgl-2k ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  16.930000  3196059648  2007058      6.328419  21.690000  259121152  0.286558  0.298206  17.030000
+=== measure thunderbird-2k ===
+engine   index_s    index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  ---------  ----------  -----------  --------  ---------  ---------  --------  --------  ---------
+vecgrep  14.510000  2326208512  2023442      6.222299  21.510000  259059712  0.284265  0.295113  14.560000
+=== measure openssh-2k ===
+engine   index_s   index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  --------  ----------  -----------  --------  ---------  ---------  --------  --------  --------
+vecgrep  9.840000  1933697024  1916946      8.511589  21.450000  259145728  0.282870  0.295567  9.930000
+=== measure linux-2k ===
+engine   index_s   index_rss   index_bytes  ratio     q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  --------  ----------  -----------  --------  ---------  ---------  --------  --------  --------
+vecgrep  9.140000  1712001024  1900562      8.779186  21.450000  259112960  0.283192  0.297061  8.980000
+=== measure apache-2k ===
+engine   index_s   index_rss   index_bytes  ratio      q_wall_s   q_rss      q_p50_s   q_p95_s   ttfr_s
+-------  --------  ----------  -----------  ---------  ---------  ---------  --------  --------  --------
+vecgrep  6.830000  1210187776  1863698      10.883607  16.730000  259145728  0.280494  0.292753  7.020000
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/2k/vecgrep.json

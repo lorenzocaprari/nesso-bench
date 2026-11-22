@@ -1,0 +1,83 @@
+{
+  "finishedAt": "2026-11-21T22:42:59Z",
+  "merges": [
+    {
+      "inputs": 1,
+      "merged": "merged/2k.json",
+      "suite": "2k"
+    },
+    {
+      "merged": null,
+      "reason": "no finished runs",
+      "suite": "formats"
+    },
+    {
+      "inputs": 1,
+      "merged": "merged/json.json",
+      "suite": "json"
+    },
+    {
+      "merged": null,
+      "reason": "no finished runs",
+      "suite": "bundle"
+    }
+  ],
+  "runs": [
+    {
+      "engines": [
+        "ck"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "ck",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/2k/ck.json",
+      "suite": "2k",
+      "threads": null,
+      "wallSeconds": 923.6
+    },
+    {
+      "engines": [
+        "ck"
+      ],
+      "exitCode": -15,
+      "fp32": false,
+      "group": "ck",
+      "merged": true,
+      "outcome": "out-of-memory (12G)",
+      "report": null,
+      "suite": "formats",
+      "threads": null,
+      "wallSeconds": 89.7
+    },
+    {
+      "engines": [
+        "ck"
+      ],
+      "exitCode": 0,
+      "fp32": false,
+      "group": "ck",
+      "merged": true,
+      "outcome": "ok",
+      "report": "raw/json/ck.json",
+      "suite": "json",
+      "threads": null,
+      "wallSeconds": 216.9
+    },
+    {
+      "engines": [
+        "ck"
+      ],
+      "exitCode": -15,
+      "fp32": false,
+      "group": "ck",
+      "merged": true,
+      "outcome": "out-of-memory (12G)",
+      "report": null,
+      "suite": "bundle",
+      "threads": null,
+      "wallSeconds": 31.3
+    }
+  ]
+}

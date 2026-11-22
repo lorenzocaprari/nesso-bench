@@ -1,0 +1,39 @@
+=== support-bundle ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       18  0.600000   0.597222  0.595349
+nesso/auto     exact_id    18  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  18  0.761111   0.763889  0.744018
+nesso/auto     overall     54  0.787037   0.787037  0.779789
+nesso/dense    cause       18  0.611111   0.638889  0.615291
+nesso/dense    exact_id    18  0.222222   0.175926  0.186456
+nesso/dense    paraphrase  18  0.722222   0.722222  0.722222
+nesso/dense    overall     54  0.518519   0.512346  0.507990
+nesso/lexical  cause       18  0.555556   0.555556  0.544348
+nesso/lexical  exact_id    18  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  18  0.688889   0.694444  0.682263
+nesso/lexical  overall     54  0.748148   0.750000  0.742204
+grep           cause       18  0.027778   0.111111  0.043549
+grep           exact_id    18  1.000000   0.890741  0.921127
+grep           paraphrase  18  0.111111   0.069444  0.091255
+grep           overall     54  0.379630   0.357099  0.351977
+=== overall ===
+engine         class       n   recall@10  MRR       nDCG@10
+-------------  ----------  --  ---------  --------  --------
+nesso/auto     cause       18  0.600000   0.597222  0.595349
+nesso/auto     exact_id    18  1.000000   1.000000  1.000000
+nesso/auto     paraphrase  18  0.761111   0.763889  0.744018
+nesso/auto     overall     54  0.787037   0.787037  0.779789
+nesso/dense    cause       18  0.611111   0.638889  0.615291
+nesso/dense    exact_id    18  0.222222   0.175926  0.186456
+nesso/dense    paraphrase  18  0.722222   0.722222  0.722222
+nesso/dense    overall     54  0.518519   0.512346  0.507990
+nesso/lexical  cause       18  0.555556   0.555556  0.544348
+nesso/lexical  exact_id    18  1.000000   1.000000  1.000000
+nesso/lexical  paraphrase  18  0.688889   0.694444  0.682263
+nesso/lexical  overall     54  0.748148   0.750000  0.742204
+grep           cause       18  0.027778   0.111111  0.043549
+grep           exact_id    18  1.000000   0.890741  0.921127
+grep           paraphrase  18  0.111111   0.069444  0.091255
+grep           overall     54  0.379630   0.357099  0.351977
+wrote /home/runner/work/nesso-bench/nesso-bench/results/0.3.1/raw/bundle/nesso.json
