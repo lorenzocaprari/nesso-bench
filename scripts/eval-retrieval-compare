@@ -3,7 +3,9 @@
 
 Prints a Markdown table of current vs previous scores per system, ranker,
 class (or overall), and metric, plus one DROP line per relative drop beyond
-the tolerance. Scores never fail the process: exit 0 whenever both reports
+the tolerance. When both reports carry per-query results, it also prints a
+paired bootstrap interval for each class whose per-query MRR changed and lists
+the queries that moved. Scores never fail the process: exit 0 whenever both reports
 parse. Exit non-zero only on unreadable or malformed input.
 
 A ranker is a nesso mode (auto, hybrid, dense, lexical) or another engine
@@ -217,24 +219,9 @@ BOOTSTRAP_RESAMPLES = 5000
 CONFIDENCE = 0.95
 
 
-def query_scores(report: dict[str, Any], metric: str = "mrr") -> dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]]:
-    """(system, ranker) -> {(dataset, query id): (class, score)}; system "overall" pools every dataset."""
-    scores: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
-
-    def add(dataset: str, ranker: str, queries: Any) -> None:
-        if not isinstance(queries, list):
-            return
-        for query in queries:
-            if not isinstance(query, dict):
-                continue
-            value = (query.get("metrics") or {}).get(metric)
-            if not isinstance(value, (int, float)) or isinstance(value, bool):
-                continue
-            entry = (str(query.get("class")), float(value))
-            key = (dataset, str(query.get("id")))
-            scores.setdefault((dataset, ranker), {})[key] = entry
-            scores.setdefault(("overall", ranker), {})[key] = entry
-
+def iter_query_lists(report: dict[str, Any]) -> list[tuple[str, str, Any]]:
+    """Every (dataset, ranker, queries) in report order; skipped engines are left out."""
+    found: list[tuple[str, str, Any]] = []
     for entry in report.get("datasets") or []:
         if not isinstance(entry, dict) or not isinstance(entry.get("dataset"), str):
             continue
@@ -248,13 +235,44 @@ def query_scores(report: dict[str, Any], metric: str = "mrr") -> dict[tuple[str,
                     continue
                 if "modes" in engine:
                     for mode in engine.get("modes") or []:
-                        add(dataset, str(mode.get("mode")), mode.get("queries"))
+                        found.append((dataset, str(mode.get("mode")), mode.get("queries")))
                 else:
-                    add(dataset, ranker_label(name), engine.get("queries"))
+                    found.append((dataset, ranker_label(name), engine.get("queries")))
         else:
             for mode in entry.get("modes") or []:
-                add(dataset, str(mode.get("mode")), mode.get("queries"))
+                found.append((dataset, str(mode.get("mode")), mode.get("queries")))
+    return found
+
+
+def query_scores(report: dict[str, Any], metric: str = "mrr") -> dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]]:
+    """(system, ranker) -> {(dataset, query id): (class, score)}; system "overall" pools every dataset."""
+    scores: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
+    for dataset, ranker, queries in iter_query_lists(report):
+        if not isinstance(queries, list):
+            continue
+        for query in queries:
+            if not isinstance(query, dict):
+                continue
+            value = (query.get("metrics") or {}).get(metric)
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                continue
+            entry = (str(query.get("class")), float(value))
+            key = (dataset, str(query.get("id")))
+            scores.setdefault((dataset, ranker), {})[key] = entry
+            scores.setdefault(("overall", ranker), {})[key] = entry
     return scores
+
+
+def first_hit_ranks(report: dict[str, Any]) -> dict[tuple[str, str, str], int | None]:
+    """(dataset, ranker, query id) -> rank of the first relevant hit, None when none was found."""
+    ranks: dict[tuple[str, str, str], int | None] = {}
+    for dataset, ranker, queries in iter_query_lists(report):
+        for query in queries if isinstance(queries, list) else []:
+            if not isinstance(query, dict) or "first_hit_rank" not in query:
+                continue
+            rank = query.get("first_hit_rank")
+            ranks[(dataset, ranker, str(query.get("id")))] = rank if isinstance(rank, int) and not isinstance(rank, bool) else None
+    return ranks
 
 
 def paired_differences(
@@ -428,6 +446,88 @@ def resolve_tolerance(explicit: float | None) -> float:
     return value
 
 
+# Queries listed under "Queries whose MRR changed" before the rest are summarised.
+MOVED_QUERY_LIMIT = 30
+
+
+def change_interval(
+    cur_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
+    prev_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]],
+    system: str,
+    ranker: str,
+    class_name: str,
+) -> tuple[float, float] | None:
+    """Paired bootstrap interval of current minus previous per-query MRR, on the queries both runs scored."""
+    differences = paired_differences(
+        cur_queries.get((system, ranker), {}), prev_queries.get((system, ranker), {}), class_name
+    )
+    return bootstrap_interval(differences, f"change/{system}/{ranker}/{class_name}")
+
+
+def change_verdict(interval: tuple[float, float]) -> str:
+    return {"win": "better", "loss": "worse", "tie": "within noise"}[verdict(interval)]
+
+
+def format_rank(rank: int | None) -> str:
+    return "not found" if rank is None else str(rank)
+
+
+def mrr_changes(current: dict[str, Any], previous: dict[str, Any]) -> list[str]:
+    """Per-query view of MRR: paired intervals for the classes whose queries changed, then the queries."""
+    cur_queries = query_scores(current)
+    prev_queries = query_scores(previous)
+    rows: list[str] = []
+    moved: list[tuple[float, str, str, str, str, float, float]] = []
+    for system, ranker in sorted(set(cur_queries) & set(prev_queries)):
+        ours = cur_queries[(system, ranker)]
+        theirs = prev_queries[(system, ranker)]
+        classes = sorted({cls for cls, _score in ours.values()})
+        for class_name in [*classes, "overall"]:
+            differences = paired_differences(ours, theirs, class_name)
+            if not any(differences):
+                continue
+            interval = change_interval(cur_queries, prev_queries, system, ranker, class_name)
+            assert interval is not None
+            mean = sum(differences) / len(differences)
+            rows.append(
+                f"| {system} | {ranker} | {class_name} | {len(differences)} | {mean:+.3f} "
+                f"| [{interval[0]:+.3f}, {interval[1]:+.3f}] | {change_verdict(interval)} |"
+            )
+        if system == "overall":
+            continue
+        for key in sorted(set(ours) & set(theirs)):
+            if ours[key][1] != theirs[key][1]:
+                moved.append((abs(ours[key][1] - theirs[key][1]), system, ranker, key[1], ours[key][0], theirs[key][1], ours[key][1]))
+    if not rows:
+        return []
+    lines = [
+        "",
+        "#### MRR change by query",
+        "",
+        "Rows only for classes where at least one query's MRR changed. 95% CI: paired bootstrap of the "
+        f"per-query MRR difference (current minus previous, {BOOTSTRAP_RESAMPLES} resamples, seeded per row). "
+        "better or worse when the interval excludes 0, within noise when it contains 0.",
+        "",
+        "| system | ranker | class | n | change | 95% CI | verdict |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+        *rows,
+    ]
+    if moved:
+        cur_ranks = first_hit_ranks(current)
+        prev_ranks = first_hit_ranks(previous)
+        moved.sort(key=lambda item: (-item[0], item[1], item[2], item[3]))
+        lines.extend(["", "Queries whose MRR changed, largest change first:", ""])
+        for _size, system, ranker, query_id, class_name, before, after in moved[:MOVED_QUERY_LIMIT]:
+            rank_key = (system, ranker, query_id)
+            ranks = ""
+            if rank_key in cur_ranks and rank_key in prev_ranks:
+                ranks = f", first hit {format_rank(prev_ranks[rank_key])} -> {format_rank(cur_ranks[rank_key])}"
+            lines.append(f"- {system} {ranker} {query_id} ({class_name}): MRR {before:.3f} -> {after:.3f}{ranks}")
+        if len(moved) > MOVED_QUERY_LIMIT:
+            lines.append(f"- and {len(moved) - MOVED_QUERY_LIMIT} more")
+    return lines
+
+
 def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float) -> tuple[str, list[str]]:
     if not comparable(current, previous):
         note = (
@@ -439,6 +539,8 @@ def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float)
     cur = flatten(current)
     prev = flatten(previous)
     keys = sorted(set(cur) | set(prev))
+    cur_queries = query_scores(current)
+    prev_queries = query_scores(previous)
 
     pct = int(round(tolerance * 100))
     lines = [
@@ -460,9 +562,14 @@ def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float)
         elif c_val is not None and p_val is not None and p_val > 0 and c_val < p_val * (1.0 - tolerance):
             status = "drop"
             change = format_change(c_val, p_val)
+            note = ""
+            if metric == "mrr":
+                interval = change_interval(cur_queries, prev_queries, system, mode, class_name)
+                if interval is not None:
+                    note = f", 95% CI [{interval[0]:+.3f}, {interval[1]:+.3f}] {change_verdict(interval)}"
             drops.append(
                 f"DROP {system} {mode} {class_name} {metric}: "
-                f"{format_score(p_val)} -> {format_score(c_val)} ({change})"
+                f"{format_score(p_val)} -> {format_score(c_val)} ({change}{note})"
             )
         else:
             status = "ok"
@@ -483,6 +590,8 @@ def compare(current: dict[str, Any], previous: dict[str, Any], tolerance: float)
             )
             + " |"
         )
+
+    lines.extend(mrr_changes(current, previous))
 
     if drops:
         lines.append("")
