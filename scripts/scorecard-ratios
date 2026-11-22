@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Print nesso's timings as ratios to keyword engines timed on the same runner.
+
+    scripts/scorecard-ratios --keywords results/nesso-baseline \\
+        main=results/nesso-main baseline=results/nesso-baseline
+
+Each NAME=DIR is a scripts/scorecard results directory with a nesso run
+(raw/<suite>/nesso.json, which also holds grep). --keywords is the directory
+whose raw/<suite>/bm25.json and raw/<suite>/ripgrep.json give the keyword
+timings. Per measured suite and nesso build it prints:
+
+- index ÷ bm25: nesso's index wall time over bm25's, each summed over the
+  datasets both finished;
+- p50 ÷ grep and p50 ÷ ripgrep: the median, over the datasets both finished,
+  of nesso's query p50 (mode --mode, default auto) over that engine's p50.
+  grep comes from the same report as the nesso build.
+
+A ratio across runners mixes two machines, so it is only meaningful when every
+directory was scored on one runner, as in the Scorecard smoke workflow's nesso
+job. The table is marked development-only, and the CPU each report recorded is
+listed; when they differ, a warning says so. A missing report or engine is a
+dash, not an error: this exits 0 whenever the arguments parse.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+import sys
+from pathlib import Path
+from typing import Any
+
+SUITE_ORDER = ("2k", "formats", "json", "bundle", "bgl-needle-100k", "bgl-needle-1m", "thunderbird-needle-1m", "full-1m")
+
+def load(path: Path) -> Any | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def measured(report: Any) -> dict[str, dict[str, dict[str, Any]]]:
+    """{dataset: {engine: entry}} for every engine entry with status ok."""
+    if not isinstance(report, dict) or not isinstance(report.get("measure"), dict):
+        return {}
+    found: dict[str, dict[str, dict[str, Any]]] = {}
+    for dataset in report["measure"].get("datasets") or []:
+        if not isinstance(dataset, dict) or not isinstance(dataset.get("name"), str):
+            continue
+        engines = {
+            entry["engine"]: entry
+            for entry in dataset.get("engines") or []
+            if isinstance(entry, dict) and isinstance(entry.get("engine"), str) and entry.get("status") == "ok"
+        }
+        found[dataset["name"]] = engines
+    return found
+
+
+def number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def p50(entry: dict[str, Any], mode: str) -> float | None:
+    """An engine's query p50; nesso's lives under the mode it ran in."""
+    if isinstance(entry.get("modes"), list):
+        for row in entry["modes"]:
+            if isinstance(row, dict) and row.get("mode") == mode:
+                return number(row.get("queryLatencyMedianSeconds"))
+        return None
+    return number(entry.get("queryLatencyMedianSeconds"))
+
+
+def index_ratio(nesso: dict[str, dict[str, dict[str, Any]]], other: dict[str, dict[str, dict[str, Any]]]) -> tuple[float, float, float] | None:
+    """(nesso seconds, bm25 seconds, ratio), summed over the datasets both indexed."""
+    ours = theirs = 0.0
+    shared = 0
+    for name, engines in nesso.items():
+        mine = number(engines.get("nesso", {}).get("indexWallSeconds"))
+        rival = number(other.get(name, {}).get("bm25", {}).get("indexWallSeconds"))
+        if mine is None or rival is None:
+            continue
+        ours += mine
+        theirs += rival
+        shared += 1
+    if not shared or theirs <= 0:
+        return None
+    return ours, theirs, ours / theirs
+
+
+def query_ratio(nesso: dict[str, dict[str, dict[str, Any]]], other: dict[str, dict[str, dict[str, Any]]], engine: str, mode: str) -> float | None:
+    """Median over shared datasets of nesso's p50 over the engine's p50."""
+    ratios = []
+    for name, engines in nesso.items():
+        mine = p50(engines["nesso"], mode) if "nesso" in engines else None
+        rival_entry = other.get(name, {}).get(engine)
+        rival = p50(rival_entry, mode) if rival_entry else None
+        if mine is None or rival is None or rival <= 0:
+            continue
+        ratios.append(mine / rival)
+    return statistics.median(ratios) if ratios else None
+
+
+def median_p50(nesso: dict[str, dict[str, dict[str, Any]]], mode: str) -> float | None:
+    values = [value for engines in nesso.values() if "nesso" in engines for value in [p50(engines["nesso"], mode)] if value is not None]
+    return statistics.median(values) if values else None
+
+
+def seconds(value: float | None) -> str:
+    if value is None:
+        return "—"
+    return f"{value:.3f}" if value < 10 else f"{value:.1f}"
+
+
+def ratio(value: float | None) -> str:
+    if value is None:
+        return "—"
+    return f"{value:.1f}×" if value >= 10 else f"{value:.2f}×"
+
+
+def suites_in(directory: Path) -> list[str]:
+    raw = directory / "raw"
+    if not raw.is_dir():
+        return []
+    names = [entry.name for entry in raw.iterdir() if (entry / "nesso.json").is_file()]
+    # The scorecard's suite order, then anything else by name.
+    return sorted(names, key=lambda name: (SUITE_ORDER.index(name) if name in SUITE_ORDER else len(SUITE_ORDER), name))
+
+
+def version(directory: Path) -> str:
+    machine = load(directory / "machine.json")
+    if not isinstance(machine, dict):
+        return "?"
+    text = str(machine.get("nessoVersion", "?"))
+    return f"{text} (binary)" if machine.get("nessoSource") == "binary" else text
+
+
+def cpu_of(report: Any) -> str | None:
+    if isinstance(report, dict) and isinstance(report.get("measure"), dict):
+        cpu = report["measure"].get("cpuModel")
+        return cpu if isinstance(cpu, str) else None
+    return None
+
+
+def summarize(builds: list[tuple[str, Path]], keywords: Path, mode: str = "auto") -> str:
+    order: list[str] = []
+    for _name, directory in builds:
+        order += [suite for suite in suites_in(directory) if suite not in order]
+    rows: list[list[str]] = []
+    cpus: dict[str, set[str]] = {}
+    for suite in order:
+        bm25_report = load(keywords / "raw" / suite / "bm25.json")
+        ripgrep_report = load(keywords / "raw" / suite / "ripgrep.json")
+        bm25 = measured(bm25_report)
+        ripgrep = measured(ripgrep_report)
+        for label, report in (("bm25", bm25_report), ("ripgrep", ripgrep_report)):
+            cpu = cpu_of(report)
+            if cpu:
+                cpus.setdefault(cpu, set()).add(label)
+        for name, directory in builds:
+            report = load(directory / "raw" / suite / "nesso.json")
+            nesso = measured(report)
+            if not nesso:
+                continue
+            cpu = cpu_of(report)
+            if cpu:
+                cpus.setdefault(cpu, set()).add(name)
+            index = index_ratio(nesso, bm25)
+            rows.append([
+                suite,
+                f"{name} ({version(directory)})",
+                seconds(index[0]) if index else "—",
+                seconds(index[1]) if index else "—",
+                ratio(index[2]) if index else "—",
+                seconds(median_p50(nesso, mode)),
+                ratio(query_ratio(nesso, nesso, "grep", mode)),
+                ratio(query_ratio(nesso, ripgrep, "ripgrep", mode)),
+            ])
+    lines = [
+        "### nesso against keyword engines on one runner (development-only)",
+        "",
+        "Development-only: one sample on a shared hosted runner. Do not publish or quote these "
+        f"numbers. nesso mode `{mode}`. Index ratios are summed index wall times; query ratios are "
+        "the median of per-dataset p50 ratios. Above 1× nesso is slower.",
+        "",
+    ]
+    if not rows:
+        return "\n".join(lines + ["No measured nesso reports found."]) + "\n"
+    headers = ["suite", "nesso", "nesso index s", "bm25 index s", "index ÷ bm25", "nesso query p50 s", "p50 ÷ grep", "p50 ÷ ripgrep"]
+    lines += ["| " + " | ".join(headers) + " |", "| --- | --- |" + " ---: |" * (len(headers) - 2)]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    if cpus:
+        lines += ["", "CPU: " + "; ".join(f"{cpu} ({', '.join(sorted(who))})" for cpu, who in sorted(cpus.items())) + "."]
+    if len(cpus) > 1:
+        lines += ["", "**Warning:** the reports come from more than one CPU, so these ratios are not like-for-like."]
+    return "\n".join(lines) + "\n"
+
+
+def build_arg(text: str) -> tuple[str, Path]:
+    name, sep, path = text.partition("=")
+    if not sep or not name or not path:
+        raise argparse.ArgumentTypeError(f"expected NAME=DIR, got {text!r}")
+    return name, Path(path)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("builds", type=build_arg, nargs="+", metavar="NAME=DIR", help="scripts/scorecard results directory with a nesso run")
+    parser.add_argument("--keywords", type=Path, required=True, help="Results directory with the bm25 and ripgrep runs")
+    parser.add_argument("--mode", default="auto", help="nesso mode whose query p50 is compared (default auto)")
+    args = parser.parse_args(argv)
+    sys.stdout.write(summarize(args.builds, args.keywords, args.mode))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

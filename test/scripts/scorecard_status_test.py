@@ -67,6 +67,26 @@ class ScorecardStatusTest(unittest.TestCase):
         self.assertIn("| release | 0.3.1 | Test CPU | 4 | 16 GiB | 12G | no |", done.stdout)
         self.assertIn("| built | 0.3.1+gb20ff665cbb6 (binary) | Test CPU | 4 | 16 GiB | 12G | yes |", done.stdout)
 
+    def test_a_group_in_two_directories_gets_a_row_per_directory(self) -> None:
+        # The smoke workflow's nesso job scores main and the release baseline;
+        # both are group nesso, and the baseline directory also has the keyword engines.
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp)
+            main = results(base / "scorecard-smoke-nesso-main", [
+                {"suite": "2k", "group": "nesso", "outcome": "ok", "exitCode": 0, "wallSeconds": 5.0},
+            ])
+            baseline = results(base / "scorecard-smoke-nesso-baseline", [
+                {"suite": "2k", "group": "nesso", "outcome": "failed (exit 1)", "exitCode": 1, "wallSeconds": 7.0},
+                {"suite": "2k", "group": "bm25", "outcome": "ok", "exitCode": 0, "wallSeconds": 3.0},
+            ])
+            done = run_status(main, baseline)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("| nesso (scorecard-smoke-nesso-main) | ok (5 s) |", done.stdout)
+        self.assertIn("| nesso (scorecard-smoke-nesso-baseline) | failed (exit 1) (7 s) |", done.stdout)
+        self.assertIn("| bm25 | ok (3 s) |", done.stdout)
+        self.assertIn("| 2k | nesso (scorecard-smoke-nesso-baseline) | failed (exit 1) | 1 |", done.stdout)
+        self.assertIn("2 of 3 runs ok.", done.stdout)
+
     def test_a_missing_cell_is_a_dash_and_unreadable_directories_are_named(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             base = pathlib.Path(temp)

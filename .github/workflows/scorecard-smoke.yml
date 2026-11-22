@@ -1,23 +1,42 @@
 name: Scorecard smoke
 
-# Runs scripts/scorecard on a GitHub-hosted runner, to find out whether the
-# whole pipeline works on real Linux before a benchmark server is rented: the
-# per-run memory cap and the out-of-memory outcome, every competitor install
-# from a clean machine, and install -> run -> merge. Each engine group runs in
-# its own job on the small suites (and the 100k BGL needle window for the light
-# engines) at one repeat. It is development-only: hosted runners are shared and
+# Runs scripts/scorecard on GitHub-hosted runners: a weekly check that the
+# whole pipeline still works on real Linux (the per-run memory cap and the
+# out-of-memory outcome, every competitor install from a clean machine, and
+# install -> run -> merge), and a weekly look at nesso main next to the last
+# release. Everything here is development-only: hosted runners are shared and
 # too noisy to publish anything from, so the scorecard marks the results with
-# --dev and nothing here is a result. Manual only (workflow_dispatch): a full
-# run takes about two hours, so it never runs on pull requests. To check a
-# change to this workflow, run it on the branch with
-# `gh workflow run scorecard-smoke.yml --ref <branch> -f nesso_version=0.3.1`.
+# --dev and nothing here is a result.
+#
+# nesso main is the amd64 .deb (repro-deb-amd64-a) from the latest successful
+# scheduled Package run on lorenzocaprari/nesso main, or the run given as
+# nesso_run_id; the nesso-main job finds that run, records its id and head SHA,
+# and hands the .deb on. Artifacts there expire after 14 days, so an older run
+# fails that job. The nesso job then scores, on one runner, the released
+# baseline (nesso_version) with the keyword engines ripgrep, bm25, opensearch,
+# and xerj, and nesso main, so the timing ratios in the summary come from one
+# machine. Every embedding engine group runs in its own job on the small suites
+# (and xerj-semantic on the 100k BGL needle window too) at one repeat.
+#
+# Weekly on Sunday (16:23 UTC, clear of nesso's nightly crons) and on
+# workflow_dispatch. A full run takes about two hours, so it never runs on pull
+# requests. To check a change to this workflow, run it on the branch with
+# `gh workflow run scorecard-smoke.yml --ref <branch>` (add
+# `-f nesso_version=X.Y.Z` or `-f nesso_run_id=N` to pick other builds).
 on:
+  schedule:
+    - cron: "23 16 * * 0"
   workflow_dispatch:
     inputs:
       nesso_version:
-        description: Released nesso to score (a version pinned in scripts/install-nesso)
+        description: Released nesso baseline to score (a version pinned in scripts/install-nesso)
         required: true
         default: "0.3.1"
+        type: string
+      nesso_run_id:
+        description: nesso Package run whose amd64 .deb is scored as main (empty = latest successful scheduled run on main)
+        required: false
+        default: ""
         type: string
 
 concurrency:
@@ -30,6 +49,8 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   PYTHONHASHSEED: "0"
+  # A scheduled run has no inputs; it scores the defaults.
+  NESSO_VERSION: ${{ inputs.nesso_version || '0.3.1' }}
 
 jobs:
   # Nothing else runs until a memory cap is known to work: an engine that cannot
@@ -71,6 +92,221 @@ jobs:
             echo '```'
           } >> "${GITHUB_STEP_SUMMARY}"
 
+  # Finds the nesso build to score as main: the latest successful scheduled
+  # Package run on nesso main (or nesso_run_id), and hands its amd64 .deb to the
+  # score-nesso job. nesso is a public repository, so this job's own token can
+  # read its runs and artifacts; it needs nothing else.
+  nesso-main:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+    outputs:
+      run_id: ${{ steps.find.outputs.run_id }}
+      run_url: ${{ steps.find.outputs.run_url }}
+      head_sha: ${{ steps.find.outputs.head_sha }}
+      version: ${{ steps.unpack.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NESSO_REPO: lorenzocaprari/nesso
+      NESSO_RUN_ID: ${{ inputs.nesso_run_id }}
+      # The Package workflow's amd64 .deb; it ships /usr/bin/nesso and
+      # /usr/share/nesso/{model.onnx,vocab.txt}.
+      NESSO_ARTIFACT: repro-deb-amd64-a
+      # The Package workflow keeps its artifacts this long.
+      MAX_AGE_DAYS: "14"
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Find the nesso Package run
+        id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -n "${NESSO_RUN_ID}" ]]; then
+            [[ "${NESSO_RUN_ID}" =~ ^[0-9]+$ ]] || { echo "::error::nesso_run_id must be a run id (digits only)"; exit 1; }
+            run="$(gh api "repos/${NESSO_REPO}/actions/runs/${NESSO_RUN_ID}")"
+            path="$(jq -r '.path' <<<"${run}")"
+            [[ "${path}" == ".github/workflows/package.yml" ]] || { echo "::error::run ${NESSO_RUN_ID} is ${path}, not the Package workflow"; exit 1; }
+            conclusion="$(jq -r '.conclusion' <<<"${run}")"
+            [[ "${conclusion}" == "success" ]] || { echo "::error::Package run ${NESSO_RUN_ID} concluded ${conclusion}, not success"; exit 1; }
+          else
+            run="$(gh api "repos/${NESSO_REPO}/actions/workflows/package.yml/runs?branch=main&event=schedule&status=success&per_page=1" --jq '.workflow_runs[0] // empty')"
+            [[ -n "${run}" ]] || { echo "::error::no successful scheduled Package run on ${NESSO_REPO} main"; exit 1; }
+          fi
+          id="$(jq -r '.id' <<<"${run}")"
+          created="$(jq -r '.created_at' <<<"${run}")"
+          age_days=$(( ( $(date -u +%s) - $(date -u -d "${created}" +%s) ) / 86400 ))
+          if (( age_days >= MAX_AGE_DAYS )); then
+            echo "::error::the Package run to score (${id}, ${created}) is ${age_days} days old; its artifacts expire after ${MAX_AGE_DAYS} days. No successful scheduled Package run on main in the last ${MAX_AGE_DAYS} days."
+            exit 1
+          fi
+          artifact="$(gh api "repos/${NESSO_REPO}/actions/runs/${id}/artifacts?name=${NESSO_ARTIFACT}" --jq '.artifacts[0] // empty')"
+          [[ -n "${artifact}" ]] || { echo "::error::Package run ${id} has no ${NESSO_ARTIFACT} artifact"; exit 1; }
+          [[ "$(jq -r '.expired' <<<"${artifact}")" == "false" ]] || { echo "::error::${NESSO_ARTIFACT} of Package run ${id} has expired"; exit 1; }
+          mkdir -p "${RUNNER_TEMP}/nesso-main"
+          jq '{repository: .repository.full_name, runId: .id, runUrl: .html_url, event: .event, headBranch: .head_branch, headSha: .head_sha, createdAt: .created_at, artifact: env.NESSO_ARTIFACT}' \
+            <<<"${run}" > "${RUNNER_TEMP}/nesso-main/nesso-package.json"
+          {
+            echo "run_id=${id}"
+            echo "run_url=$(jq -r '.html_url' <<<"${run}")"
+            echo "head_sha=$(jq -r '.head_sha' <<<"${run}")"
+          } >> "${GITHUB_OUTPUT}"
+          cat "${RUNNER_TEMP}/nesso-main/nesso-package.json"
+
+      # Cross-repository download with this job's token: nesso is public.
+      - name: Download the nesso .deb
+        shell: bash
+        env:
+          RUN_ID: ${{ steps.find.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          gh run download "${RUN_ID}" -R "${NESSO_REPO}" -n "${NESSO_ARTIFACT}" -D "${RUNNER_TEMP}/nesso-main/deb"
+
+      # Unpacked, not installed: the scorecard takes the binary and model directory.
+      - name: Check the .deb
+        id: unpack
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/nesso-main"
+          shopt -s nullglob
+          debs=("${dir}"/deb/*.deb)
+          [[ ${#debs[@]} -eq 1 ]] || { echo "::error::expected one .deb in ${NESSO_ARTIFACT}, found ${#debs[@]}"; exit 1; }
+          dpkg-deb -x "${debs[0]}" "${dir}/root"
+          for file in usr/bin/nesso usr/share/nesso/model.onnx usr/share/nesso/vocab.txt; do
+            [[ -f "${dir}/root/${file}" ]] || { echo "::error::the .deb has no /${file}"; exit 1; }
+          done
+          version="$("${dir}/root/usr/bin/nesso" -V | head -n 1)"
+          sha256="$(sha256sum "${debs[0]}" | cut -d' ' -f1)"
+          jq --arg deb "$(basename "${debs[0]}")" --arg sha256 "${sha256}" --arg version "${version}" \
+            '. + {deb: $deb, debSha256: $sha256, versionOutput: $version}' "${dir}/nesso-package.json" > "${dir}/deb/nesso-package.json"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          cat "${dir}/deb/nesso-package.json"
+
+      - name: Upload the .deb
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nesso-main-deb
+          path: ${{ runner.temp }}/nesso-main/deb/
+          retention-days: 14
+          if-no-files-found: error
+
+  # nesso main and the released baseline, and the keyword engines, in one job:
+  # timings from different runners do not compare, so this is where the ratios
+  # in the summary come from. About 65 minutes on the 21 Nov 2026 smoke wall
+  # times (nesso about 21 minutes per build on these suites, opensearch about
+  # 10, ripgrep, bm25, and xerj under a minute), plus installs and fetches.
+  score-nesso:
+    name: score (nesso main, nesso baseline, keyword engines)
+    needs: [memory-cap, nesso-main]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      SUITES: 2k,formats,json,bundle,bgl-needle-100k
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check the version
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${NESSO_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "error: nesso_version must look like 0.3.1" >&2; exit 1; }
+
+      - name: Install GNU time
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq time
+
+      - name: Check the memory cap
+        shell: bash
+        run: bash scripts/check-memory-cap --env-file "${GITHUB_ENV}"
+
+      # Results go outside the checkout, so the second scorecard run does not
+      # see the first one's results as local changes.
+      - name: Set the paths
+        shell: bash
+        run: |
+          {
+            echo "BASELINE_OUT=${RUNNER_TEMP}/scorecard/nesso-baseline"
+            echo "MAIN_OUT=${RUNNER_TEMP}/scorecard/nesso-main"
+            echo "MAIN_DIR=${RUNNER_TEMP}/nesso-main"
+          } >> "${GITHUB_ENV}"
+
+      - name: Download the nesso main .deb
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: nesso-main-deb
+          path: ${{ runner.temp }}/nesso-main
+
+      - name: Unpack the nesso main .deb
+        id: unpack
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          debs=("${MAIN_DIR}"/*.deb)
+          [[ ${#debs[@]} -eq 1 ]] || { echo "::error::expected one .deb, found ${#debs[@]}"; exit 1; }
+          dpkg-deb -x "${debs[0]}" "${MAIN_DIR}/root"
+          "${MAIN_DIR}/root/usr/bin/nesso" -V
+
+      - name: Run the scorecard on the baseline and the keyword engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/scorecard --nesso-version "${NESSO_VERSION}" --dev --repeat 1 \
+            --memory-max 12G --suites "${SUITES}" --groups nesso,ripgrep,bm25,opensearch,xerj \
+            --out "${BASELINE_OUT}"
+
+      - name: Run the scorecard on nesso main
+        if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/scorecard --nesso-binary "${MAIN_DIR}/root/usr/bin/nesso" \
+            --nesso-model-dir "${MAIN_DIR}/root/usr/share/nesso" --dev --repeat 1 \
+            --memory-max 12G --suites "${SUITES}" --groups nesso --out "${MAIN_OUT}"
+          cp "${MAIN_DIR}/nesso-package.json" "${MAIN_OUT}/nesso-package.json"
+
+      - name: Summarize
+        if: always()
+        shell: bash
+        run: |
+          python3 scripts/scorecard-status "${MAIN_OUT}" "${BASELINE_OUT}" >> "${GITHUB_STEP_SUMMARY}" || true
+
+      - name: Upload the baseline results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-smoke-nesso-baseline
+          path: ${{ env.BASELINE_OUT }}/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload the main results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-smoke-nesso-main
+          path: ${{ env.MAIN_OUT }}/
+          retention-days: 14
+          if-no-files-found: warn
+
   score:
     name: score (${{ matrix.group }})
     needs: [memory-cap]
@@ -84,21 +320,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The light engines also run the 100k BGL needle window.
-          - group: nesso
-            suites: 2k,formats,json,bundle,bgl-needle-100k
-          - group: ripgrep
-            suites: 2k,formats,json,bundle,bgl-needle-100k
-          - group: bm25
-            suites: 2k,formats,json,bundle,bgl-needle-100k
-          - group: opensearch
-            suites: 2k,formats,json,bundle,bgl-needle-100k
-          - group: xerj
-            suites: 2k,formats,json,bundle,bgl-needle-100k
+          # nesso and the keyword engines run in the score-nesso job, on one runner.
           - group: xerj-semantic
             suites: 2k,formats,json,bundle,bgl-needle-100k
-          # The embedding engines take 1 to 2 hours on the 100k window at one
-          # repeat, and ck and vecgrep exhaust the 16 GB runner there (the oom
+          # The other embedding engines take 1 to 2 hours on the 100k window at
+          # one repeat, and ck and vecgrep exhaust the 16 GB runner there (the oom
           # job below runs vecgrep on purpose under a small cap).
           - group: diy-faiss
             suites: 2k,formats,json,bundle
@@ -111,7 +337,6 @@ jobs:
           - group: vecgrep
             suites: 2k,formats,json,bundle
     env:
-      NESSO_VERSION: ${{ inputs.nesso_version }}
       GROUP: ${{ matrix.group }}
       SUITES: ${{ matrix.suites }}
     steps:
@@ -167,7 +392,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scorecard-smoke-${{ matrix.group }}
-          path: results/${{ inputs.nesso_version }}/
+          path: results/${{ env.NESSO_VERSION }}/
           retention-days: 14
           if-no-files-found: warn
 
@@ -180,8 +405,6 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
-    env:
-      NESSO_VERSION: ${{ inputs.nesso_version }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -240,12 +463,12 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scorecard-smoke-oom
-          path: results/${{ inputs.nesso_version }}/
+          path: results/${{ env.NESSO_VERSION }}/
           retention-days: 14
           if-no-files-found: warn
 
   summary:
-    needs: [memory-cap, score, oom]
+    needs: [memory-cap, nesso-main, score-nesso, score, oom]
     if: always() && !cancelled()
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -280,3 +503,83 @@ jobs:
             exit 0
           fi
           python3 scripts/scorecard-status "${dirs[@]}" >> "${GITHUB_STEP_SUMMARY}"
+
+      # Which nesso build was scored as main.
+      - name: Name the nesso main build
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          RUN_ID: ${{ needs.nesso-main.outputs.run_id }}
+          RUN_URL: ${{ needs.nesso-main.outputs.run_url }}
+          HEAD_SHA: ${{ needs.nesso-main.outputs.head_sha }}
+          MAIN_VERSION: ${{ needs.nesso-main.outputs.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### nesso main"
+            echo
+            if [[ -n "${RUN_ID}" ]]; then
+              echo "nesso main is \`${MAIN_VERSION}\` from Package run [${RUN_ID}](${RUN_URL}) at \`${HEAD_SHA}\`, scored next to the ${NESSO_VERSION} release. \`nesso-package.json\` in \`scorecard-smoke-nesso-main\` records the same run."
+            else
+              echo "No nesso main build was found; see the nesso-main job."
+            fi
+            echo
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # Quality of nesso main against the baseline, per suite, system, and class,
+      # with the per-query paired intervals where the reports carry per-query
+      # results. Both reports come from the nesso job (nesso and grep).
+      - name: Compare nesso main with the baseline
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          main=smoke/scorecard-smoke-nesso-main
+          baseline=smoke/scorecard-smoke-nesso-baseline
+          {
+            echo "### nesso main against ${NESSO_VERSION}: quality (development-only)"
+            echo
+            shopt -s nullglob
+            reports=("${main}"/raw/*/nesso.json)
+            if [[ ${#reports[@]} -eq 0 ]]; then
+              echo "No nesso main reports were uploaded."
+            fi
+            for report in "${reports[@]}"; do
+              suite="$(basename "$(dirname "${report}")")"
+              previous="${baseline}/raw/${suite}/nesso.json"
+              echo "#### ${suite}"
+              echo
+              if [[ ! -f "${previous}" ]]; then
+                echo "No baseline report for this suite."
+                echo
+                continue
+              fi
+              if ! text="$(python3 scripts/eval-retrieval-compare --current "${report}" --previous "${previous}" 2>&1)"; then
+                printf 'The comparison failed:\n\n```\n%s\n```\n\n' "${text}"
+                continue
+              fi
+              drops="$(grep '^DROP ' <<<"${text}" || true)"
+              if [[ -n "${drops}" ]]; then
+                sed 's/^/- /' <<<"${drops}"
+              else
+                echo "No drop beyond the tolerance."
+              fi
+              echo
+              echo "<details><summary>${suite}: every system, ranker, class, and metric</summary>"
+              echo
+              echo "${text}"
+              echo
+              echo "</details>"
+              echo
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # Timing ratios only from the nesso job, where every engine shared a runner.
+      - name: Time nesso against the keyword engines
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/scorecard-ratios --keywords smoke/scorecard-smoke-nesso-baseline \
+            main=smoke/scorecard-smoke-nesso-main baseline=smoke/scorecard-smoke-nesso-baseline \
+            >> "${GITHUB_STEP_SUMMARY}"
