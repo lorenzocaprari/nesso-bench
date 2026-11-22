@@ -456,6 +456,60 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         self.assertIn("### nesso margin", both.stdout)
         self.assertIn("### Retrieval eval compare", both.stdout)
 
+    def test_mrr_change_lists_moved_queries_and_a_paired_interval(self) -> None:
+        # One of ten queries falls from 1.0 to 0.0: a drop beyond the tolerance, but within noise.
+        previous = engine_report([scored_entry("nesso/auto", [1.0] * 10)])
+        current = engine_report([scored_entry("nesso/auto", [0.0] + [1.0] * 9)])
+        result = self.run_compare(current, previous)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("#### MRR change by query", result.stdout)
+        self.assertIn("| hdfs-2k | auto | cause | 10 | -0.100 | [-0.300, +0.000] | within noise |", result.stdout)
+        self.assertIn("- hdfs-2k auto q0 (cause): MRR 1.000 -> 0.000", result.stdout)
+        self.assertIn("DROP hdfs-2k auto cause mrr: 1.000000 -> 0.900000 (-10.0%, 95% CI [-0.300, +0.000] within noise)", result.stdout)
+        # Other metrics keep the plain DROP line.
+        self.assertIn("DROP hdfs-2k auto cause ndcg_at_10: 1.000000 -> 0.900000 (-10.0%)", result.stdout)
+        # Every query worse: the interval excludes 0.
+        worse = engine_report([scored_entry("nesso/auto", [0.0] * 10)])
+        result = self.run_compare(worse, previous)
+        self.assertIn("| hdfs-2k | auto | cause | 10 | -1.000 | [-1.000, -1.000] | worse |", result.stdout)
+        better = self.run_compare(previous, worse)
+        self.assertIn("| hdfs-2k | auto | cause | 10 | +1.000 | [+1.000, +1.000] | better |", better.stdout)
+
+    def test_mrr_change_is_omitted_when_no_query_moved(self) -> None:
+        payload = engine_report([scored_entry("nesso/auto", [1.0, 0.5])])
+        result = self.run_compare(payload, payload)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("MRR change by query", result.stdout)
+        # Reports without per-query rows (schema 3 fixtures) add no section either.
+        result = self.run_compare(report(), report())
+        self.assertNotIn("MRR change by query", result.stdout)
+
+    def test_moved_queries_show_first_hit_ranks_and_are_capped(self) -> None:
+        def needle_queries(ranks: list[int | None]) -> dict:
+            entry = scored_entry("nesso/auto", [0.0 if rank is None else 1.0 / rank for rank in ranks], class_name="symptom")
+            for query, rank in zip(entry["modes"][0]["queries"], ranks):
+                query["first_hit_rank"] = rank
+            return needle_report([entry])
+
+        count = 40
+        previous = needle_queries([1] * count)
+        current = needle_queries([None] + [2] * (count - 1))
+        result = self.run_compare(current, previous)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("- bgl-needle-100k auto q0 (symptom): MRR 1.000 -> 0.000, first hit 1 -> not found", result.stdout)
+        self.assertIn("- bgl-needle-100k auto q1 (symptom): MRR 1.000 -> 0.500, first hit 1 -> 2", result.stdout)
+        # The pooled overall system repeats the dataset's queries and is not listed again.
+        self.assertNotIn("- overall auto", result.stdout)
+        self.assertIn(f"- and {count - 30} more", result.stdout)
+
+    def test_first_hit_ranks_helper(self) -> None:
+        mod = load_compare()
+        entry = scored_entry("nesso/auto", [1.0, 0.0])
+        entry["modes"][0]["queries"][0]["first_hit_rank"] = 1
+        entry["modes"][0]["queries"][1]["first_hit_rank"] = None
+        ranks = mod.first_hit_ranks(engine_report([entry, scored_entry("bm25", [1.0])]))
+        self.assertEqual(ranks, {("hdfs-2k", "auto", "q0"): 1, ("hdfs-2k", "auto", "q1"): None})
+
 
 if __name__ == "__main__":
     unittest.main()
