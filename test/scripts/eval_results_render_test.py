@@ -147,6 +147,33 @@ class EvalResultsRenderTest(unittest.TestCase):
         self.assertIn("> **Development only.**", page)
         self.assertIn("No ranker beats nesso's headline mode", page)
         self.assertIn("Every run finished.", page)
+        # Without recorded reasons (older machine.json), the generic one is kept.
+        self.assertIn("This run allowed WSL, a busy machine, or local changes; do not publish", page)
+        self.assertIn("(the released binary and its shipped int8 model)", page)
+
+    def test_binary_built_outside_a_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            results = results_dir(directory)
+            machine = json.loads((results / "machine.json").read_text(encoding="utf-8"))
+            reason = "nesso is a binary built outside a pinned release (0.3.1+gb20ff665cbb6)"
+            machine.update({
+                "developmentOnly": True,
+                "developmentReasons": [reason],
+                "nessoBinarySha256": "ab" * 32,
+                "nessoModel": {"dir": "models", "model_onnx_sha256": "cd" * 32, "model_onnx_bytes": 4},
+                "nessoSource": "binary",
+                "nessoVersion": "0.3.1+gb20ff665cbb6",
+                "nessoVersionOutput": "0.3.1+gb20ff665cbb6",
+            })
+            (results / "machine.json").write_text(json.dumps(machine), encoding="utf-8")
+            page = self.render(results, directory / "page.md")
+        self.assertTrue(page.startswith("# nesso 0.3.1+gb20ff665cbb6 scorecard\n"))
+        self.assertIn(f"> **Development only:** {reason}. Do not publish its numbers.", page)
+        self.assertIn("(a binary built outside a release, with the model directory it was given)", page)
+        self.assertIn("| nesso | 0.3.1+gb20ff665cbb6 (binary built outside a release) |", page)
+        self.assertIn(f"| nesso binary sha256 | {'ab' * 32} |", page)
+        self.assertIn(f"| Model (model.onnx sha256) | {'cd' * 32} (models) |", page)
 
     def test_unstable_ranker_is_marked(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

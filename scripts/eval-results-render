@@ -14,6 +14,9 @@ Quality rows compare every engine and nesso mode with nesso's headline mode
 paired bootstrap interval and a verdict from nesso's side (win, loss, tie), as
 in eval-retrieval-compare --margins. "Where nesso loses" lists every row whose
 interval is entirely below 0. The output is deterministic for a given input.
+
+A development-only run (machine.json developmentOnly: --dev, or a nesso binary
+that is not a pinned release) gets a banner with its developmentReasons.
 """
 
 from __future__ import annotations
@@ -281,6 +284,21 @@ def measure_section(title: str, measure: dict[str, Any]) -> list[str]:
 # ---- page --------------------------------------------------------------------
 
 
+def nesso_rows(machine: dict[str, Any]) -> list[list[str]]:
+    """Which nesso was scored: -V output, binary digest, and model digests, when machine.json has them."""
+    rows = []
+    if machine.get("nessoVersionOutput"):
+        source = "binary built outside a release" if machine.get("nessoSource") == "binary" else "pinned release"
+        rows.append(["nesso", f"{machine['nessoVersionOutput']} ({source})"])
+    if machine.get("nessoBinarySha256"):
+        rows.append(["nesso binary sha256", str(machine["nessoBinarySha256"])])
+    for label, key in (("Model", "nessoModel"), ("fp32 model", "nessoFp32Model")):
+        model = machine.get(key)
+        if isinstance(model, dict) and model.get("model_onnx_sha256"):
+            rows.append([f"{label} (model.onnx sha256)", f"{model['model_onnx_sha256']} ({model.get('dir')})"])
+    return rows
+
+
 def machine_section(machine: dict[str, Any]) -> list[str]:
     tools = machine.get("tools", {})
     rows = [
@@ -291,6 +309,7 @@ def machine_section(machine: dict[str, Any]) -> list[str]:
         ["Memory cap per run", str(machine.get("memoryMax"))],
         ["Timeout per run", f"{machine.get('timeoutHours')} h"],
         ["Python, GNU time", f"{tools.get('python')}, {tools.get('gnuTime')}"],
+        *nesso_rows(machine),
         ["nesso-bench commit", f"{machine.get('nessoBenchCommit')}{' (dirty)' if machine.get('nessoBenchDirty') else ''}"],
         ["Started", str(machine.get("startedAt"))],
     ]
@@ -308,9 +327,19 @@ def render(results: Path) -> str:
 
     lines = [f"# nesso {version} scorecard", ""]
     if machine.get("developmentOnly"):
-        lines += ["> **Development only.** This run allowed WSL, a busy machine, or local changes; do not publish its numbers.", ""]
+        reasons = machine.get("developmentReasons") or []
+        if reasons:
+            banner = f"> **Development only:** {'; '.join(map(str, reasons))}. Do not publish its numbers."
+        else:
+            banner = "> **Development only.** This run allowed WSL, a busy machine, or local changes; do not publish its numbers."
+        lines += [banner, ""]
+    scored = (
+        "a binary built outside a release, with the model directory it was given"
+        if machine.get("nessoSource") == "binary"
+        else "the released binary and its shipped int8 model"
+    )
     lines += [
-        f"nesso {version} (the released binary and its shipped int8 model) against the other engines, on one machine. "
+        f"nesso {version} ({scored}) against the other engines, on one machine. "
         "Quality is machine-independent; speed and memory hold for this machine only.",
         "",
     ]

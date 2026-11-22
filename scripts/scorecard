@@ -5,14 +5,18 @@
                       [--suites ...] [--groups ...] [--memory-max 48G]
                       [--timeout-hours 8] [--repeat N] [--nesso-threads-1]
                       [--nesso-fp32] [--dev] [--dry-run]
+    scripts/scorecard --nesso-binary PATH --nesso-model-dir DIR
+                      [--nesso-fp32 --nesso-fp32-model-dir DIR] [...]
 
 One command, so every release is measured the same way:
 
 1. Preflight: refuses WSL and a busy machine (load above 1.0) unless --dev,
    which marks the results development-only. Writes machine.json: CPU, RAM,
-   kernel, CPU governor, SMT, mitigations, swap, disk, tool versions, and the
-   nesso-bench commit.
-2. Installs nesso VERSION (scripts/install-nesso) and the competitors
+   kernel, CPU governor, SMT, mitigations, swap, disk, tool versions, the
+   nesso-bench commit, and which nesso is scored: its -V output, the binary's
+   sha256, the model files' digests, and nessoSource (release or binary).
+2. Installs nesso VERSION (scripts/install-nesso), or takes the binary and
+   model directory given, installs the competitors
    (scripts/install-competitors), and prepares every input: fetches Loghub
    samples and windows, and builds the JSON-lines set and the support bundle.
 3. Runs scripts/eval-retrieval --measure once per suite and engine group, each
@@ -32,15 +36,29 @@ adds nesso with the fp32 model (scripts/install-nesso --fp32). Neither is
 merged into a suite: the thread setting and the model are part of a report's
 setting.
 
+--nesso-binary PATH and --nesso-model-dir DIR score a nesso someone built, for
+example from a commit, instead of a pinned release: exactly one of
+--nesso-version and --nesso-binary is required, and the binary needs its model
+directory. Nothing is downloaded for nesso; every nesso run gets the binary and
+model directory the way scripts/install-nesso exports them (NESSO_BINARY,
+NESSO_MODEL_DIR). --nesso-fp32 then also needs --nesso-fp32-model-dir DIR
+(model.onnx and vocab.txt). The default --out is results/<-V output>. Unless
+the -V output is exactly a version scripts/install-nesso pins, the run is
+development-only, as with --dev, and machine.json says why in
+developmentReasons.
+
 Layout under --out: machine.json, status.json, raw/<suite>/<group>.json and
 .log, merged/<suite>.json. Indexes and temporary corpora go to
-build/scorecard/<out name>/. --dry-run prints the runs as JSON lines and does
-nothing else.
+build/scorecard/<out name>/. --dry-run prints the runs as JSON lines, each with
+the nesso version or binary it would score, and does nothing else (with
+--nesso-binary it runs `<binary> -V` for the default --out).
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.machinery
+import importlib.util
 import json
 import os
 import platform
@@ -127,6 +145,65 @@ FETCHES = {
     "thunderbird-needle-1m": [["fetch-loghub", "--dataset", "thunderbird-loghub2", "--window", "8550001:1000000"]],
     "full-1m": [["fetch-loghub", "--dataset", "all-full"]],
 }
+
+
+def load_eval_retrieval():
+    """scripts/eval-retrieval as a module, for the model identity its reports record."""
+    loader = importlib.machinery.SourceFileLoader("eval_retrieval", str(ROOT / "scripts" / "eval-retrieval"))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    # Dataclasses look their module up while the class is built.
+    sys.modules[loader.name] = module
+    loader.exec_module(module)
+    return module
+
+
+def pinned_versions() -> set[str]:
+    """Versions scripts/install-nesso pins a .deb for, on any architecture."""
+    text = (ROOT / "scripts" / "install-nesso").read_text(encoding="utf-8")
+    return set(re.findall(r'^\s*\["([^"/]+)/[^"]+"\]=', text, flags=re.MULTILINE))
+
+
+def nesso_version_output(binary: Path) -> str:
+    """The first line `<binary> -V` prints; refuses a binary that does not run."""
+    try:
+        completed = subprocess.run([str(binary), "-V"], capture_output=True, text=True, check=False, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SystemExit(f"error: cannot run {binary} -V: {exc}") from exc
+    lines = completed.stdout.strip().splitlines()
+    if completed.returncode != 0 or not lines or not lines[0].strip():
+        raise SystemExit(f"error: {binary} -V exited {completed.returncode} without a version")
+    return lines[0].strip()
+
+
+def path_name(text: str) -> str:
+    """A version string as one safe path component: 0.3.1+gb20ff665cbb6 stays, / and spaces do not."""
+    name = re.sub(r"[^A-Za-z0-9._+-]+", "_", text).strip("._")
+    return name or "nesso"
+
+
+def nesso_identity(binary: Path, model_dir: Path, fp32_model_dir: Path | None) -> dict:
+    """machine.json fields that say which nesso binary and model files were scored."""
+    eval_retrieval = load_eval_retrieval()
+    info = {
+        "nessoBinary": str(binary),
+        "nessoBinarySha256": eval_retrieval.sha256_of_file(binary),
+        "nessoVersionOutput": nesso_version_output(binary),
+        "nessoModel": eval_retrieval.model_identity(model_dir),
+    }
+    if fp32_model_dir is not None:
+        info["nessoFp32Model"] = eval_retrieval.model_identity(fp32_model_dir)
+    return info
+
+
+def nesso_env(env: dict[str, str], binary: Path, model_dir: Path, fp32_model_dir: Path | None) -> None:
+    """The variables scripts/install-nesso exports, for a binary it did not install."""
+    env["NESSO_BINARY"] = str(binary)
+    env["NESSO_MODEL_DIR"] = str(model_dir)
+    env["PATH"] = f"{binary.parent}:{env.get('PATH', '')}"
+    if fp32_model_dir is not None:
+        env["NESSO_FP32_MODEL_DIR"] = str(fp32_model_dir)
 
 
 def work_root(out: Path) -> Path:
@@ -290,7 +367,8 @@ def machine_info(out: Path, dev: bool) -> dict:
     }
 
 
-def check_machine(info: dict, dev: bool) -> None:
+def check_machine(info: dict, dev: bool) -> list[str]:
+    """Refuses a machine unfit for published numbers unless dev; returns the problems."""
     problems = []
     if info["wsl"]:
         problems.append("this is WSL; published numbers need native Linux")
@@ -302,6 +380,7 @@ def check_machine(info: dict, dev: bool) -> None:
         raise SystemExit("error: " + "; ".join(problems) + ". Pass --dev for a development-only run.")
     for problem in problems:
         print(f"scorecard: development-only run: {problem}", file=sys.stderr)
+    return problems
 
 
 # ---- setup -----------------------------------------------------------------
@@ -457,8 +536,11 @@ def merge_suite(suite: Suite, entries: list[dict], out: Path) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--nesso-version", required=True, help="Released nesso to score (pinned in scripts/install-nesso)")
-    parser.add_argument("--out", type=Path, default=None, help="Results directory (default results/<version>)")
+    parser.add_argument("--nesso-version", default=None, help="Released nesso to score (pinned in scripts/install-nesso)")
+    parser.add_argument("--nesso-binary", type=Path, default=None, help="A nesso binary to score instead of a release (needs --nesso-model-dir)")
+    parser.add_argument("--nesso-model-dir", type=Path, default=None, help="Model directory (model.onnx, vocab.txt) for --nesso-binary")
+    parser.add_argument("--nesso-fp32-model-dir", type=Path, default=None, help="fp32 model directory for --nesso-binary with --nesso-fp32")
+    parser.add_argument("--out", type=Path, default=None, help="Results directory (default results/<version or -V output>)")
     parser.add_argument("--suites", default=None, help=f"Comma-separated subset of {', '.join(s.name for s in SUITES)}")
     parser.add_argument("--groups", default=None, help=f"Comma-separated subset of {', '.join(g.name for g in GROUPS)}")
     parser.add_argument("--memory-max", default="48G", help="cgroup MemoryMax per run (systemd-run); 'none' to run uncapped")
@@ -470,8 +552,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="Print the runs as JSON lines and exit")
     args = parser.parse_args(argv)
 
-    version = args.nesso_version.removeprefix("v")
-    out = (args.out or ROOT / "results" / version).resolve()
+    if (args.nesso_version is None) == (args.nesso_binary is None):
+        raise SystemExit("error: pass exactly one of --nesso-version or --nesso-binary")
+    if (args.nesso_binary is None) != (args.nesso_model_dir is None):
+        raise SystemExit("error: --nesso-binary and --nesso-model-dir go together")
+    if args.nesso_fp32_model_dir is not None and args.nesso_binary is None:
+        raise SystemExit("error: --nesso-fp32-model-dir goes with --nesso-binary; a release stages its own fp32 model")
+    if args.nesso_fp32 and args.nesso_binary is not None and args.nesso_fp32_model_dir is None:
+        raise SystemExit("error: --nesso-fp32 with --nesso-binary needs --nesso-fp32-model-dir DIR (model.onnx and vocab.txt); nothing is downloaded for a binary")
+    binary = model_dir = fp32_model_dir = None
+    if args.nesso_binary is not None:
+        binary = args.nesso_binary.resolve()
+        model_dir = args.nesso_model_dir.resolve()
+        fp32_model_dir = args.nesso_fp32_model_dir.resolve() if args.nesso_fp32_model_dir else None
+        if not binary.is_file() or not os.access(binary, os.X_OK):
+            raise SystemExit(f"error: --nesso-binary {binary} is not an executable file")
+        for flag, directory in (("--nesso-model-dir", model_dir), ("--nesso-fp32-model-dir", fp32_model_dir)):
+            if directory is not None and not (directory / "model.onnx").is_file():
+                raise SystemExit(f"error: {flag} {directory} has no model.onnx")
+        version = nesso_version_output(binary).removeprefix("v")
+    else:
+        version = args.nesso_version.removeprefix("v")
+    out = (args.out or ROOT / "results" / path_name(version)).resolve()
     suites = pick(args.suites, SUITES, "suite")
     if args.repeat is not None:
         if args.repeat <= 0:
@@ -485,15 +587,20 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("error: --timeout-hours must be positive")
 
     if args.dry_run:
+        shown = {"nessoBinary": str(binary), "nessoModelDir": str(model_dir)} if binary else {"nessoVersion": version}
+        dry_env = {}
+        if binary is not None:
+            nesso_env(dry_env, binary, model_dir, fp32_model_dir)
         for run in runs:
             print(json.dumps({
+                **shown,
                 "suite": run.suite.name,
                 "group": run.group.name,
                 "engines": list(run.group.engines),
                 "threads": run.group.threads,
                 "fp32": run.group.fp32,
                 "merged": run.merged,
-                "argv": run.command(out, "python3", {})[1:],
+                "argv": run.command(out, "python3", dry_env)[1:],
             }, sort_keys=True))
         return 0
 
@@ -502,14 +609,31 @@ def main(argv: list[str] | None = None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     info = machine_info(out, args.dev)
     info["nessoVersion"] = version
+    info["nessoSource"] = "release" if binary is None else "binary"
     info["memoryMax"] = memory_max
     info["timeoutHours"] = args.timeout_hours
-    check_machine(info, args.dev)
-    (out / "machine.json").write_text(json.dumps(info, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    reasons = check_machine(info, args.dev)
+    if binary is not None:
+        info.update(nesso_identity(binary, model_dir, fp32_model_dir if any(run.group.fp32 for run in runs) else None))
+        if version not in pinned_versions():
+            reason = f"nesso is a binary built outside a pinned release ({info['nessoVersionOutput']})"
+            print(f"scorecard: development-only run: {reason}", file=sys.stderr)
+            reasons.append(reason)
+    info["developmentOnly"] = bool(args.dev or reasons)
+    info["developmentReasons"] = reasons
+    machine_path = out / "machine.json"
+    machine_path.write_text(json.dumps(info, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     env = {key: value for key, value in os.environ.items() if not key.startswith("NESSO_")}
     env["PYTHONHASHSEED"] = "0"
-    install("install-nesso", [*(["--fp32"] if any(run.group.fp32 for run in runs) else []), version], env)
+    if binary is None:
+        install("install-nesso", [*(["--fp32"] if any(run.group.fp32 for run in runs) else []), version], env)
+        fp32_dir = env.get("NESSO_FP32_MODEL_DIR")
+        # The same identity fields as for a binary, from what install-nesso unpacked.
+        info.update(nesso_identity(Path(env["NESSO_BINARY"]), Path(env["NESSO_MODEL_DIR"]), Path(fp32_dir) if fp32_dir else None))
+        machine_path.write_text(json.dumps(info, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    else:
+        nesso_env(env, binary, model_dir, fp32_model_dir)
     competitors = competitor_engines(groups)
     if competitors:
         install("install-competitors", competitors, env)
