@@ -1,28 +1,38 @@
 name: Scorecard smoke
 
-# Runs scripts/scorecard on GitHub-hosted runners: a weekly check that the
-# whole pipeline still works on real Linux (the per-run memory cap and the
-# out-of-memory outcome, every competitor install from a clean machine, and
-# install -> run -> merge), and a weekly look at nesso main next to the last
-# release. Everything here is development-only: hosted runners are shared and
-# too noisy to publish anything from, so the scorecard marks the results with
-# --dev and nothing here is a result.
+# Runs scripts/scorecard on GitHub-hosted runners: a weekly trend of nesso
+# against the competitors, and a check that the pipeline still works on real
+# Linux (the per-run memory cap and the out-of-memory outcome, every competitor
+# install from a clean machine, and install -> run -> merge). Everything here
+# is development-only: hosted runners are shared and too noisy to publish
+# timings from, so the scorecard marks the results with --dev.
 #
 # nesso main is the amd64 .deb (repro-deb-amd64-a) from the latest successful
 # scheduled Package run on lorenzocaprari/nesso main, or the run given as
 # nesso_run_id; the nesso-main job finds that run, records its id and head SHA,
 # and hands the .deb on. Artifacts there expire after 14 days, so an older run
 # fails that job. The nesso job then scores, on one runner, the released
-# baseline (nesso_version) with the keyword engines ripgrep, bm25, opensearch,
-# and xerj, and nesso main, so the timing ratios in the summary come from one
-# machine. Every embedding engine group runs in its own job on the small suites
-# (and xerj-semantic on the 100k BGL needle window too) at one repeat.
+# baseline (nesso_version, default 0.3.1) with the keyword engines ripgrep,
+# bm25, opensearch, and xerj, and nesso main. Every embedding engine group runs
+# in its own job on the small suites (and xerj-semantic on the 100k BGL needle
+# window too) at one repeat.
+#
+# The summary compares quality margins (deterministic) with the previous
+# scheduled run kept in this repo and with the release scored in this run.
+# In-job engines are ratios against nesso, grep, and ripgrep on that one
+# runner. Embedding engines are a per-engine trend, shown only after four kept
+# runs, never as a comparison across jobs. The timing report is committed to
+# the results/ci-smoke branch by the record job, which is the only job with
+# contents: write. It creates the branch if missing, appends, and never
+# force-pushes. It does not open a pull request: Actions cannot approve one
+# here. The maintainer merges that branch by hand. No secret is added.
+# Artifacts still expire.
 #
 # Weekly on Sunday (16:23 UTC, clear of nesso's nightly crons) and on
-# workflow_dispatch. A full run takes about two hours, so it never runs on pull
-# requests. To check a change to this workflow, run it on the branch with
-# `gh workflow run scorecard-smoke.yml --ref <branch>` (add
-# `-f nesso_version=X.Y.Z` or `-f nesso_run_id=N` to pick other builds).
+# workflow_dispatch, including a release candidate. A full run takes about two
+# hours, so it never runs on pull requests. To check a change to this workflow,
+# run it on the branch with `gh workflow run scorecard-smoke.yml --ref <branch>`
+# (add `-f nesso_version=X.Y.Z` or `-f nesso_run_id=N` to pick other builds).
 on:
   schedule:
     - cron: "23 16 * * 0"
@@ -491,7 +501,7 @@ jobs:
           pattern: scorecard-smoke-*
           path: smoke
 
-      # One table for every engine group, and the runs that did not finish.
+      # Outcomes only. Wall times from different jobs are not a comparison.
       - name: Summarize every group
         shell: bash
         run: |
@@ -502,7 +512,7 @@ jobs:
             echo "No results were uploaded." >> "${GITHUB_STEP_SUMMARY}"
             exit 0
           fi
-          python3 scripts/scorecard-status "${dirs[@]}" >> "${GITHUB_STEP_SUMMARY}"
+          python3 scripts/scorecard-status --no-times "${dirs[@]}" >> "${GITHUB_STEP_SUMMARY}"
 
       # Which nesso build was scored as main.
       - name: Name the nesso main build
@@ -574,12 +584,138 @@ jobs:
             done
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      # Timing ratios only from the nesso job, where every engine shared a runner.
-      - name: Time nesso against the keyword engines
-        if: ${{ !cancelled() }}
+      # Quality margins against the previous scheduled run and the release, in-job
+      # ratios, and embedding trends. The kept reports live on results/ci-smoke
+      # (and on main, once that pull request is merged). Fetch is anonymous:
+      # the branch is public and this job's token stays read-only.
+      - name: Competitor trend
         shell: bash
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.sha }}
+          NESSO_MAIN_VERSION: ${{ needs.nesso-main.outputs.version }}
+          NESSO_MAIN_RUN: ${{ needs.nesso-main.outputs.run_id }}
+          NESSO_MAIN_URL: ${{ needs.nesso-main.outputs.run_url }}
+          NESSO_MAIN_SHA: ${{ needs.nesso-main.outputs.head_sha }}
         run: |
           set -euo pipefail
-          python3 scripts/scorecard-ratios --keywords smoke/scorecard-smoke-nesso-baseline \
-            main=smoke/scorecard-smoke-nesso-main baseline=smoke/scorecard-smoke-nesso-baseline \
+          history="${RUNNER_TEMP}/trend-history"
+          mkdir -p "${history}"
+          if [[ -d results/ci-smoke ]]; then
+            cp -a results/ci-smoke/. "${history}/"
+          fi
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --heads "${remote}" refs/heads/results/ci-smoke | grep -q .; then
+            git fetch --no-tags --depth=1 "${remote}" refs/heads/results/ci-smoke
+            if git cat-file -e FETCH_HEAD:results/ci-smoke 2>/dev/null; then
+              branch="${RUNNER_TEMP}/trend-branch"
+              rm -rf "${branch}"
+              mkdir -p "${branch}"
+              git archive FETCH_HEAD results/ci-smoke | tar -x -C "${branch}"
+              if [[ -d "${branch}/results/ci-smoke" ]]; then
+                cp -a "${branch}/results/ci-smoke/." "${history}/"
+              fi
+            fi
+          fi
+          embeddings=()
+          for group in diy-faiss opensearch-knn xerj-neural xerj-semantic ck vecgrep; do
+            dir="smoke/scorecard-smoke-${group}"
+            if [[ -d "${dir}" ]]; then
+              embeddings+=(--embedding "${dir}")
+            fi
+          done
+          created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p "${RUNNER_TEMP}/trend-report"
+          python3 scripts/scorecard-trend \
+            --main smoke/scorecard-smoke-nesso-main \
+            --release smoke/scorecard-smoke-nesso-baseline \
+            "${embeddings[@]}" \
+            --history "${history}" \
+            --run-id "${RUN_ID}" \
+            --run-url "${RUN_URL}" \
+            --event "${EVENT_NAME}" \
+            --created-at "${created}" \
+            --head-sha "${HEAD_SHA}" \
+            --nesso-release "${NESSO_VERSION}" \
+            --nesso-main-version "${NESSO_MAIN_VERSION}" \
+            --nesso-main-run "${NESSO_MAIN_RUN}" \
+            --nesso-main-url "${NESSO_MAIN_URL}" \
+            --nesso-main-sha "${NESSO_MAIN_SHA}" \
+            --record "${RUNNER_TEMP}/trend-report" \
             >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the timing report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-smoke-trend
+          path: ${{ runner.temp }}/trend-report/
+          retention-days: 14
+          if-no-files-found: error
+
+  # Appends results/ci-smoke/<run-id>/ on the results/ci-smoke branch. This job
+  # is the only one whose token can write, and it cannot open a pull request.
+  # The maintainer merges the branch by hand. The identity is the Actions bot.
+  record:
+    name: keep the timing report
+    needs: [summary]
+    if: always() && !cancelled() && needs.summary.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the timing report
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: scorecard-smoke-trend
+          path: trend-report
+
+      - name: Commit the timing report
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          remote="https://github.com/${GITHUB_REPOSITORY}.git"
+          work="${RUNNER_TEMP}/record"
+          rm -rf "${work}"
+          if git ls-remote --heads "${remote}" refs/heads/results/ci-smoke | grep -q .; then
+            git clone --branch results/ci-smoke --single-branch --depth=20 "${remote}" "${work}"
+          else
+            git clone --branch main --single-branch --depth=1 "${remote}" "${work}"
+            git -C "${work}" checkout -b results/ci-smoke
+          fi
+          git -C "${work}" config user.name "github-actions[bot]"
+          git -C "${work}" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          dest="results/ci-smoke/${RUN_ID}"
+          rm -rf "${work}/${dest}"
+          mkdir -p "${work}/${dest}"
+          cp -a trend-report/. "${work}/${dest}/"
+          git -C "${work}" add "${dest}"
+          if git -C "${work}" diff --cached --quiet; then
+            echo "timing report for run ${RUN_ID} is already committed"
+            exit 0
+          fi
+          git -C "${work}" commit -m "ci(bench): record scorecard smoke timings for run ${RUN_ID}"
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          push() {
+            git -C "${work}" -c "http.extraheader=AUTHORIZATION: basic ${auth}" push origin "HEAD:results/ci-smoke"
+          }
+          # A rejected push is retried once after a rebase. Never force-push.
+          if ! push; then
+            git -C "${work}" -c "http.extraheader=AUTHORIZATION: basic ${auth}" pull --rebase origin results/ci-smoke
+            push
+          fi

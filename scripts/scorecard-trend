@@ -1,0 +1,525 @@
+#!/usr/bin/env python3
+"""Summarize one Scorecard smoke run as a competitor trend.
+
+Development-only. The Scorecard smoke workflow runs on shared hosted runners.
+
+Quality margins are deterministic, so this compares them with the previous
+scheduled run kept in --history and with the release scored in this run
+(v0.3.1 on the weekly run). The margin is nesso's MRR minus the best other
+engine's MRR, from scripts/eval-retrieval-compare.
+
+Timings are not. ripgrep, bm25, opensearch, and xerj run in the nesso job, so
+their times are ratios against nesso, grep, and ripgrep from that same runner.
+Above 1× the engine is slower. Embedding engines run one job each. Each is a
+trend of that engine only, and only after at least four kept runs measured the
+suite. A time from one job is never set beside a time from another.
+
+    scripts/scorecard-trend --main DIR --release DIR --embedding DIR \\
+        --history DIR --run-id ID --event schedule --created-at STAMP \\
+        --nesso-release 0.3.1 [--record DIR]
+
+Prints the Markdown summary. With --record, writes that summary as README.md
+and a report.json the next run reads. Exits 0 when the arguments parse,
+including when a results directory is missing. Exits 1 when --record cannot
+be written.
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+import re
+import statistics
+import sys
+from pathlib import Path
+from typing import Any
+
+IN_JOB = ("ripgrep", "bm25", "opensearch", "xerj")  # xerj is its BM25 match, not xerj-neural.
+EMBEDDINGS = ("diy-faiss", "opensearch-knn", "xerj-neural", "xerj-semantic", "ck", "vecgrep")
+MIN_TREND_RUNS = 4
+MODE = "auto"
+RUN_URL = re.compile(r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/runs/[0-9]+\Z")
+SHA = re.compile(r"[0-9a-fA-F]{40}\Z")
+VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+_-]{0,80}\Z")
+NO_INDEX = frozenset({"grep", "ripgrep"})
+Series = dict[str, tuple[float | None, float | None]]
+
+
+def _script(name: str) -> Any:
+    path = Path(__file__).resolve().parent / name
+    loader = importlib.machinery.SourceFileLoader(name.replace("-", "_"), str(path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    if spec is None:
+        raise RuntimeError(f"cannot load scripts/{name}")
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+ratios = _script("scorecard-ratios")
+status = _script("scorecard-status")
+compare = _script("eval-retrieval-compare")
+
+
+def read_json(path: Path) -> dict[str, Any] | None:
+    payload = status.load(path)
+    return payload if isinstance(payload, dict) else None
+
+
+def ordered(names: list[str]) -> list[str]:
+    rank = ratios.SUITE_ORDER
+    return sorted(set(names), key=lambda name: (rank.index(name) if name in rank else len(rank), name))
+
+
+def suites_under(directory: Path) -> list[str]:
+    raw = directory / "raw"
+    return [entry.name for entry in raw.iterdir() if entry.is_dir()] if raw.is_dir() else []
+
+
+def series_for(report: Any, engine: str) -> Series:
+    found: Series = {}
+    for dataset, engines in ratios.measured(report).items():
+        entry = engines.get(engine)
+        if entry is not None:
+            found[dataset] = (ratios.number(entry.get("indexWallSeconds")), ratios.p50(entry, MODE))
+    return found
+
+
+def totals(series: Series) -> tuple[float | None, float | None]:
+    indexes = [index for index, _p50 in series.values() if index is not None]
+    latencies = [latency for _index, latency in series.values() if latency is not None]
+    return (sum(indexes) if indexes else None, statistics.median(latencies) if latencies else None)
+
+
+def index_over(subject: Series, reference: Series) -> float | None:
+    """Subject index seconds over the reference, summed over datasets both indexed."""
+    ours = theirs = 0.0
+    shared = 0
+    for name, (index, _p50) in subject.items():
+        ref = reference.get(name)
+        if index is None or ref is None or ref[0] is None:
+            continue
+        ours += index
+        theirs += ref[0]
+        shared += 1
+    return ours / theirs if shared and theirs > 0 else None
+
+
+def query_over(subject: Series, reference: Series) -> float | None:
+    """Median over shared datasets of the subject's query p50 over the reference's."""
+    found = []
+    for name, (_index, latency) in subject.items():
+        ref = reference.get(name)
+        if latency is not None and ref is not None and ref[1] is not None and ref[1] > 0:
+            found.append(latency / ref[1])
+    return statistics.median(found) if found else None
+
+
+def rounded(value: float | None) -> float | None:
+    return None if value is None else round(value, 6)
+
+
+def text(value: Any) -> str:
+    return "—" if value is None else str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def margin_text(value: float | None) -> str:
+    return "—" if value is None else f"{value:+.3f}"
+
+
+def safe(value: str | None, pattern: re.Pattern[str]) -> str | None:
+    return value if value and pattern.fullmatch(value) else None
+
+
+def version_of(directory: Path) -> str | None:
+    machine = read_json(directory / "machine.json")
+    text_value = machine.get("nessoVersion") if machine else None
+    return text_value if isinstance(text_value, str) and VERSION.fullmatch(text_value) else None
+
+
+def against(engine: str, subject: Series, references: dict[str, Series]) -> dict[str, dict[str, float | None]]:
+    """An engine is not ratioed to itself. grep and ripgrep do not build an index."""
+    index: dict[str, float | None] = {}
+    query: dict[str, float | None] = {}
+    for name, ref in references.items():
+        same = name == engine
+        index[name] = None if same or name in NO_INDEX else rounded(index_over(subject, ref))
+        query[name] = None if same else rounded(query_over(subject, ref))
+    return {"indexRatio": index, "queryRatio": query}
+
+
+def in_job(main_dir: Path, release_dir: Path) -> dict[str, Any]:
+    """Ratios for the engines that shared the nesso job. Withheld when the CPUs differ."""
+    cpus: list[str | None] = []
+    rows: list[dict[str, Any]] = []
+    for suite in ordered(suites_under(main_dir) + suites_under(release_dir)):
+        main_report = read_json(main_dir / "raw" / suite / "nesso.json")
+        release_report = read_json(release_dir / "raw" / suite / "nesso.json")
+        engine_reports = {engine: read_json(release_dir / "raw" / suite / f"{engine}.json") for engine in IN_JOB}
+        for report in (main_report, release_report, *engine_reports.values()):
+            if isinstance(report, dict) and isinstance(report.get("measure"), dict):
+                cpus.append(ratios.cpu_of(report) or None)
+        # grep ran inside each nesso invocation. Prefer the main run; a dataset it did not
+        # measure falls back to the release run, which is the same job.
+        grep = series_for(release_report, "grep")
+        grep.update({name: point for name, point in series_for(main_report, "grep").items() if point[1] is not None})
+        references = {
+            "nessoMain": series_for(main_report, "nesso"),
+            "nessoRelease": series_for(release_report, "nesso"),
+            "grep": grep,
+            "ripgrep": series_for(engine_reports["ripgrep"], "ripgrep"),
+        }
+        for engine in IN_JOB:
+            subject = series_for(engine_reports[engine], engine)
+            if not subject:
+                continue
+            index_s, query_s = totals(subject)
+            rows.append({"suite": suite, "engine": engine, "indexWallSeconds": rounded(index_s), "queryP50Seconds": rounded(query_s), **against(engine, subject, references)})
+    distinct = {cpu for cpu in cpus if cpu}
+    comparable = bool(cpus) and all(cpu is not None for cpu in cpus) and len(distinct) == 1
+    if not comparable:
+        for row in rows:
+            row["indexRatio"] = dict.fromkeys(row["indexRatio"])
+            row["queryRatio"] = dict.fromkeys(row["queryRatio"])
+    return {"comparable": comparable, "cpus": sorted(distinct), "ratios": rows}
+
+
+def embeddings_from(directories: list[Path]) -> dict[str, Any]:
+    """One block per embedding engine. Each directory is that engine's own job."""
+    found: dict[str, Any] = {}
+    for directory in directories:
+        raw = directory / "raw"
+        if not raw.is_dir():
+            continue
+        for suite_dir in raw.iterdir():
+            if not suite_dir.is_dir():
+                continue
+            for engine in EMBEDDINGS:
+                report = read_json(suite_dir / f"{engine}.json")
+                if report is None:
+                    continue
+                index_s, query_s = totals(series_for(report, engine))
+                if index_s is None and query_s is None:
+                    continue
+                block = found.setdefault(engine, {"cpuModel": None, "suites": {}})
+                cpu = ratios.cpu_of(report) or None
+                block["cpuModel"] = block["cpuModel"] or cpu
+                block["suites"][suite_dir.name] = {"indexWallSeconds": rounded(index_s), "queryP50Seconds": rounded(query_s), "cpuModel": cpu}
+    return found
+
+
+def quality_paths(directories: list[Path], suite: str) -> list[Path]:
+    """Competitor quality reports. nesso.json is a build, not a rival; measure-only files have no schema."""
+    found = []
+    for directory in directories:
+        raw = directory / "raw" / suite
+        if not raw.is_dir():
+            continue
+        for path in sorted(raw.glob("*.json")):
+            if path.name == "nesso.json":
+                continue
+            payload = read_json(path)
+            version = payload.get("schema_version") if payload else None
+            if isinstance(version, int) and not isinstance(version, bool):
+                found.append(path)
+    return found
+
+
+def margins_of(main_dir: Path, release_dir: Path, embedding_dirs: list[Path]) -> dict[str, Any]:
+    stored: dict[str, list[dict[str, Any]]] = {"main": [], "release": []}
+    failures: list[str] = []
+    for suite in ordered(suites_under(main_dir) + suites_under(release_dir)):
+        references = quality_paths([release_dir, *embedding_dirs], suite)
+        for label, directory in (("main", main_dir), ("release", release_dir)):
+            current = directory / "raw" / suite / "nesso.json"
+            if not current.is_file():
+                continue
+            try:
+                report = compare.margin_report(compare.load_report(current), [compare.load_report(path) for path in references if path != current])
+            except SystemExit:
+                failures.append(suite)
+                continue
+            for row in report.get("rows") or []:
+                if isinstance(row, dict):
+                    stored[label].append({
+                        "suite": suite,
+                        "system": row.get("system"),
+                        "class": row.get("class"),
+                        "n": row.get("n"),
+                        "margin": row.get("margin"),
+                        "nessoMrr": row.get("nessoMrr"),
+                        "bestOther": row.get("bestOther"),
+                        "otherMrr": row.get("otherMrr"),
+                        "verdict": row.get("verdict"),
+                    })
+    return {"main": stored["main"], "release": stored["release"], "failures": failures}
+
+
+def load_history(directory: Path | None) -> list[dict[str, Any]]:
+    if directory is None or not directory.is_dir():
+        return []
+    found = []
+    for path in sorted(directory.glob("*/report.json")):
+        payload = read_json(path)
+        if payload and payload.get("schema") == 1 and isinstance(payload.get("runId"), str):
+            found.append(payload)
+    return found
+
+
+def previous_scheduled(history: list[dict[str, Any]], run_id: str) -> dict[str, Any] | None:
+    """The latest kept scheduled run other than this one. A dispatch run is not that baseline."""
+    candidates = [item for item in history if item.get("event") == "schedule" and item.get("runId") != run_id and isinstance(item.get("createdAt"), str)]
+    return max(candidates, key=lambda item: (str(item["createdAt"]), str(item["runId"]))) if candidates else None
+
+
+def link(url: str | None, label: str) -> str:
+    return f"[{text(label)}]({url})" if url and RUN_URL.fullmatch(url) else text(label)
+
+
+def build_report(args: argparse.Namespace) -> dict[str, Any]:
+    quality = margins_of(args.main, args.release, args.embedding)
+    main_version = version_of(args.main) or safe(args.nesso_main_version, VERSION)
+    return {
+        "schema": 1,
+        "developmentOnly": True,
+        "hostedRunners": True,
+        "runId": args.run_id,
+        "runUrl": safe(args.run_url, RUN_URL),
+        "event": args.event,
+        "headSha": safe(args.head_sha, SHA),
+        "createdAt": args.created_at,
+        "nessoRelease": version_of(args.release) or args.nesso_release,
+        "nessoMain": {
+            "version": main_version,
+            "packageRunId": safe(args.nesso_main_run, re.compile(r"[0-9]+\Z")),
+            "packageRunUrl": safe(args.nesso_main_url, RUN_URL),
+            "headSha": safe(args.nesso_main_sha, SHA),
+        },
+        "inJob": in_job(args.main, args.release),
+        "embeddings": embeddings_from(args.embedding),
+        "margins": {"main": quality["main"], "release": quality["release"]},
+        "marginFailures": quality["failures"],
+    }
+
+
+def samples(reports: list[dict[str, Any]], engine: str, suite: str) -> list[dict[str, Any]]:
+    found = []
+    for report in reports:
+        block = (report.get("embeddings") or {}).get(engine) if isinstance(report.get("embeddings"), dict) else None
+        point = (block.get("suites") or {}).get(suite) if isinstance(block, dict) else None
+        if not isinstance(point, dict):
+            continue
+        index_s, query_s = ratios.number(point.get("indexWallSeconds")), ratios.number(point.get("queryP50Seconds"))
+        if index_s is None and query_s is None:
+            continue
+        cpu = point.get("cpuModel") if isinstance(point.get("cpuModel"), str) else None
+        if cpu is None and isinstance(block, dict) and isinstance(block.get("cpuModel"), str):
+            cpu = block["cpuModel"]
+        found.append({"runId": str(report.get("runId")), "createdAt": str(report.get("createdAt") or ""), "event": str(report.get("event") or ""), "indexWallSeconds": index_s, "queryP50Seconds": query_s, "cpuModel": cpu})
+    return sorted(found, key=lambda item: (item["createdAt"], item["runId"]))
+
+
+def margin_rows(report: dict[str, Any], previous: dict[str, Any] | None) -> list[str]:
+    release = str(report["nessoRelease"])
+    lines = [
+        "### Quality margins (deterministic)",
+        "",
+        "Quality does not depend on the runner. The margin is nesso `auto` MRR minus the best other "
+        "engine's MRR in this run (`scripts/eval-retrieval-compare --margins`). "
+        f"Compared with the `{release}` release scored in this run, and with the previous scheduled run.",
+        "",
+    ]
+    if report.get("marginFailures"):
+        lines += [f"Margin calculation failed for: {', '.join(report['marginFailures'])}.", ""]
+
+    def index(rows: Any) -> dict[tuple[Any, Any, Any], dict[str, Any]]:
+        return {(row.get("suite"), row.get("system"), row.get("class")): row for row in rows or [] if isinstance(row, dict)}
+
+    current, base = index(report["margins"]["main"]), index(report["margins"]["release"])
+    prior = index(previous["margins"].get("main") if previous and isinstance(previous.get("margins"), dict) else [])
+    if not current and not base:
+        return lines + ["No nesso quality report was uploaded, so there is no margin to compare.", ""]
+    rows = []
+    for key in dict.fromkeys([*current, *base, *prior]):
+        ours, release_row, earlier = current.get(key, {}), base.get(key, {}), prior.get(key, {})
+        rows.append([
+            text(key[0]), text(key[1]), text(key[2]),
+            margin_text(ratios.number(ours.get("margin"))), text(ours.get("bestOther")),
+            margin_text(ratios.number(release_row.get("margin"))), text(release_row.get("bestOther")),
+            margin_text(_delta(ours.get("margin"), release_row.get("margin"))),
+            margin_text(ratios.number(earlier.get("margin"))) if previous else "—",
+            text(earlier.get("bestOther")) if previous else "—",
+            margin_text(_delta(ours.get("margin"), earlier.get("margin"))) if previous else "—",
+        ])
+    headers = ["suite", "system", "class", "main margin", "main rival", f"{release} margin", f"{release} rival", f"Δ vs {release}", "previous margin", "previous rival", "Δ vs previous"]
+    return lines + status.table(headers, rows) + [
+        "",
+        "Δ is this run's nesso main margin minus the other margin. Positive means main leads the best "
+        "other engine by more (or trails it by less). A different rival means the best other engine changed.",
+        "",
+    ]
+
+
+def _delta(current: Any, other: Any) -> float | None:
+    left, right = ratios.number(current), ratios.number(other)
+    return None if left is None or right is None else left - right
+
+
+def ratio_rows(report: dict[str, Any]) -> list[str]:
+    job = report["inJob"]
+    release = str(report["nessoRelease"])
+    version = (report.get("nessoMain") or {}).get("version")
+    lines = [
+        "### In-job timing ratios (development-only, one runner)",
+        "",
+        "ripgrep, BM25, OpenSearch, and xerj BM25 ran in the nesso job, on the same runner as nesso main "
+        f"and nesso `{release}`. Each ratio is that engine's time divided by the reference. Above 1× the "
+        f"engine is slower. Query p50 uses nesso mode `{MODE}` and is the median of the per-dataset ratios. "
+        "Index ratios sum index wall time over the datasets both finished. grep is the grep measured in the "
+        "nesso main run; a dataset that run did not measure uses the release run's grep, still the same job. "
+        "grep and ripgrep do not build an index, so index ratios are against nesso only. An engine is not "
+        "ratioed to itself.",
+        "",
+    ]
+    if version:
+        lines += [f"nesso main is `{version}`. The release column is nesso `{release}`.", ""]
+    if not job["ratios"]:
+        return lines + ["No measured in-job engine reports.", ""]
+    if not job["comparable"]:
+        cpu_text = ", ".join(job["cpus"]) if job["cpus"] else "a report recorded no CPU"
+        return lines + [f"These reports do not share one CPU ({cpu_text}), so a ratio would compare different runners. No ratios are shown.", ""]
+    rows = []
+    for row in job["ratios"]:
+        index, query = row["indexRatio"], row["queryRatio"]
+        rows.append([
+            row["suite"], row["engine"], ratios.seconds(row["indexWallSeconds"]), ratios.ratio(index.get("nessoMain")), ratios.ratio(index.get("nessoRelease")),
+            ratios.seconds(row["queryP50Seconds"]), ratios.ratio(query.get("nessoMain")), ratios.ratio(query.get("nessoRelease")), ratios.ratio(query.get("grep")), ratios.ratio(query.get("ripgrep")),
+        ])
+    headers = ["suite", "engine", "index s", "index ÷ nesso main", "index ÷ nesso release", "query p50 s", "p50 ÷ nesso main", "p50 ÷ nesso release", "p50 ÷ grep", "p50 ÷ ripgrep"]
+    return lines + [f"CPU: {job['cpus'][0]}.", ""] + status.table(headers, rows) + [""]
+
+
+def embedding_rows(report: dict[str, Any], kept: list[dict[str, Any]]) -> list[str]:
+    lines = [
+        "### Embedding engines, one job each (development-only)",
+        "",
+        "diy-faiss, OpenSearch k-NN, xerj-neural, xerj-semantic, ck, and vecgrep each ran in their own job. "
+        "A timing from one job is not compared with a timing from another, nor with nesso. "
+        f"An engine is shown only as its own trend, and only after {MIN_TREND_RUNS} kept runs measured that suite. "
+        "Until then the seconds stay in `report.json` so a later run can complete the trend, and are not shown here.",
+        "",
+    ]
+    shown = False
+    for engine in EMBEDDINGS:
+        names: list[str] = []
+        for item in kept:
+            block = (item.get("embeddings") or {}).get(engine) if isinstance(item.get("embeddings"), dict) else None
+            if isinstance(block, dict) and isinstance(block.get("suites"), dict):
+                names += list(block["suites"])
+        names = ordered(names)
+        if not names:
+            continue
+        shown = True
+        lines += [f"#### {engine}", ""]
+        for suite in names:
+            points = samples(kept, engine, suite)
+            if len(points) < MIN_TREND_RUNS:
+                lines += [f"`{engine}` `{suite}`: {len(points)} of {MIN_TREND_RUNS} runs kept. No timing shown.", ""]
+                continue
+            rows = [[point["runId"], point["createdAt"], point["event"], ratios.seconds(point["indexWallSeconds"]), ratios.seconds(point["queryP50Seconds"]), point["cpuModel"] or "—"] for point in points]
+            lines += [f"`{suite}`, this engine only. Not a comparison with another engine.", ""]
+            lines += status.table(["run", "recorded", "event", "index wall s", "query p50 s", "CPU"], rows)
+            earlier, latest = points[:-1], points[-1]
+            notes = []
+            for label, field in (("index", "indexWallSeconds"), ("query p50", "queryP50Seconds")):
+                prior = [point[field] for point in earlier if isinstance(point[field], (int, float)) and not isinstance(point[field], bool)]
+                current = latest[field]
+                if prior and isinstance(current, (int, float)) and not isinstance(current, bool) and statistics.median(prior) > 0:
+                    notes.append(f"{label} {ratios.ratio(current / statistics.median(prior))}")
+            if notes:
+                lines += ["", "latest ÷ median of the earlier runs of this engine on this suite: " + ", ".join(notes) + ". Development-only, hosted runners. Not a comparison with another engine."]
+            lines.append("")
+    return lines + ([] if shown else ["No embedding engine was measured.", ""])
+
+
+def render(report: dict[str, Any], history: list[dict[str, Any]]) -> str:
+    kept = [item for item in history if item.get("runId") != report["runId"]]
+    previous = previous_scheduled(kept, str(report["runId"]))
+    main = report["nessoMain"]
+    version = main.get("version") or "unknown"
+    package = link(main.get("packageRunUrl"), str(main.get("packageRunId") or "package run"))
+    sha = main.get("headSha")
+    lines = [
+        "# Scorecard smoke timing report (development-only)",
+        "",
+        "**Development-only. Do not publish or quote these timings as a benchmark result.** "
+        "Measured on shared GitHub-hosted runners. Published results come from the fixed benchmark machine.",
+        "",
+        f"- Run: {link(report.get('runUrl'), str(report['runId']))} (`{report['event']}`) at `{report.get('headSha') or 'unknown'}`.",
+        f"- nesso main: `{version}`" + (f" from Package run {package}" if main.get("packageRunId") else "") + (f" at `{sha}`." if sha else "."),
+        f"- nesso release scored in this run: `{report['nessoRelease']}`.",
+    ]
+    if previous is None:
+        lines.append("- Previous scheduled run: none is committed yet.")
+    else:
+        lines.append(f"- Previous scheduled run: {link(previous.get('runUrl') if isinstance(previous.get('runUrl'), str) else None, str(previous.get('runId')))} at `{text(previous.get('createdAt'))}`.")
+    lines += ["", *margin_rows(report, previous), *ratio_rows(report), *embedding_rows(report, kept + [report])]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def stamp(text_value: str) -> str:
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", text_value):
+        raise argparse.ArgumentTypeError("expected YYYY-MM-DDTHH:MM:SSZ")
+    return text_value
+
+
+def release_version(text_value: str) -> str:
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", text_value):
+        raise argparse.ArgumentTypeError("expected a version like 0.3.1")
+    return text_value
+
+
+def run_id(text_value: str) -> str:
+    if not re.fullmatch(r"[0-9]+", text_value):
+        raise argparse.ArgumentTypeError("expected a numeric run id")
+    return text_value
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--main", type=Path, required=True, help="nesso main results directory (the nesso job's main --out)")
+    parser.add_argument("--release", type=Path, required=True, help="Release results directory, which also holds the in-job engines")
+    parser.add_argument("--embedding", type=Path, action="append", default=[], help="One embedding engine's results directory")
+    parser.add_argument("--history", type=Path, default=None, help="Directory of kept <run-id>/report.json timing reports")
+    parser.add_argument("--run-id", type=run_id, required=True)
+    parser.add_argument("--run-url", default=None)
+    parser.add_argument("--event", choices=("schedule", "workflow_dispatch"), required=True)
+    parser.add_argument("--created-at", type=stamp, required=True)
+    parser.add_argument("--head-sha", default=None)
+    parser.add_argument("--nesso-release", type=release_version, required=True)
+    parser.add_argument("--nesso-main-version", default=None)
+    parser.add_argument("--nesso-main-run", default=None)
+    parser.add_argument("--nesso-main-url", default=None)
+    parser.add_argument("--nesso-main-sha", default=None)
+    parser.add_argument("--record", type=Path, default=None, help="Write README.md and report.json here")
+    args = parser.parse_args(argv)
+    report = build_report(args)
+    failures = report.pop("marginFailures")
+    markdown = render({**report, "marginFailures": failures}, load_history(args.history))
+    sys.stdout.write(markdown)
+    if args.record is None:
+        return 0
+    try:
+        args.record.mkdir(parents=True, exist_ok=True)
+        (args.record / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        (args.record / "README.md").write_text(markdown, encoding="utf-8")
+    except OSError as exc:
+        print(f"error: cannot write {args.record}: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

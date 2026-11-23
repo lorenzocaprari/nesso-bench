@@ -15,6 +15,8 @@ A ranker is a nesso mode (auto, hybrid, dense, lexical) or another engine
 (engines[]) compare with each other; skipped engines are left out. Needle
 reports ("kind": "needle") compare only with needle reports. Any other
 mismatch prints a note and skips the comparison (exit 0).
+
+`--margins-json` prints the same margin rows as JSON instead of the Markdown table.
 """
 
 from __future__ import annotations
@@ -313,14 +315,18 @@ def verdict(interval: tuple[float, float] | None) -> str:
     return "tie"
 
 
-def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
-    """Per system and class: nesso against the best other engine, by MRR."""
+def margin_report(current: dict[str, Any], references: list[dict[str, Any]]) -> dict[str, Any]:
+    """Per system and class: nesso against the best other engine, by MRR.
+
+    The same rows feed the Markdown table and `--margins-json`, so a later run can
+    compare margins without re-reading the reports.
+    """
     cur = flatten(current)
     counts = query_counts(current)
     nesso = headline_nesso_mode(cur)
     family = report_family(current)
     if nesso is None:
-        return f"### nesso margin ({family})\n\nno nesso rows in the current report\n"
+        return {"family": family, "nesso": None, "referencesUsed": 0, "rows": []}
     rivals: dict[tuple[str, str], dict[str, tuple[float, float, str]]] = {}
     per_query = query_scores(current)
     rival_queries: dict[tuple[str, str], dict[tuple[str, str], tuple[str, float]]] = {}
@@ -353,6 +359,58 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
         if ranker == nesso and (system, class_name) not in order and (system, nesso, class_name, "mrr") in cur:
             order.append((system, class_name))
 
+    rows: list[dict[str, Any]] = []
+    for system, class_name in order:
+        count = counts.get((system, nesso, class_name))
+        nesso_mrr = cur[(system, nesso, class_name, "mrr")]
+        nesso_ndcg = cur.get((system, nesso, class_name, "ndcg_at_10"), 0.0)
+        row: dict[str, Any] = {
+            "system": system,
+            "class": class_name,
+            "n": count,
+            "nessoMrr": nesso_mrr,
+            "nessoNdcgAt10": nesso_ndcg,
+            "bestOther": None,
+            "otherSource": None,
+            "unstable": False,
+            "otherMrr": None,
+            "otherNdcgAt10": None,
+            "margin": None,
+            "ciLow": None,
+            "ciHigh": None,
+            "verdict": "—",
+        }
+        candidates = rivals.get((system, class_name), {})
+        if candidates:
+            name, (other_mrr, other_ndcg, source) = max(candidates.items(), key=lambda item: (item[1][0], item[0]))
+            differences = paired_differences(
+                per_query.get((system, nesso), {}), rival_queries.get((system, name), {}), class_name
+            )
+            interval = bootstrap_interval(differences, f"{system}/{class_name}/{nesso}/{name}")
+            row.update(
+                {
+                    "bestOther": name,
+                    "otherSource": source,
+                    "unstable": (system, name, source) in unstable,
+                    "otherMrr": other_mrr,
+                    "otherNdcgAt10": other_ndcg,
+                    "margin": nesso_mrr - other_mrr,
+                    "verdict": verdict(interval),
+                }
+            )
+            if interval is not None:
+                row["ciLow"], row["ciHigh"] = interval
+        rows.append(row)
+    return {"family": family, "nesso": nesso, "referencesUsed": used, "rows": rows}
+
+
+def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
+    """Per system and class: nesso against the best other engine, by MRR."""
+    report = margin_report(current, references)
+    family = report["family"]
+    nesso = report["nesso"]
+    if nesso is None:
+        return f"### nesso margin ({family})\n\nno nesso rows in the current report\n"
     lines = [
         f"### nesso margin ({family}, nesso `{nesso}` against the best other engine by MRR)",
         "",
@@ -361,44 +419,43 @@ def margins(current: dict[str, Any], references: list[dict[str, Any]]) -> str:
     ]
     small = False
     marked = False
-    for system, class_name in order:
-        count = counts.get((system, nesso, class_name))
+    for row in report["rows"]:
+        count = row["n"]
         if count is not None and count < NOISE_QUERY_COUNT:
             small = True
-        nesso_mrr = cur[(system, nesso, class_name, "mrr")]
-        nesso_ndcg = cur.get((system, nesso, class_name, "ndcg_at_10"), 0.0)
-        candidates = rivals.get((system, class_name), {})
-        if candidates:
-            name, (other_mrr, other_ndcg, source) = max(candidates.items(), key=lambda item: (item[1][0], item[0]))
-            label = name if source == "this run" else f"{name} (reference)"
-            if (system, name, source) in unstable:
+        if row["bestOther"] is None:
+            other = ["none", "—", "—", "—", "—", "—"]
+        else:
+            label = row["bestOther"] if row["otherSource"] == "this run" else f"{row['bestOther']} (reference)"
+            if row["unstable"]:
                 label += " †"
                 marked = True
-            differences = paired_differences(
-                per_query.get((system, nesso), {}), rival_queries.get((system, name), {}), class_name
-            )
-            interval = bootstrap_interval(differences, f"{system}/{class_name}/{nesso}/{name}")
-            spread = "—" if interval is None else f"[{interval[0]:+.3f}, {interval[1]:+.3f}]"
+            spread = "—" if row["ciLow"] is None else f"[{row['ciLow']:+.3f}, {row['ciHigh']:+.3f}]"
             other = [
                 label,
-                f"{other_mrr:.3f}",
-                f"{other_ndcg:.3f}",
-                f"{nesso_mrr - other_mrr:+.3f}",
+                f"{row['otherMrr']:.3f}",
+                f"{row['otherNdcgAt10']:.3f}",
+                f"{row['margin']:+.3f}",
                 spread,
-                verdict(interval),
+                row["verdict"],
             ]
-        else:
-            other = ["none", "—", "—", "—", "—", "—"]
         lines.append(
             "| "
             + " | ".join(
-                [system, class_name, "—" if count is None else str(count), f"{nesso_mrr:.3f}", f"{nesso_ndcg:.3f}", *other]
+                [
+                    row["system"],
+                    row["class"],
+                    "—" if count is None else str(count),
+                    f"{row['nessoMrr']:.3f}",
+                    f"{row['nessoNdcgAt10']:.3f}",
+                    *other,
+                ]
             )
             + " |"
         )
     lines.append("")
     lines.append(
-        f"Margin is nesso MRR minus the best other engine's MRR. References used: {used}. "
+        f"Margin is nesso MRR minus the best other engine's MRR. References used: {report['referencesUsed']}. "
         f"95% CI: paired bootstrap of the per-query MRR difference ({BOOTSTRAP_RESAMPLES} resamples, "
         "seeded per row so it is reproducible) on the queries both engines answered. "
         "win or loss when the interval excludes 0, tie when it contains 0."
@@ -696,6 +753,11 @@ def main() -> int:
         help="Print nesso against the best other engine per system and class (no --previous needed)",
     )
     parser.add_argument(
+        "--margins-json",
+        action="store_true",
+        help="With the margin calculation, print the rows as JSON instead of the Markdown table",
+    )
+    parser.add_argument(
         "--reference",
         type=Path,
         action="append",
@@ -722,14 +784,18 @@ def main() -> int:
     except ValueError as exc:
         raise SystemExit(f"error: invalid tolerance: {exc}") from exc
 
-    if args.previous is None and not args.margins:
+    wants_margins = args.margins or args.margins_json
+    if args.previous is None and not wants_margins:
         raise SystemExit("error: pass --previous, --margins, or both")
     if args.fail_on_worse and args.previous is None:
         raise SystemExit("error: --fail-on-worse needs --previous")
     current = load_report(args.current)
-    if args.margins:
+    if wants_margins:
         references = [load_report(path) for path in args.reference or []]
-        sys.stdout.write(margins(current, references))
+        if args.margins_json:
+            sys.stdout.write(json.dumps(margin_report(current, references)) + "\n")
+        else:
+            sys.stdout.write(margins(current, references))
     if args.previous is not None:
         previous = load_report(args.previous)
         text, _drops = compare(current, previous, tolerance)

@@ -99,6 +99,20 @@ class ScorecardStatusTest(unittest.TestCase):
         self.assertIn("| g2 | — | timeout (8.0 h) |", done.stdout)
         self.assertIn("No readable status.json in: empty.", done.stdout)
 
+    def test_no_times_leaves_wall_times_out_of_the_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp)
+            one = results(
+                base / "nesso",
+                [{"suite": "2k", "group": "nesso", "outcome": "ok", "exitCode": 0, "wallSeconds": 42.0}],
+                MACHINE,
+            )
+            done = subprocess.run([sys.executable, str(SCRIPT), "--no-times", str(one)], capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("| nesso | ok |", done.stdout)
+        self.assertNotIn("42 s", done.stdout)
+        self.assertNotIn("ok (", done.stdout)
+
     def test_no_readable_directory_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             done = run_status(pathlib.Path(temp))
