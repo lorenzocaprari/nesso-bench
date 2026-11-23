@@ -22,9 +22,11 @@ name: Scorecard smoke
 # In-job engines are ratios against nesso, grep, and ripgrep on that one
 # runner. Embedding engines are a per-engine trend, shown only after four kept
 # runs, never as a comparison across jobs. The timing report is committed to
-# the results/ci-smoke branch and opened as a pull request by the record job,
-# which is the only job with contents: write and pull-requests: write. That is
-# this workflow's token. It does not add a secret. Artifacts still expire.
+# the results/ci-smoke branch by the record job, which is the only job with
+# contents: write. It creates the branch if missing, appends, and never
+# force-pushes. It does not open a pull request: Actions cannot approve one
+# here. The maintainer merges that branch by hand. No secret is added.
+# Artifacts still expire.
 #
 # Weekly on Sunday (16:23 UTC, clear of nesso's nightly crons) and on
 # workflow_dispatch, including a release candidate. A full run takes about two
@@ -652,9 +654,9 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # Keeps the timing report in the repo. Pushes the results/ci-smoke branch and
-  # opens a pull request; it does not push main. This job is the only one whose
-  # token can write. The identity is the Actions bot, which is the token's own.
+  # Appends results/ci-smoke/<run-id>/ on the results/ci-smoke branch. This job
+  # is the only one whose token can write, and it cannot open a pull request.
+  # The maintainer merges the branch by hand. The identity is the Actions bot.
   record:
     name: keep the timing report
     needs: [summary]
@@ -663,7 +665,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -686,7 +687,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           remote="https://github.com/${GITHUB_REPOSITORY}.git"
@@ -707,21 +707,15 @@ jobs:
           git -C "${work}" add "${dest}"
           if git -C "${work}" diff --cached --quiet; then
             echo "timing report for run ${RUN_ID} is already committed"
-          else
-            git -C "${work}" commit -m "ci(bench): record scorecard smoke timings for run ${RUN_ID}"
-            auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
-            git -C "${work}" -c "http.extraheader=AUTHORIZATION: basic ${auth}" push origin "HEAD:results/ci-smoke"
+            exit 0
           fi
-          if gh pr view results/ci-smoke --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "pull request for results/ci-smoke already exists"
-          else
-            body="$(printf '%s\n' \
-              "Keeps the Scorecard smoke timing report. The latest run is ${RUN_ID}: ${RUN_URL}" \
-              "" \
-              "Development-only: measured on hosted runners. Quality margins are deterministic. In-job timings are ratios on one runner. Embedding timings are a per-engine trend over at least four runs and are not a comparison across jobs." \
-              "" \
-              "This pull request is opened by the Scorecard smoke workflow. The reports are the copy that stays after the artifacts expire.")"
-            gh pr create --repo "${GITHUB_REPOSITORY}" --base main --head results/ci-smoke \
-              --title "ci(bench): record scorecard smoke timings" \
-              --body "${body}"
+          git -C "${work}" commit -m "ci(bench): record scorecard smoke timings for run ${RUN_ID}"
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          push() {
+            git -C "${work}" -c "http.extraheader=AUTHORIZATION: basic ${auth}" push origin "HEAD:results/ci-smoke"
+          }
+          # A rejected push is retried once after a rebase. Never force-push.
+          if ! push; then
+            git -C "${work}" -c "http.extraheader=AUTHORIZATION: basic ${auth}" pull --rebase origin results/ci-smoke
+            push
           fi
