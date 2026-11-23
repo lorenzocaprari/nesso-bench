@@ -32,6 +32,19 @@ for each tool is in [eval.md](eval.md).
 7. **Nondeterminism is shown, not hidden.** An engine whose rankings change between runs is
    scored several times (`--quality-repeat`); the report keeps the median run and the spread,
    and the page marks it.
+8. **Held-out systems are scored only at release, never while tuning.** Seven Loghub 2k systems
+   that the dev and test sets do not touch (Spark, Zookeeper, HPC, Windows, Mac, Android, and
+   Proxifier; `--dataset all-heldout`) carry `"split":"heldout"` on every query. Test queries
+   share their nine systems with the dev queries nesso is tuned on, so they cannot show whether
+   ranking rules fitted to those systems carry over to logs nesso has never seen; the held-out
+   group can. It is scored with `eval-retrieval --dataset all-heldout --split heldout` when a
+   release is measured, and at no other time: not during tuning, not to pick between two ranking
+   changes, and not to debug a loss. The default (`all`) and `dev` runs never include it, and
+   `eval-retrieval` refuses a held-out dataset without `--split heldout`. Its queries were written
+   from the logs and Loghub's templates without running nesso, and they are frozen like the test
+   queries: `test/eval/heldout-split.sha256` holds their digest and `scripts/check-test-split`
+   fails on any edit. Once a release result on them is read, ranking changes that follow are
+   informed by it, so a large change after that should be checked on a new held-out group.
 
 ## Limits
 
@@ -50,7 +63,9 @@ for each tool is in [eval.md](eval.md).
 - **Log shapes covered.** The sets are single-line plain-text logs: three in syslog format
   (Linux, OpenSSH, Thunderbird), HDFS, BGL, and Apache error logs, and, as a separate group,
   Java log4j lines with long identifiers and exceptions (Hadoop), request-id API and compute
-  lines (OpenStack), and pipe-delimited app lines (HealthApp). One small dataset, the support
+  lines (OpenStack), and pipe-delimited app lines (HealthApp). The held-out group (rule 8) adds
+  Spark executor and Zookeeper log4j lines, HPC cluster event records, Windows CBS servicing
+  logs, macOS syslog, Android logcat, and Proxifier connection lines. One small dataset, the support
   bundle, puts six of the first group in a directory with `.gz`, `.tar`, `.tgz`, and `.zip`
   files; it scores quality only, and the other engines read it decoded, so it does not show
   nesso's advantage of skipping extraction. Loghub has no JSON logs, so the one JSON dataset

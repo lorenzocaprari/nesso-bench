@@ -390,6 +390,39 @@ class FormatSamplesTest(unittest.TestCase):
         self.assertIn("all-formats", bad_url.stderr)
 
 
+class HeldoutSamplesTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.mod = load_fetch()
+
+    def test_pins_and_urls(self) -> None:
+        mod = self.mod
+        self.assertEqual(
+            list(mod.HELDOUT_SAMPLES),
+            ["spark-2k", "zookeeper-2k", "hpc-2k", "windows-2k", "mac-2k", "android-2k", "proxifier-2k"],
+        )
+        # Kept out of all-2k and all-formats, so nothing fetches or scores them by default.
+        self.assertFalse(set(mod.HELDOUT_SAMPLES) & (set(mod.SAMPLES_2K) | set(mod.FORMAT_SAMPLES)))
+        for spec in mod.HELDOUT_SAMPLES.values():
+            self.assertRegex(spec.log_sha256, r"^[0-9a-f]{64}$")
+            self.assertRegex(spec.structured_sha256, r"^[0-9a-f]{64}$")
+            self.assertIn(mod.LOGHUB_COMMIT, spec.log_url)
+            self.assertTrue(spec.log_url.endswith(f"/{spec.folder}/{spec.log_name}"))
+            self.assertTrue(spec.structured_url.endswith(f"{spec.log_name}_structured.csv"))
+        pins = [pin for spec in mod.all_samples().values() for pin in (spec.log_sha256, spec.structured_sha256)]
+        self.assertEqual(len(pins), len(set(pins)))
+        self.assertIn("all-heldout", mod.DATASET_CHOICES)
+        self.assertIn("proxifier-2k", mod.DATASET_CHOICES)
+
+    def test_all_heldout_rejects_dest_and_overrides(self) -> None:
+        bad_dest = run_fetch("--dataset", "all-heldout", "--dest", "/tmp/x.log")
+        self.assertEqual(bad_dest.returncode, 1, bad_dest.stdout)
+        self.assertIn("all-heldout", bad_dest.stderr)
+        bad_url = run_fetch("--dataset", "all-heldout", "--url", "https://example.invalid/x")
+        self.assertEqual(bad_url.returncode, 1, bad_url.stdout)
+        self.assertIn("all-heldout", bad_url.stderr)
+
+
 _LABELLED_LINES = [
     b"- 1 2005.06.03 R00 normal one\n",
     b"KERNDTLB 2 2005.06.03 R01 data TLB error interrupt\n",

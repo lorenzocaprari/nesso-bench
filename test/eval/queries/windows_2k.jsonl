@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Windows_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"30546354_3193904861","relevant_lines":[1694],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"30546354_2959511455","relevant_lines":[1499],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"30546174_164936440","relevant_lines":[814],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"30546174_94042385","relevant_lines":[623],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"30546354_3338053106","relevant_lines":[1931],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"30546174_185287604","relevant_lines":[920],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"Package_for_KB3185911","relevant_lines":[694,1775],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"Package_for_KB3084135","relevant_lines":[419,1500],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"Package_for_KB3164035","relevant_lines":[633,1714],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"Package_for_KB2603229","relevant_lines":[656,1737],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"Package_for_KB3072630","relevant_lines":[722,1803],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"0xff83d799","relevant_lines":[2,3],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"failed to internally open a package because it is invalid","relevant_events":["E21"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"offline registry hive loaded into a registry key","relevant_events":["E24"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"offline registry hive unloaded","relevant_events":["E49"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"failed to create the backup log cab","relevant_events":["E19"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"manifest caching disabled because the image is not writeable","relevant_events":["E14"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"no startup processing required, TrustedInstaller not set to autostart","relevant_events":["E25"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"store coherency cookie matches so scavenge is skipped","relevant_events":["E8"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"unrecognized packageExtended attribute warning","relevant_events":["E50"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"TrustedInstaller service started successfully","relevant_events":["E48"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"SQM cleaning up report files older than some days","relevant_events":["E37"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"servicing stack loaded with its core dll","relevant_events":["E23"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"cached applicability state read out for a package","relevant_events":["E29"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"a corrupt or invalid update package was found by component servicing","relevant_events":["E21"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"servicing mounted the registry of an offline image","relevant_events":["E24"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"servicing released a registry hive it had mounted","relevant_events":["E49"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"component servicing could not archive its old log files","relevant_events":["E19"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"the servicing image is mounted read-only so caching is turned off","relevant_events":["E14"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"no reboot work was pending when the installer service started","relevant_events":["E25"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"the component store had not changed since the last cleanup","relevant_events":["E8"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"a package manifest has an attribute this servicing stack does not know","relevant_events":["E50"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"the Windows modules installer service came up","relevant_events":["E48"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"old telemetry reports past their retention age are deleted","relevant_events":["E37"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"component servicing loaded the stack version it will use","relevant_events":["E23"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"Windows Update checked whether an update package applies to this system","relevant_events":["E29"],"split":"heldout"}

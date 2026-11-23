@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Spark_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"mesos-slave-07","relevant_lines":[10,16],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"broadcast_33","relevant_lines":[864],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"broadcast_27_piece0","relevant_lines":[658],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"broadcast_16_piece0","relevant_lines":[294],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"rdd_21_2","relevant_lines":[562,577,606,988],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"rdd_11_0","relevant_lines":[297,312,341,905],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"attempt_201706092018_0024_m_000084_1141","relevant_lines":[962,964],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"attempt_201706092018_0024_m_000080_1135","relevant_lines":[963,965],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"task_201706092018_0025_m_000004","relevant_lines":[1084],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"task_201706092018_0024_m_000163","relevant_lines":[1039],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"868.3","relevant_lines":[1644],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"1159","relevant_lines":[1023,1024,1044],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"a cached RDD partition was missing and is being recomputed","relevant_events":["E19"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"an RDD block was already available on this executor","relevant_events":["E10"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"task output was saved to its final HDFS location","relevant_events":["E25"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"a task attempt finished committing its output","relevant_events":["E1"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"the in-memory block store started with a capacity in GB","relevant_events":["E18"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"timing breakdown of a worker run with boot, init and finish durations","relevant_events":["E35"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"input split read from an HDFS file","relevant_events":["E12"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"remoting is listening on an akka tcp address","relevant_events":["E23"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"executor registered with the driver","relevant_events":["E32"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"local scratch directory created under the app cache","relevant_events":["E7"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"signal handlers installed for TERM, HUP and INT","relevant_events":["E22"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"authentication and UI ACLs are turned off","relevant_events":["E26"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"the partition was not in the block cache so it had to be computed from its lineage","relevant_events":["E19"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"a cached partition was reused locally instead of fetched from another executor","relevant_events":["E10"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"the output committer moved a finished attempt's results into HDFS","relevant_events":["E25"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"the commit of an attempt's output went through","relevant_events":["E1"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"the executor set aside a fixed amount of memory for cached blocks at startup","relevant_events":["E18"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"a Python worker reported how long startup and processing took","relevant_events":["E35"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"a map task was handed a chunk of an HDFS file to process","relevant_events":["E12"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"the executor's actor remoting came up and bound its address","relevant_events":["E23"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"the driver accepted this executor so it can receive tasks","relevant_events":["E32"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"the disk block manager set up a temporary folder for spilled blocks","relevant_events":["E7"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"the process prepared to handle termination and hangup signals","relevant_events":["E22"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"the security manager runs with no authentication configured","relevant_events":["E26"],"split":"heldout"}

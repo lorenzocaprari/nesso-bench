@@ -9,6 +9,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "check-test-split"
 EVAL = ROOT / "scripts" / "eval-retrieval"
+HELDOUT_FILES = ("spark_2k", "zookeeper_2k", "hpc_2k", "windows_2k", "mac_2k", "android_2k", "proxifier_2k")
 
 
 def check(root: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -26,9 +27,12 @@ class CheckTestSplitTest(unittest.TestCase):
         completed = check(ROOT)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertRegex(completed.stdout, r"ok: \d+ test queries match")
+        self.assertRegex(completed.stdout, r"ok: \d+ heldout queries match test/eval/heldout-split.sha256")
 
     def test_every_2k_file_has_a_test_query_per_class(self) -> None:
         for path in sorted((ROOT / "test" / "eval" / "queries").glob("*_2k.jsonl")):
+            if path.stem in HELDOUT_FILES:
+                continue
             rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("{")]
             test = {row["class"] for row in rows if row.get("split") == "test"}
             self.assertEqual(test, {"exact_id", "paraphrase", "cause"}, path.name)
@@ -55,6 +59,49 @@ class CheckTestSplitTest(unittest.TestCase):
             # A reviewed change is made visible by --update.
             self.assertEqual(check(root, "--update").returncode, 0)
             self.assertEqual(check(root).returncode, 0)
+
+    def test_held_out_files_are_held_out_only(self) -> None:
+        # Every query of a held-out system is held out, in all three classes, and no other file has any.
+        for path in sorted((ROOT / "test" / "eval" / "queries").glob("*.jsonl")):
+            rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("{")]
+            splits = {row.get("split", "dev") for row in rows}
+            if path.stem in HELDOUT_FILES:
+                self.assertEqual(splits, {"heldout"}, path.name)
+                self.assertEqual({row["class"] for row in rows}, {"exact_id", "paraphrase", "cause"}, path.name)
+            else:
+                self.assertNotIn("heldout", splits, path.name)
+
+    def test_changes_to_a_held_out_query_fail_until_updated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = copy_queries(pathlib.Path(temp))
+            path = root / "test" / "eval" / "queries" / "spark_2k.jsonl"
+            original = path.read_text(encoding="utf-8")
+            target = next(line for line in original.splitlines() if line.startswith("{") and '"paraphrase"' in line)
+            path.write_text(original.replace(target, target.replace('"query":"', '"query":"edited ')), encoding="utf-8")
+            failed = check(root)
+            self.assertEqual(failed.returncode, 1)
+            self.assertIn("heldout queries changed", failed.stderr)
+            # Relabelling a held-out query is a change too.
+            path.write_text(original.replace('"relevant_events":["E19"]', '"relevant_events":["E10"]', 1), encoding="utf-8")
+            self.assertEqual(check(root).returncode, 1)
+            # Dropping one, or moving it to dev, as well.
+            path.write_text(original.replace(target + "\n", ""), encoding="utf-8")
+            self.assertEqual(check(root).returncode, 1)
+            path.write_text(original.replace(',"split":"heldout"', "", 1), encoding="utf-8")
+            self.assertEqual(check(root).returncode, 1)
+            # The test digest is untouched by a held-out change, and --update records it.
+            test_digest = (root / "test" / "eval" / "test-split.sha256").read_text(encoding="utf-8")
+            self.assertEqual(check(root, "--update").returncode, 0)
+            self.assertEqual(check(root).returncode, 0)
+            self.assertEqual((root / "test" / "eval" / "test-split.sha256").read_text(encoding="utf-8"), test_digest)
+
+    def test_missing_held_out_digest_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = copy_queries(pathlib.Path(temp))
+            (root / "test" / "eval" / "heldout-split.sha256").unlink()
+            failed = check(root)
+        self.assertEqual(failed.returncode, 1)
+        self.assertIn("heldout-split.sha256", failed.stderr)
 
     def test_dev_queries_are_free_to_change(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -112,16 +159,55 @@ class SplitOptionTest(unittest.TestCase):
                 self.mod.load_queries(path)
         self.assertIn("split must be one of", str(raised.exception))
 
+    def test_all_never_includes_held_out_queries(self) -> None:
+        mod = self.mod
+        path = ROOT / "test" / "eval" / "queries" / "spark_2k.jsonl"
+        queries = mod.load_queries(path)
+        self.assertTrue(queries)
+        self.assertEqual({query.split for query in queries}, {"heldout"})
+        self.assertEqual(len(mod.select_split(queries, "heldout", path)), len(queries))
+        for split in ("all", "dev", "test"):
+            with self.assertRaises(SystemExit, msg=split):
+                mod.select_split(queries, split, path)
+        mixed = [mod.Query("d", "exact_id", "a", frozenset({1}), None), *queries[:2]]
+        self.assertEqual([query.id for query in mod.select_split(mixed, "all", path)], ["d"])
+
+    def test_held_out_datasets_need_split_heldout(self) -> None:
+        mod = self.mod
+        heldout = mod.parse_datasets("all-heldout")
+        mod.check_heldout_split(heldout, "heldout")
+        mod.check_heldout_split(mod.parse_datasets("all-2k,all-formats"), "all")
+        mod.check_heldout_split(None, "all")
+        for split in ("all", "dev", "test"):
+            with self.assertRaises(SystemExit) as raised:
+                mod.check_heldout_split(mod.parse_datasets("spark-2k"), split)
+            self.assertIn("--split heldout", str(raised.exception))
+        with self.assertRaises(SystemExit) as raised:
+            mod.check_heldout_split(mod.parse_datasets("hdfs-2k,mac-2k"), "heldout")
+        self.assertIn("hdfs-2k", str(raised.exception))
+
+    def test_cli_refuses_held_out_without_split(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            done = subprocess.run(
+                [sys.executable, str(EVAL), "--dataset", "all-heldout", "--engine", "grep", "--skip-fetch",
+                 "--workdir", str(pathlib.Path(temp) / "w"), "--out", str(pathlib.Path(temp) / "out.json")],
+                capture_output=True, text=True, check=False,
+            )
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("--split heldout", done.stderr)
+
     def test_rows_label_test_queries_only(self) -> None:
         mod = self.mod
         queries = [
             mod.Query("d", "exact_id", "a", frozenset({1}), None),
             mod.Query("t", "exact_id", "b", frozenset({2}), None, "test"),
+            mod.Query("h", "exact_id", "c", frozenset({3}), None, "heldout"),
         ]
         scored = mod.score_queries(queries=queries, event_by_line={}, rank_fn=lambda q: [1, 2])
         rows = {row["id"]: row for row in scored["queries"]}
         self.assertNotIn("split", rows["d"])
         self.assertEqual(rows["t"]["split"], "test")
+        self.assertEqual(rows["h"]["split"], "heldout")
 
     def test_needle_loader_and_rows(self) -> None:
         mod = self.mod
@@ -155,6 +241,22 @@ class SplitOptionTest(unittest.TestCase):
                 self.assertEqual(done.returncode, 0, done.stderr)
                 report = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(report["datasets"][0]["query_count"], expected, split)
+
+    def test_cli_scores_held_out_split(self) -> None:
+        path = ROOT / "test" / "eval" / "queries" / "proxifier_2k.jsonl"
+        expected = len(self.mod.load_queries(path))
+        if not (ROOT / "build" / "bench" / "Proxifier_2k.log").is_file():
+            self.skipTest("held-out Loghub inputs not fetched")
+        with tempfile.TemporaryDirectory() as temp:
+            out = pathlib.Path(temp) / "out.json"
+            done = subprocess.run(
+                [sys.executable, str(EVAL), "--dataset", "proxifier-2k", "--engine", "grep", "--split", "heldout",
+                 "--skip-fetch", "--workdir", str(pathlib.Path(temp) / "w"), "--out", str(out)],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(done.returncode, 0, done.stderr)
+            report = json.loads(out.read_text(encoding="utf-8"))
+        self.assertEqual(report["datasets"][0]["query_count"], expected)
 
 
 if __name__ == "__main__":
