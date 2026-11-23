@@ -349,6 +349,14 @@ class EvalRetrievalCompareTest(unittest.TestCase):
         # nesso MRR 0.6 against bm25 0.5; grep and the nesso `dense` mode are not candidates.
         self.assertIn("| hdfs-2k | paraphrase | 1 | 0.600 | 0.600 | bm25 | 0.500 | 0.500 | +0.100 |", result.stdout)
         self.assertIn("References used: 0.", result.stdout)
+        as_json = self.run_margins(current, [], extra=["--margins-json"])
+        self.assertEqual(as_json.returncode, 0, as_json.stderr)
+        payload = json.loads(as_json.stdout)
+        row = next(item for item in payload["rows"] if item["system"] == "hdfs-2k" and item["class"] == "paraphrase")
+        self.assertEqual(row["bestOther"], "bm25")
+        self.assertAlmostEqual(row["margin"], 0.1)
+        self.assertEqual(payload["nesso"], "auto")
+        self.assertNotIn("### nesso margin", as_json.stdout)
 
     def test_margins_use_references_and_flag_small_classes(self) -> None:
         current = engine_report(
