@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Mac_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"0x02410003","relevant_lines":[1099],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"713439.104232","relevant_lines":[1034],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"1499288667.956536","relevant_lines":[1242],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"0x7fb7ed616c80","relevant_lines":[1157],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"0x1430000005ac8290","relevant_lines":[179],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"698896.274509","relevant_lines":[766],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"724509.898718","relevant_lines":[1226],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"com.apple.Safari.WebFeedParser","relevant_lines":[282],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"2401645769","relevant_lines":[436],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"488163","relevant_lines":[1654],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"33594","relevant_lines":[607],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"0x7f961cf08cf0","relevant_lines":[18,579,646,872,1299],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"Cocoa scripting error: four character codes must be four characters long","relevant_events":["E188"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"thermal pressure and memory pressure state","relevant_events":["E323"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"a process failed to act on a datagram ping before timing out","relevant_events":["E305"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"TCP connection failed with no network route","relevant_events":["E318"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"sync with device failed because the account identity is not set","relevant_events":["E313"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"DNS service client could not connect to mDNSResponder, operation not permitted","relevant_events":["E202"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"previous sleep cause code","relevant_events":["E293"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"Wi-Fi link down on en0 because the station is leaving","relevant_events":["E110"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"RTC PowerByCalendarDate setting ignored","relevant_events":["E296"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"wake reason was an RTC alarm","relevant_events":["E338"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"refusing to parse a PROPPATCH response because its content type is HTML","relevant_events":["E28"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"hashing of the primary key failed so the journal record was dropped","relevant_events":["E44"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"an app sent an AppleScript type code of the wrong length","relevant_events":["E188"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"the system reported its heat and memory load levels","relevant_events":["E323"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"a daemon was too slow to answer a liveness ping","relevant_events":["E305"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"a connect was attempted while there was no route to the network","relevant_events":["E318"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"iCloud keychain sync failed since no account identity is configured","relevant_events":["E313"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"a client was refused when opening the mDNSResponder socket","relevant_events":["E202"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"the kernel recorded why the machine last went to sleep","relevant_events":["E293"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"the wireless interface disassociated from its access point","relevant_events":["E110"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"a scheduled power-on by calendar date was not applied","relevant_events":["E296"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"the Mac woke from sleep because of a scheduled timer","relevant_events":["E338"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"a CalDAV server answered with a web page instead of XML","relevant_events":["E28"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"network analytics could not store a record because its key could not be hashed","relevant_events":["E44"],"split":"heldout"}

@@ -4,7 +4,9 @@
 The default dataset is the HDFS_v1 2k sample (HDFS/HDFS_2k.log) from
 logpai/loghub at a pinned commit, plus the matching structured CSV
 (HDFS_2k.log_structured.csv) with per-line EventId labels. Other pinned 2k
-samples (BGL, Thunderbird, OpenSSH, Linux, Apache) share that commit. Full sets come
+samples (BGL, Thunderbird, OpenSSH, Linux, Apache) share that commit, as do the
+held-out samples (Spark, Zookeeper, HPC, Windows, Mac, Android, Proxifier;
+--dataset all-heldout), which are scored only at release. Full sets come
 from Zenodo record 8196385:
 HDFS_v1, BGL, and Thunderbird. Each full set is checked against a sha256 pin,
 then the first N lines of the raw log are written and the archive is deleted.
@@ -38,7 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# Commit where HDFS/BGL/Thunderbird/OpenSSH/Linux/Apache *_2k.log samples are pinned.
+# Commit where every *_2k.log sample (dev, log-shape, and held-out) is pinned.
 LOGHUB_COMMIT = "374038faa4ca122dd7ca0730372c0b78f76f8597"
 DEFAULT_PREFIX_LINES = 1_000_000
 # Loghub full logs (ISSRE 2023). Not the concept DOI and not /latest.
@@ -151,6 +153,62 @@ FORMAT_SAMPLES: dict[str, Sample2k] = {
     ),
 }
 
+# Held-out systems: Loghub samples nesso is never tuned on. Their queries are
+# "split":"heldout" and are scored only at release (eval-retrieval --split
+# heldout), so they show whether ranking fitted to the dev families generalises.
+# Kept out of all-2k and all-formats; fetched with all-heldout or by name.
+HELDOUT_SAMPLES: dict[str, Sample2k] = {
+    "spark-2k": Sample2k(
+        name="spark-2k",
+        folder="Spark",
+        log_name="Spark_2k.log",
+        log_sha256="2e8b9a37fc5c238253e0b8e18a8bd5e489671def91767ae1192d28c8e1f95901",
+        structured_sha256="d7df75f6839b6bcf98ff020b6b0b6e2ee89d8cc53ee3d08d441bd42fd84a2cb5",
+    ),
+    "zookeeper-2k": Sample2k(
+        name="zookeeper-2k",
+        folder="Zookeeper",
+        log_name="Zookeeper_2k.log",
+        log_sha256="e40e0af5ef9eb6e4097200f260b9d1f626b3676f861a432e87977242e75543d8",
+        structured_sha256="e4a450c67595828103cfab049d971f54eee778fdded061222ba6581bed2a210a",
+    ),
+    "hpc-2k": Sample2k(
+        name="hpc-2k",
+        folder="HPC",
+        log_name="HPC_2k.log",
+        log_sha256="826e5957b461e65780a8bda5c186c2fcf90fd6c1863721ef9c1ccfa9ada86f88",
+        structured_sha256="0787df9cfab7e9495669548315ea8a9a51b02029c0dcfa28944707ad755a8c86",
+    ),
+    "windows-2k": Sample2k(
+        name="windows-2k",
+        folder="Windows",
+        log_name="Windows_2k.log",
+        log_sha256="372fb809464a6d6016e599e9272d7cf1e8b644f25c90c7f76f19c936362456d0",
+        structured_sha256="caa98dd6c1291ba0470d5c171df8514616b35669d724652bd7aa973df0dee881",
+    ),
+    "mac-2k": Sample2k(
+        name="mac-2k",
+        folder="Mac",
+        log_name="Mac_2k.log",
+        log_sha256="d9ea495488728d8c989dc942fca3324a3cc7b19b0a6f409a5fd568ad547fd931",
+        structured_sha256="c8d5d74e0dcd923675ee944ea592abaf0eae91ef492435330694ce5008267c8d",
+    ),
+    "android-2k": Sample2k(
+        name="android-2k",
+        folder="Android",
+        log_name="Android_2k.log",
+        log_sha256="47641549915e662ff590291df266a45f635eedca7c5f1b41a4fa853fe5d2f409",
+        structured_sha256="80d58d6c79249c9f4891fbe0c2eaeaade30f933c69b7d030af190a10d73d96e5",
+    ),
+    "proxifier-2k": Sample2k(
+        name="proxifier-2k",
+        folder="Proxifier",
+        log_name="Proxifier_2k.log",
+        log_sha256="94b6a9d98d76e7ad7841ed10caa463cd4e638a229b92a220a2bf1707552adbb9",
+        structured_sha256="5aa88821bb217d82c3a964cbe9fdb0d67f235b0538ac164ef0a87e0ced4f2715",
+    ),
+}
+
 # Backward-compatible aliases used by tests and callers.
 HDFS_COMMIT = LOGHUB_COMMIT
 _HDFS = SAMPLES_2K["hdfs-2k"]
@@ -163,8 +221,20 @@ DEFAULT_STRUCTURED_DEST = _HDFS.default_structured_dest
 
 DATASET_2K_NAMES = tuple(SAMPLES_2K)
 FORMAT_NAMES = tuple(FORMAT_SAMPLES)
+HELDOUT_NAMES = tuple(HELDOUT_SAMPLES)
 ALL_2K = "all-2k"
 ALL_FORMATS = "all-formats"
+ALL_HELDOUT = "all-heldout"
+SAMPLE_GROUP_NAMES = (ALL_2K, ALL_FORMATS, ALL_HELDOUT)
+
+
+def sample_groups() -> dict[str, dict[str, Sample2k]]:
+    """Each group name and its pinned 2k samples (read at call time, so tests can swap a group)."""
+    return {ALL_2K: SAMPLES_2K, ALL_FORMATS: FORMAT_SAMPLES, ALL_HELDOUT: HELDOUT_SAMPLES}
+
+
+def all_samples() -> dict[str, Sample2k]:
+    return {name: spec for group in sample_groups().values() for name, spec in group.items()}
 FULL_DATASET_NAMES = ("hdfs-v1", "bgl", "thunderbird", "all-full")
 LABELLED_DATASET_NAMES = ("bgl-loghub2", "thunderbird-loghub2")
 DATASET_CHOICES = (
@@ -172,6 +242,8 @@ DATASET_CHOICES = (
     ALL_2K,
     *FORMAT_NAMES,
     ALL_FORMATS,
+    *HELDOUT_NAMES,
+    ALL_HELDOUT,
     *FULL_DATASET_NAMES,
     *LABELLED_DATASET_NAMES,
 )
@@ -609,14 +681,14 @@ def main(argv: list[str] | None = None) -> None:
         "--dataset",
         choices=DATASET_CHOICES,
         default="hdfs-2k",
-        help="Pinned 2k sample (default hdfs-2k), all-2k, or a full Zenodo set",
+        help="Pinned 2k sample (default hdfs-2k), all-2k, all-formats, all-heldout, or a full Zenodo set",
     )
     parser.add_argument("--dest", type=Path, default=None, help="Output path for a single dataset")
     parser.add_argument(
         "--dest-dir",
         type=Path,
         default=BENCH_DIR,
-        help="Directory for --dataset all-2k or all-full (default: build/bench)",
+        help="Directory for a sample group (all-2k, all-formats, all-heldout) or all-full (default: build/bench)",
     )
     parser.add_argument("--lines", type=int, default=DEFAULT_PREFIX_LINES, help="Prefix length for a full set")
     parser.add_argument("--url", default=None, help="Override the pinned URL")
@@ -651,14 +723,15 @@ def main(argv: list[str] | None = None) -> None:
     if args.window:
         raise SystemExit("error: --window applies to bgl-loghub2 and thunderbird-loghub2 only")
 
-    if args.dataset in SAMPLES_2K or args.dataset in FORMAT_SAMPLES or args.dataset in (ALL_2K, ALL_FORMATS):
+    samples = all_samples()
+    if args.dataset in samples or args.dataset in SAMPLE_GROUP_NAMES:
         _reject_2k_full_flags(args.dataset, args)
-        if args.dataset in (ALL_2K, ALL_FORMATS):
+        if args.dataset in SAMPLE_GROUP_NAMES:
             if args.dest is not None:
                 raise SystemExit(f"error: --dest applies to one dataset; use --dest-dir for {args.dataset}")
             if args.url or args.sha256:
                 raise SystemExit(f"error: URL and pin overrides apply to one dataset, not {args.dataset}")
-            group = SAMPLES_2K if args.dataset == ALL_2K else FORMAT_SAMPLES
+            group = sample_groups()[args.dataset]
             for name in group:
                 spec = group[name]
                 log_dest = args.dest_dir / spec.log_name
@@ -671,7 +744,7 @@ def main(argv: list[str] | None = None) -> None:
                     sha256=None,
                 )
             return
-        spec = SAMPLES_2K.get(args.dataset) or FORMAT_SAMPLES[args.dataset]
+        spec = samples[args.dataset]
         if args.dest is None:
             log_dest = args.dest_dir / spec.log_name
             structured_dest = args.dest_dir / f"{spec.log_name}_structured.csv"

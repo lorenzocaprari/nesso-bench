@@ -100,6 +100,7 @@ SCHEMA_VERSION_ENGINES = 4
 TOKEN_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_")
 ALL_2K = "all-2k"
 ALL_FORMATS = "all-formats"
+ALL_HELDOUT = "all-heldout"
 ES_BULK_BATCH = 500
 XERJ_READY_TIMEOUT_S = 60.0
 XERJ_NEURAL_MODEL_FILES = ("config.json", "tokenizer.json", "model.safetensors")
@@ -239,6 +240,20 @@ DATASETS_FORMATS: dict[str, DatasetSpec] = {
     "hadoop-2k": DatasetSpec("hadoop-2k", "Hadoop_2k.log", "hadoop_2k.jsonl"),
     "openstack-2k": DatasetSpec("openstack-2k", "OpenStack_2k.log", "openstack_2k.jsonl"),
     "healthapp-2k": DatasetSpec("healthapp-2k", "HealthApp_2k.log", "healthapp_2k.jsonl"),
+}
+
+
+# Held-out systems (scripts/fetch-loghub all-heldout): Loghub samples nesso is
+# never tuned on. Every query in their files is "split":"heldout", so they are
+# scored only with --split heldout, at release, never while tuning.
+DATASETS_HELDOUT: dict[str, DatasetSpec] = {
+    "spark-2k": DatasetSpec("spark-2k", "Spark_2k.log", "spark_2k.jsonl"),
+    "zookeeper-2k": DatasetSpec("zookeeper-2k", "Zookeeper_2k.log", "zookeeper_2k.jsonl"),
+    "hpc-2k": DatasetSpec("hpc-2k", "HPC_2k.log", "hpc_2k.jsonl"),
+    "windows-2k": DatasetSpec("windows-2k", "Windows_2k.log", "windows_2k.jsonl"),
+    "mac-2k": DatasetSpec("mac-2k", "Mac_2k.log", "mac_2k.jsonl"),
+    "android-2k": DatasetSpec("android-2k", "Android_2k.log", "android_2k.jsonl"),
+    "proxifier-2k": DatasetSpec("proxifier-2k", "Proxifier_2k.log", "proxifier_2k.jsonl"),
 }
 
 
@@ -493,14 +508,16 @@ def _event_ids(path: Path, lineno: int, raw: object) -> frozenset[str]:
     return frozenset(raw)
 
 
-SPLITS = ("dev", "test")
+SPLITS = ("dev", "test", "heldout")
+HELDOUT = "heldout"
 
 
 def query_split(path: Path, lineno: int, payload: dict) -> str:
-    """The optional "split" of a query line: dev (the default) or test.
+    """The optional "split" of a query line: dev (the default), test, or heldout.
 
-    Test queries are frozen: scripts/check-test-split fails when one changes,
-    so nesso is not tuned on them without it showing.
+    Test and held-out queries are frozen: scripts/check-test-split fails when one
+    changes, so nesso is not tuned on them without it showing. Held-out queries
+    are scored only when asked for by name (--split heldout).
     """
     split = payload.get("split", "dev")
     if split not in SPLITS:
@@ -509,9 +526,15 @@ def query_split(path: Path, lineno: int, payload: dict) -> str:
 
 
 def select_split(queries: list, split: str, path: Path) -> list:
-    """The queries of one split, or all of them for split "all"."""
+    """The queries of one split, or the dev and test queries for split "all".
+
+    "all" never includes held-out queries: they are scored only with --split heldout.
+    """
     if split == "all":
-        return queries
+        chosen = [query for query in queries if query.split != HELDOUT]
+        if not chosen:
+            raise SystemExit(f"error: {path} has only held-out queries; score them with --split heldout")
+        return chosen
     chosen = [query for query in queries if query.split == split]
     if not chosen:
         raise SystemExit(f"error: no {split} queries in {path}")
@@ -2422,10 +2445,18 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if part == ALL_FORMATS:
             names.extend(DATASETS_FORMATS)
             continue
-        if part not in DATASETS_2K and part not in DATASETS_FORMATS and part not in DATASETS_ENCODED:
+        if part == ALL_HELDOUT:
+            names.extend(DATASETS_HELDOUT)
+            continue
+        if (
+            part not in DATASETS_2K
+            and part not in DATASETS_FORMATS
+            and part not in DATASETS_ENCODED
+            and part not in DATASETS_HELDOUT
+        ):
             raise SystemExit(
                 f"error: unknown dataset {part!r}; expected one of "
-                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + sorted(DATASETS_ENCODED) + [ALL_2K, ALL_FORMATS, SUPPORT_BUNDLE]}"
+                f"{sorted(DATASETS_2K) + sorted(DATASETS_FORMATS) + sorted(DATASETS_ENCODED) + sorted(DATASETS_HELDOUT) + [ALL_2K, ALL_FORMATS, ALL_HELDOUT, SUPPORT_BUNDLE]}"
             )
         names.append(part)
     # Preserve order, drop duplicates.
@@ -2435,8 +2466,26 @@ def parse_datasets(raw: str | None) -> list[DatasetSpec] | None:
         if name in seen:
             continue
         seen.add(name)
-        ordered.append(DATASETS_2K.get(name) or DATASETS_FORMATS.get(name) or DATASETS_ENCODED[name])
+        ordered.append(
+            DATASETS_2K.get(name) or DATASETS_FORMATS.get(name) or DATASETS_HELDOUT.get(name) or DATASETS_ENCODED[name]
+        )
     return ordered
+
+
+def check_heldout_split(specs: list[DatasetSpec] | None, split: str) -> None:
+    """Held-out datasets go with --split heldout and nothing else, so a dev or
+    default run never scores them and a release run scores only them."""
+    if specs is None:
+        return
+    heldout = [spec.name for spec in specs if spec.name in DATASETS_HELDOUT]
+    if split == HELDOUT and len(heldout) != len(specs):
+        others = [spec.name for spec in specs if spec.name not in DATASETS_HELDOUT]
+        raise SystemExit(f"error: --split heldout scores only held-out datasets ({ALL_HELDOUT}); not {', '.join(others)}")
+    if heldout and split != HELDOUT:
+        raise SystemExit(
+            f"error: {', '.join(heldout)} {'is' if len(heldout) == 1 else 'are'} held out: scored only at release "
+            "with --split heldout, never while tuning"
+        )
 
 
 def parse_engines(raw: list[str] | None) -> list[str]:
@@ -4716,7 +4765,9 @@ def main(argv: list[str] | None = None) -> None:
         "--dataset",
         default=None,
         help="Comma-separated 2k datasets, all-2k, the log-shape datasets (hadoop-2k, openstack-2k, "
-        "healthapp-2k), all-formats (maps log, CSV, and query file), hdfs-2k-json (HDFS_2k as JSON lines), "
+        "healthapp-2k), all-formats (maps log, CSV, and query file), the held-out systems (spark-2k, "
+        "zookeeper-2k, hpc-2k, windows-2k, mac-2k, android-2k, proxifier-2k) or all-heldout, with --split "
+        "heldout only, hdfs-2k-json (HDFS_2k as JSON lines), "
         "or support-bundle "
         "(nesso reads a directory of logs, gz, tar, tgz, and zip files; the others read it decoded); "
         "with --measure/--log-prefix-lines also hdfs-v1,bgl,thunderbird,all-full; "
@@ -4782,8 +4833,9 @@ def main(argv: list[str] | None = None) -> None:
         "--split",
         choices=("all", *SPLITS),
         default="all",
-        help="Score only the dev or the test queries (default all). Tune on dev; test queries are frozen "
-        "(scripts/check-test-split) and their rows carry split: test",
+        help="Score only the dev, test, or held-out queries (default all: dev and test). Tune on dev; test "
+        "queries are frozen (scripts/check-test-split) and their rows carry split: test. heldout scores the "
+        "held-out systems (all-heldout) only, at release, never while tuning",
     )
     parser.add_argument(
         "--quality-repeat",
@@ -4917,6 +4969,7 @@ def main(argv: list[str] | None = None) -> None:
                 measure_targets.append((spec.name, log_path, query_texts))
         else:
             dataset_specs = parse_datasets(args.dataset)
+            check_heldout_split(dataset_specs, args.split)
             if dataset_specs is None:
                 queries = select_split(load_queries(args.queries), args.split, args.queries)
                 if not args.skip_fetch:

@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub HPC_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"sc_cluster_backup","relevant_lines":[365],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"1102353540","relevant_lines":[953],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"1131216735","relevant_lines":[1992],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"125532","relevant_lines":[1065],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"399288","relevant_lines":[198],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"370250","relevant_lines":[528],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"2598112","relevant_lines":[1531],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"1074217317","relevant_lines":[1485],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"1095349170","relevant_lines":[889],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"315096","relevant_lines":[1344],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"43807","relevant_lines":[241],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"1118295037","relevant_lines":[1135],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"no server for a cluster file system domain","relevant_events":["E10"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"a file system domain is no longer served by a node","relevant_events":["E9"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"server file system domain is full","relevant_events":["E40"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"a component changed to the unavailable state","relevant_events":["E13"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"node detected a failed network connection on an interface","relevant_events":["E27"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"temperature exceeds the warning threshold","relevant_events":["E44"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"power supply failure reported with the ambient temperature","relevant_events":["E35"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"node configured out","relevant_events":["E14"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"link error event interval expired on a switch","relevant_events":["E26"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"interconnect link in reset","relevant_events":["E24"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"risBoot timed out waiting for the SRM prompt","relevant_events":["E37"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"inconsistent nodesets reported for a domain","relevant_events":["E20"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"every node that served a storage domain has gone away","relevant_events":["E10"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"a node stopped serving its share of the cluster file system","relevant_events":["E9"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"a storage domain ran out of space","relevant_events":["E40"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"a piece of hardware went offline","relevant_events":["E13"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"a network link on a node went down","relevant_events":["E27"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"a component is overheating","relevant_events":["E44"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"a PSU broke in the chassis","relevant_events":["E35"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"an administrator took the node out of service","relevant_events":["E14"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"the window for counting interconnect link errors elapsed","relevant_events":["E26"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"a switch link was being reinitialised","relevant_events":["E24"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"the node firmware console never answered during a network boot","relevant_events":["E37"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"nodes in a domain disagree about its membership","relevant_events":["E20"],"split":"heldout"}

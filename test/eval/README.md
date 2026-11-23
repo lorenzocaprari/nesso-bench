@@ -2,7 +2,8 @@
 
 `queries/*_2k.jsonl` are **seed** query sets for `scripts/eval-retrieval`. Each file
 has about five queries in each class (`exact_id`, `paraphrase`, `cause`) against one
-pinned Loghub 2k sample (HDFS, BGL, Thunderbird, OpenSSH, Linux, Apache).
+pinned Loghub 2k sample (HDFS, BGL, Thunderbird, OpenSSH, Linux, Apache), plus the
+log-shape and held-out groups described below.
 
 A query sets exactly one of `relevant_lines` (1-based LineIds) or `relevant_events`
 (Loghub EventIds from the matching `*_2k.log_structured.csv`). Exact-ID seeds use
@@ -75,6 +76,41 @@ E99, E39 (Hadoop), E40, E43, E29, E33 (OpenStack), and E31, E73, E69, E5 (Health
 the last four exact-ID queries of each. Events that differ only in a number or a register
 name are not used. OpenStack has 43 templates and Hadoop and HealthApp 114 and 75, so
 paraphrase and cause queries each use a different event.
+
+## Held-out systems
+
+Spark_2k, Zookeeper_2k, HPC_2k, Windows_2k, Mac_2k, Android_2k, and Proxifier_2k
+(`all-heldout`) are the held-out group: Loghub systems nesso has never been tuned on, so
+they show whether ranking rules fitted to the nine systems above generalise. Every query
+in their files is `"split":"heldout"`. **They are scored only at release, never while
+tuning**: `eval-retrieval --dataset all-heldout --split heldout`. The default `all` and
+`dev` runs skip them, and `eval-retrieval` refuses a held-out dataset without
+`--split heldout`. They are frozen like the test queries, in their own digest,
+`heldout-split.sha256`, which `scripts/check-test-split` checks; any edit, relabel, move,
+or drop fails until `--update` and a commit that says why.
+
+The queries were written from each log and its Loghub templates only, without running
+nesso. Each file has 12 exact-ID queries (session, task, block, and package ids, hex
+addresses, ports, PIDs, and timestamps that occur on one to five lines; every line
+holding the token is listed) and one paraphrase and one cause per event. Events that
+differ only in a number, a verb, or a state word (Spark's two broadcast-read lines,
+Zookeeper's `Closed socket` pair, HPC's `not responding` and `not-responding`, Windows'
+two `CBS_E_MANIFEST_INVALID_ITEM` lines, Mac's `Location icon` and `Captive` states,
+Android's suspend-blocker acquire and release) are not used.
+
+| file | exact_id | paraphrase | cause | events |
+| --- | ---: | ---: | ---: | --- |
+| `spark_2k.jsonl` | 12 | 12 | 12 | E19, E10, E25, E1, E18, E35, E12, E23, E32, E7, E22, E26 |
+| `zookeeper_2k.jsonl` | 12 | 12 | 12 | E15, E12, E6, E49, E5, E14, E23, E19, E46, E31, E21, E43 |
+| `hpc_2k.jsonl` | 12 | 12 | 12 | E10, E9, E40, E13, E27, E44, E35, E14, E26, E24, E37, E20 |
+| `windows_2k.jsonl` | 12 | 12 | 12 | E21, E24, E49, E19, E14, E25, E8, E50, E48, E37, E23, E29 |
+| `mac_2k.jsonl` | 12 | 12 | 12 | E188, E323, E305, E318, E313, E202, E293, E110, E296, E338, E28, E44 |
+| `android_2k.jsonl` | 12 | 12 | 12 | E101, E117, E75, E152, E106, E98, E73, E118, E25, E142, E149, E105 |
+| `proxifier_2k.jsonl` | 12 | 8 | 8 | E1 to E8 |
+
+Proxifier_2k has only 8 templates (two of them cover 1,901 of its 2,000 lines), so it
+gets one paraphrase and one cause for each, 8 per class. Paraphrase and cause queries on
+the same event are not independent evidence.
 
 `bundle.jsonl` scores the support bundle (`scripts/build-bundle`): 54 queries, each one of a
 2k system's queries unchanged (the id names the system), two dev queries and the frozen

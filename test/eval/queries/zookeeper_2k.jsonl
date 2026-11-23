@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Zookeeper_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"0x14edfaa86f6002d","relevant_lines":[1364],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"0x14ed93111f20048","relevant_lines":[505],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"0x14ed93111f20050","relevant_lines":[1290],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"0x14f05578bd80002","relevant_lines":[600],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"0x14f05578bd80006","relevant_lines":[1998],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"0x34edfaa9c220002","relevant_lines":[1978],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"10.10.34.18:40006","relevant_lines":[1305,1306],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"10.10.34.13:46143","relevant_lines":[1735],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"10.10.34.11:52476","relevant_lines":[766],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"10.10.34.14:49822","relevant_lines":[1950],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"10.10.34.12:59211","relevant_lines":[768],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"10.10.34.11:51967","relevant_lines":[1973],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"client session expired after its timeout was exceeded","relevant_events":["E15"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"connection request from an old client that read-only mode would drop","relevant_events":["E12"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"end of stream exception caught on a client connection","relevant_events":["E6"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"unexpected exception shut down a learner handler while its socket was still open","relevant_events":["E49"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"cannot open a channel to a peer's leader election port","relevant_events":["E5"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"session closed with an IOException because the server is not running","relevant_events":["E14"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"connection dropped because this server has the smaller identifier","relevant_events":["E23"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"now following and logged how long the leader election took","relevant_events":["E19"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"snapshot of the data tree written to a file","relevant_events":["E46"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"leader election notification timed out","relevant_events":["E31"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"user-level KeeperException on a create request","relevant_events":["E21"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"leader sending a DIFF to a follower","relevant_events":["E43"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"the client stopped sending heartbeats so the server dropped its session","relevant_events":["E15"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"a client on an outdated protocol version connected to the server","relevant_events":["E12"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"the client closed its socket without a clean shutdown","relevant_events":["E6"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"a follower link failed with an error while its connection remained open","relevant_events":["E49"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"another quorum member was down so the election connection failed","relevant_events":["E5"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"a client request arrived while the ZooKeeper server was not serving","relevant_events":["E14"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"two quorum peers connected to each other and the lower id gave way","relevant_events":["E23"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"the election finished and this node joined the new leader","relevant_events":["E19"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"the server saved its in-memory database state to disk","relevant_events":["E46"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"no votes arrived from peers within the election wait time","relevant_events":["E31"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"a client tried to create a znode that already exists","relevant_events":["E21"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"a follower was only slightly behind so the leader sent incremental changes","relevant_events":["E43"],"split":"heldout"}

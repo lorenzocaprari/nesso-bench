@@ -1,0 +1,39 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Android_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"233570404","relevant_lines":[2,15],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"261991368","relevant_lines":[1920],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"509267844","relevant_lines":[1901],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"16:16:05.065","relevant_lines":[1896],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"16:15:54.045","relevant_lines":[1605],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"16:15:56.190","relevant_lines":[1632],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"16:13:46.285","relevant_lines":[125],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"16:16:06.773","relevant_lines":[1939],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"16:14:07.747","relevant_lines":[594],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"16:13:47.641","relevant_lines":[327],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"16:15:01.142","relevant_lines":[873],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"16:16:00.429","relevant_lines":[1717],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"an app process has died","relevant_events":["E101"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"scheduling a restart of a crashed service","relevant_events":["E117"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"killing an empty cached process","relevant_events":["E75"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"unable to start a service because the intent was not found","relevant_events":["E152"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"battery info refreshed with a low battery flag","relevant_events":["E106"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"MediaPlayer destructor called","relevant_events":["E98"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"SIM PIN check found no SIM data","relevant_events":["E73"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"screen frozen during a window change","relevant_events":["E118"],"split":"heldout"}
+{"id":"para_09","class":"paraphrase","query":"bad activity token","relevant_events":["E25"],"split":"heldout"}
+{"id":"para_10","class":"paraphrase","query":"startActivity called from a non-activity context so a new task flag is forced","relevant_events":["E142"],"split":"heldout"}
+{"id":"para_11","class":"paraphrase","query":"taking a screenshot from a surface with a crop rectangle","relevant_events":["E149"],"split":"heldout"}
+{"id":"para_12","class":"paraphrase","query":"received the TIME_TICK alarm and rescheduled it","relevant_events":["E105"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"the qzone process crashed or was killed","relevant_events":["E101"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"a background service crashed and the system will bring it back","relevant_events":["E117"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"the system reclaimed memory by removing an idle app process","relevant_events":["E75"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"an app tried to start a service component that does not exist","relevant_events":["E152"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"the status bar re-read the battery level","relevant_events":["E106"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"an app released its media player instance","relevant_events":["E98"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"the phone has no SIM information loaded","relevant_events":["E73"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"the display froze while an activity window was being shown","relevant_events":["E118"],"split":"heldout"}
+{"id":"cause_09","class":"cause","query":"a call referenced an activity that no longer exists","relevant_events":["E25"],"split":"heldout"}
+{"id":"cause_10","class":"cause","query":"an activity was launched from a service or receiver without its own task","relevant_events":["E142"],"split":"heldout"}
+{"id":"cause_11","class":"cause","query":"the system captured the screen contents","relevant_events":["E149"],"split":"heldout"}
+{"id":"cause_12","class":"cause","query":"the per-minute clock tick fired","relevant_events":["E105"],"split":"heldout"}

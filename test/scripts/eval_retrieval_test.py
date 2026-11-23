@@ -198,6 +198,42 @@ class EvalRetrievalLabelsTest(unittest.TestCase):
             mod.validate_relevant_lines(queries, spec.log_path, lines)
             mod.validate_relevant_events(queries, events, spec.structured_path)
 
+    def test_held_out_datasets_are_separate(self) -> None:
+        mod = self.mod
+        heldout = [spec.name for spec in mod.parse_datasets("all-heldout")]
+        self.assertEqual(
+            heldout, ["spark-2k", "zookeeper-2k", "hpc-2k", "windows-2k", "mac-2k", "android-2k", "proxifier-2k"]
+        )
+        # Not in the dev groups, so a default or tuning run never reaches them.
+        for group in ("all-2k", "all-formats"):
+            self.assertFalse(set(heldout) & {spec.name for spec in mod.parse_datasets(group)}, group)
+        with self.assertRaises(SystemExit) as raised:
+            mod.parse_datasets("nope-2k")
+        self.assertIn("all-heldout", str(raised.exception))
+
+    def test_held_out_query_sets_validate_against_their_logs(self) -> None:
+        # Label check: every relevant line holds its token, every listed line holding the token is
+        # listed, and every relevant event occurs in the sample's structured CSV.
+        mod = self.mod
+        for spec in mod.parse_datasets("all-heldout"):
+            queries = mod.load_queries(spec.queries_path)
+            classes = {name: sum(query.class_name == name for query in queries) for name in ("exact_id", "paraphrase", "cause")}
+            self.assertEqual(classes["exact_id"], 12, spec.name)
+            self.assertGreaterEqual(classes["paraphrase"], 8, spec.name)
+            self.assertEqual(classes["paraphrase"], classes["cause"], spec.name)
+            self.assertEqual({query.split for query in queries}, {"heldout"}, spec.name)
+            if not (spec.log_path.is_file() and spec.structured_path.is_file()):
+                self.skipTest("held-out inputs not fetched")
+            lines = mod.read_log_lines(spec.log_path)
+            events = mod.load_event_ids(spec.structured_path)
+            mod.assert_line_id_alignment(spec.log_path, events, lines)
+            mod.validate_relevant_lines(queries, spec.log_path, lines)
+            mod.validate_relevant_events(queries, events, spec.structured_path)
+            for query in queries:
+                if query.relevant_lines is not None:
+                    holding = {number for number, line in enumerate(lines, start=1) if mod.contains_whole_token(line, query.query)}
+                    self.assertEqual(set(query.relevant_lines), holding, f"{spec.name} {query.id}")
+
     def test_dataset_mapping_resolves_all_2k(self) -> None:
         specs = self.mod.parse_datasets("all-2k")
         self.assertIsNotNone(specs)

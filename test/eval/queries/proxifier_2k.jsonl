@@ -1,0 +1,31 @@
+# Held-out queries for scripts/eval-retrieval on Loghub Proxifier_2k (--split heldout only).
+# exact_id uses relevant_lines (every line holding the token); paraphrase and cause use relevant_events.
+# Scored only at release, never while tuning. Not the published benchmark.
+{"id":"exact_01","class":"exact_id","query":"22083","relevant_lines":[1720],"split":"heldout"}
+{"id":"exact_02","class":"exact_id","query":"58373","relevant_lines":[1717],"split":"heldout"}
+{"id":"exact_03","class":"exact_id","query":"12789","relevant_lines":[1016],"split":"heldout"}
+{"id":"exact_04","class":"exact_id","query":"oimagea7.ydstatic.com:80","relevant_lines":[929],"split":"heldout"}
+{"id":"exact_05","class":"exact_id","query":"101.226.211.46:8080","relevant_lines":[1582],"split":"heldout"}
+{"id":"exact_06","class":"exact_id","query":"upload.3367.com:80","relevant_lines":[1195],"split":"heldout"}
+{"id":"exact_07","class":"exact_id","query":"203.205.146.15:80","relevant_lines":[1086],"split":"heldout"}
+{"id":"exact_08","class":"exact_id","query":"server26401.teamviewer.com:443","relevant_lines":[1461],"split":"heldout"}
+{"id":"exact_09","class":"exact_id","query":"dblp.uni-trier.de:80","relevant_lines":[1416],"split":"heldout"}
+{"id":"exact_10","class":"exact_id","query":"4090387","relevant_lines":[447],"split":"heldout"}
+{"id":"exact_11","class":"exact_id","query":"formi.baidu.com:843","relevant_lines":[442],"split":"heldout"}
+{"id":"exact_12","class":"exact_id","query":"BSvcProcessor.exe","relevant_lines":[1664],"split":"heldout"}
+{"id":"para_01","class":"paraphrase","query":"connection opened through the proxy using SOCKS5","relevant_events":["E1"],"split":"heldout"}
+{"id":"para_02","class":"paraphrase","query":"connection opened through the proxy over HTTPS","relevant_events":["E2"],"split":"heldout"}
+{"id":"para_03","class":"paraphrase","query":"could not connect to the proxy because its name could not be resolved","relevant_events":["E3"],"split":"heldout"}
+{"id":"para_04","class":"paraphrase","query":"could not connect to the proxy, the connection attempt failed with an error code","relevant_events":["E4"],"split":"heldout"}
+{"id":"para_05","class":"paraphrase","query":"the proxy could not establish a connection with the target and returned a status code","relevant_events":["E5"],"split":"heldout"}
+{"id":"para_06","class":"paraphrase","query":"the proxy closed the connection unexpectedly","relevant_events":["E6"],"split":"heldout"}
+{"id":"para_07","class":"paraphrase","query":"connection request canceled before it completed","relevant_events":["E7"],"split":"heldout"}
+{"id":"para_08","class":"paraphrase","query":"connection closed with bytes sent, bytes received and lifetime","relevant_events":["E8"],"split":"heldout"}
+{"id":"cause_01","class":"cause","query":"an app routed its traffic through a SOCKS5 proxy","relevant_events":["E1"],"split":"heldout"}
+{"id":"cause_02","class":"cause","query":"an application's request was tunnelled through the HTTPS proxy","relevant_events":["E2"],"split":"heldout"}
+{"id":"cause_03","class":"cause","query":"the DNS lookup for the proxy server failed","relevant_events":["E3"],"split":"heldout"}
+{"id":"cause_04","class":"cause","query":"the proxy server did not accept the TCP connection","relevant_events":["E4"],"split":"heldout"}
+{"id":"cause_05","class":"cause","query":"the remote site was unreachable so the proxy reported an error status","relevant_events":["E5"],"split":"heldout"}
+{"id":"cause_06","class":"cause","query":"the proxy dropped the tunnel partway through","relevant_events":["E6"],"split":"heldout"}
+{"id":"cause_07","class":"cause","query":"the application gave up on a connection before it finished","relevant_events":["E7"],"split":"heldout"}
+{"id":"cause_08","class":"cause","query":"a proxied session ended and reported its traffic totals","relevant_events":["E8"],"split":"heldout"}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when a frozen test query changed.
+"""Fail when a frozen test or held-out query changed.
 
     scripts/check-test-split [--root DIR] [--update]
 
@@ -10,6 +10,10 @@ nesso on the dev queries (eval-retrieval --split dev). Editing, adding, moving,
 or dropping a test query changes the digest and fails this check, so a change
 to the test set is a visible decision: --update rewrites the digest, and the
 commit message should say why the test set changed.
+
+Queries that set "split":"heldout" (the held-out Loghub systems, scored only at
+release with eval-retrieval --split heldout) are frozen the same way, in their
+own digest, test/eval/heldout-split.sha256.
 """
 
 from __future__ import annotations
@@ -22,11 +26,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIGEST = Path("test/eval/test-split.sha256")
+HELDOUT_DIGEST = Path("test/eval/heldout-split.sha256")
+# Each frozen split and the file that holds its digest.
+FROZEN: dict[str, Path] = {"test": DIGEST, "heldout": HELDOUT_DIGEST}
 PATTERNS = ("test/eval/queries/*.jsonl", "test/eval/needles/*.jsonl")
 
 
-def test_queries(root: Path) -> list[str]:
-    """One canonical line per test query, sorted, each prefixed with its file."""
+def test_queries(root: Path, split: str = "test") -> list[str]:
+    """One canonical line per query of a frozen split, sorted, each prefixed with its file."""
     found = []
     for pattern in PATTERNS:
         for path in sorted(root.glob(pattern)):
@@ -38,7 +45,7 @@ def test_queries(root: Path) -> list[str]:
                     payload = json.loads(line)
                 except json.JSONDecodeError as exc:
                     raise SystemExit(f"error: {path}:{number}: invalid JSON: {exc}") from exc
-                if isinstance(payload, dict) and payload.get("split") == "test":
+                if isinstance(payload, dict) and payload.get("split") == split:
                     found.append(f"{path.relative_to(root).as_posix()}\t{json.dumps(payload, sort_keys=True, separators=(',', ':'))}")
     return sorted(found)
 
@@ -47,17 +54,13 @@ def digest(entries: list[str]) -> str:
     return hashlib.sha256(("\n".join(entries) + "\n").encode("utf-8")).hexdigest()
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--root", type=Path, default=ROOT, help="Repository root (default: this one)")
-    parser.add_argument("--update", action="store_true", help="Rewrite the committed digest")
-    args = parser.parse_args(argv)
-    entries = test_queries(args.root)
+def check_split(root: Path, split: str, relative: Path, update: bool) -> int:
+    entries = test_queries(root, split)
     current = digest(entries)
-    target = args.root / DIGEST
-    if args.update:
-        target.write_text(f"{current}  {len(entries)} test queries\n", encoding="utf-8")
-        print(f"wrote {target}: {len(entries)} test queries")
+    target = root / relative
+    if update:
+        target.write_text(f"{current}  {len(entries)} {split} queries\n", encoding="utf-8")
+        print(f"wrote {target}: {len(entries)} {split} queries")
         return 0
     try:
         committed = target.read_text(encoding="utf-8").split()[0]
@@ -66,13 +69,24 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if committed != current:
         print(
-            f"error: the test queries changed ({len(entries)} now). They are frozen; if the change is "
+            f"error: the {split} queries changed ({len(entries)} now). They are frozen; if the change is "
             "intended, run scripts/check-test-split --update and say in the commit message why.",
             file=sys.stderr,
         )
         return 1
-    print(f"ok: {len(entries)} test queries match {DIGEST}")
+    print(f"ok: {len(entries)} {split} queries match {relative}")
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--root", type=Path, default=ROOT, help="Repository root (default: this one)")
+    parser.add_argument("--update", action="store_true", help="Rewrite the committed digests")
+    args = parser.parse_args(argv)
+    status = 0
+    for split, relative in FROZEN.items():
+        status |= check_split(args.root, split, relative, args.update)
+    return status
 
 
 if __name__ == "__main__":
