@@ -1,0 +1,1875 @@
+{
+  "schema": 1,
+  "developmentOnly": true,
+  "hostedRunners": true,
+  "runId": "45286163519",
+  "runUrl": "https://github.com/lorenzocaprari/nesso-bench/actions/runs/45286163519",
+  "event": "workflow_dispatch",
+  "headSha": "dc2f9b341cc00e8954e963957bfd20ff43710e80",
+  "createdAt": "2026-11-24T00:32:09Z",
+  "nessoRelease": "0.3.1",
+  "nessoMain": {
+    "version": "0.3.1+gd86bdb3f98c5",
+    "packageRunId": "45186123708",
+    "packageRunUrl": "https://github.com/lorenzocaprari/nesso/actions/runs/45186123708",
+    "headSha": "d86bdb3f98c5f9772cdfecca82e1fe3f2c4df7c7"
+  },
+  "inJob": {
+    "comparable": true,
+    "cpus": [
+      "Intel(R) Xeon(R) 6975P-C"
+    ],
+    "ratios": [
+      {
+        "suite": "2k",
+        "engine": "ripgrep",
+        "indexWallSeconds": null,
+        "queryP50Seconds": 0.004941,
+        "indexRatio": {
+          "nessoMain": null,
+          "nessoRelease": null,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.021542,
+          "nessoRelease": 0.021237,
+          "grep": 1.628591,
+          "ripgrep": null
+        }
+      },
+      {
+        "suite": "2k",
+        "engine": "bm25",
+        "indexWallSeconds": 0.63,
+        "queryP50Seconds": 0.000294,
+        "indexRatio": {
+          "nessoMain": 0.155941,
+          "nessoRelease": 0.060752,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.001278,
+          "nessoRelease": 0.001255,
+          "grep": 0.103769,
+          "ripgrep": 0.064575
+        }
+      },
+      {
+        "suite": "2k",
+        "engine": "xerj",
+        "indexWallSeconds": 1.85,
+        "queryP50Seconds": 0.001017,
+        "indexRatio": {
+          "nessoMain": 0.457921,
+          "nessoRelease": 0.178399,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.004432,
+          "nessoRelease": 0.004394,
+          "grep": 0.347103,
+          "ripgrep": 0.205777
+        }
+      },
+      {
+        "suite": "formats",
+        "engine": "ripgrep",
+        "indexWallSeconds": null,
+        "queryP50Seconds": 0.005805,
+        "indexRatio": {
+          "nessoMain": null,
+          "nessoRelease": null,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.025904,
+          "nessoRelease": 0.025306,
+          "grep": 1.563005,
+          "ripgrep": null
+        }
+      },
+      {
+        "suite": "formats",
+        "engine": "bm25",
+        "indexWallSeconds": 0.33,
+        "queryP50Seconds": 0.000414,
+        "indexRatio": {
+          "nessoMain": 0.15,
+          "nessoRelease": 0.120879,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.001844,
+          "nessoRelease": 0.001805,
+          "grep": 0.104575,
+          "ripgrep": 0.067697
+        }
+      },
+      {
+        "suite": "formats",
+        "engine": "opensearch",
+        "indexWallSeconds": 49.08,
+        "queryP50Seconds": 0.006641,
+        "indexRatio": {
+          "nessoMain": 22.309091,
+          "nessoRelease": 17.978022,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.029435,
+          "nessoRelease": 0.0289,
+          "grep": 1.863759,
+          "ripgrep": 1.19242
+        }
+      },
+      {
+        "suite": "formats",
+        "engine": "xerj",
+        "indexWallSeconds": 0.92,
+        "queryP50Seconds": 0.001052,
+        "indexRatio": {
+          "nessoMain": 0.418182,
+          "nessoRelease": 0.336996,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.004663,
+          "nessoRelease": 0.004578,
+          "grep": 0.297792,
+          "ripgrep": 0.190525
+        }
+      },
+      {
+        "suite": "json",
+        "engine": "ripgrep",
+        "indexWallSeconds": null,
+        "queryP50Seconds": 0.005805,
+        "indexRatio": {
+          "nessoMain": null,
+          "nessoRelease": null,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.027343,
+          "nessoRelease": 0.025473,
+          "grep": 1.593467,
+          "ripgrep": null
+        }
+      },
+      {
+        "suite": "json",
+        "engine": "bm25",
+        "indexWallSeconds": 0.11,
+        "queryP50Seconds": 0.000976,
+        "indexRatio": {
+          "nessoMain": 0.268293,
+          "nessoRelease": 0.255814,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.004597,
+          "nessoRelease": 0.004283,
+          "grep": 0.267911,
+          "ripgrep": 0.168131
+        }
+      },
+      {
+        "suite": "json",
+        "engine": "opensearch",
+        "indexWallSeconds": 16.3,
+        "queryP50Seconds": 0.005023,
+        "indexRatio": {
+          "nessoMain": 39.756098,
+          "nessoRelease": 37.906977,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.02366,
+          "nessoRelease": 0.022041,
+          "grep": 1.378809,
+          "ripgrep": 0.865289
+        }
+      },
+      {
+        "suite": "json",
+        "engine": "xerj",
+        "indexWallSeconds": 0.31,
+        "queryP50Seconds": 0.001103,
+        "indexRatio": {
+          "nessoMain": 0.756098,
+          "nessoRelease": 0.72093,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.005195,
+          "nessoRelease": 0.00484,
+          "grep": 0.302772,
+          "ripgrep": 0.190009
+        }
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "engine": "ripgrep",
+        "indexWallSeconds": null,
+        "queryP50Seconds": 0.019783,
+        "indexRatio": {
+          "nessoMain": null,
+          "nessoRelease": null,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.054419,
+          "nessoRelease": 0.041104,
+          "grep": 1.212639,
+          "ripgrep": null
+        }
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "engine": "bm25",
+        "indexWallSeconds": 0.55,
+        "queryP50Seconds": 0.005747,
+        "indexRatio": {
+          "nessoMain": 0.188356,
+          "nessoRelease": 0.007942,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.015809,
+          "nessoRelease": 0.011941,
+          "grep": 0.352274,
+          "ripgrep": 0.290502
+        }
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "engine": "opensearch",
+        "indexWallSeconds": 20.07,
+        "queryP50Seconds": 0.006237,
+        "indexRatio": {
+          "nessoMain": 6.873288,
+          "nessoRelease": 0.289819,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.017157,
+          "nessoRelease": 0.012959,
+          "grep": 0.38231,
+          "ripgrep": 0.315271
+        }
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "engine": "xerj",
+        "indexWallSeconds": 3.83,
+        "queryP50Seconds": 0.001213,
+        "indexRatio": {
+          "nessoMain": 1.311644,
+          "nessoRelease": 0.055307,
+          "grep": null,
+          "ripgrep": null
+        },
+        "queryRatio": {
+          "nessoMain": 0.003337,
+          "nessoRelease": 0.00252,
+          "grep": 0.074353,
+          "ripgrep": 0.061315
+        }
+      }
+    ]
+  },
+  "embeddings": {
+    "diy-faiss": {
+      "cpuModel": "AMD EPYC 9V45 96-Core Processor",
+      "suites": {
+        "2k": {
+          "indexWallSeconds": 190.46,
+          "queryP50Seconds": 0.008189,
+          "cpuModel": "AMD EPYC 9V45 96-Core Processor"
+        },
+        "json": {
+          "indexWallSeconds": 55.73,
+          "queryP50Seconds": 0.008471,
+          "cpuModel": "AMD EPYC 9V45 96-Core Processor"
+        },
+        "formats": {
+          "indexWallSeconds": 158.27,
+          "queryP50Seconds": 0.009362,
+          "cpuModel": "AMD EPYC 9V45 96-Core Processor"
+        }
+      }
+    },
+    "opensearch-knn": {
+      "cpuModel": "Intel(R) Xeon(R) 6975P-C",
+      "suites": {
+        "2k": {
+          "indexWallSeconds": 220.27,
+          "queryP50Seconds": 0.012256,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "json": {
+          "indexWallSeconds": 51.01,
+          "queryP50Seconds": 0.011547,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "formats": {
+          "indexWallSeconds": 147.56,
+          "queryP50Seconds": 0.012432,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        }
+      }
+    },
+    "xerj-neural": {
+      "cpuModel": "AMD EPYC 7763 64-Core Processor",
+      "suites": {
+        "2k": {
+          "indexWallSeconds": 417.39,
+          "queryP50Seconds": 0.019934,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        },
+        "json": {
+          "indexWallSeconds": 117.95,
+          "queryP50Seconds": 0.02068,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        },
+        "formats": {
+          "indexWallSeconds": 365.85,
+          "queryP50Seconds": 0.021477,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        }
+      }
+    },
+    "xerj-semantic": {
+      "cpuModel": "Intel(R) Xeon(R) 6975P-C",
+      "suites": {
+        "bgl-needle-100k": {
+          "indexWallSeconds": 19.39,
+          "queryP50Seconds": 0.003195,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "2k": {
+          "indexWallSeconds": 3.05,
+          "queryP50Seconds": 0.001851,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "json": {
+          "indexWallSeconds": 0.52,
+          "queryP50Seconds": 0.001928,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "formats": {
+          "indexWallSeconds": 1.5,
+          "queryP50Seconds": 0.001872,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        }
+      }
+    },
+    "ck": {
+      "cpuModel": "Intel(R) Xeon(R) 6975P-C",
+      "suites": {
+        "2k": {
+          "indexWallSeconds": 186.85,
+          "queryP50Seconds": 0.456668,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        },
+        "json": {
+          "indexWallSeconds": 52.03,
+          "queryP50Seconds": 0.443196,
+          "cpuModel": "Intel(R) Xeon(R) 6975P-C"
+        }
+      }
+    },
+    "vecgrep": {
+      "cpuModel": "AMD EPYC 7763 64-Core Processor",
+      "suites": {
+        "2k": {
+          "indexWallSeconds": 64.58,
+          "queryP50Seconds": 0.261798,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        },
+        "json": {
+          "indexWallSeconds": 20.99,
+          "queryP50Seconds": 0.262598,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        },
+        "formats": {
+          "indexWallSeconds": 45.07,
+          "queryP50Seconds": 0.261453,
+          "cpuModel": "AMD EPYC 7763 64-Core Processor"
+        }
+      }
+    }
+  },
+  "margins": {
+    "main": [
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.21949200000000002,
+        "nessoMrr": 0.313333,
+        "bestOther": "ck",
+        "otherMrr": 0.532825,
+        "verdict": "loss"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.030667,
+        "nessoMrr": 0.533333,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.564,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.06844499999999998,
+        "nessoMrr": 0.615556,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": 0.02733300000000005,
+        "nessoMrr": 0.543,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.515667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.09366699999999994,
+        "nessoMrr": 0.846333,
+        "bestOther": "xerj-semantic",
+        "otherMrr": 0.94,
+        "verdict": "loss"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.06411100000000003,
+        "nessoMrr": 0.796444,
+        "bestOther": "bm25",
+        "otherMrr": 0.732333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.025554999999999994,
+        "nessoMrr": 0.581889,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.607444,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "bm25",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.0033330000000000304,
+        "nessoMrr": 0.89,
+        "bestOther": "bm25",
+        "otherMrr": 0.893333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.059836,
+        "nessoMrr": 0.823963,
+        "bestOther": "bm25",
+        "otherMrr": 0.764127,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": 0.0027780000000000027,
+        "nessoMrr": 0.327778,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.325,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": -0.030000000000000027,
+        "nessoMrr": 0.97,
+        "bestOther": "xerj-semantic",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.06000000000000005,
+        "nessoMrr": 0.7,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.76,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.06325900000000007,
+        "nessoMrr": 0.665926,
+        "bestOther": "bm25",
+        "otherMrr": 0.602667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": 0.0066670000000000895,
+        "nessoMrr": 0.706667,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.7,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": -0.020000000000000018,
+        "nessoMrr": 0.98,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.020000000000000018,
+        "nessoMrr": 0.893333,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.873333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.16461400000000004,
+        "nessoMrr": 0.86,
+        "bestOther": "bm25",
+        "otherMrr": 0.695386,
+        "verdict": "win"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "cause",
+        "n": 17,
+        "margin": -0.040615999999999985,
+        "nessoMrr": 0.478992,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.519608,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "paraphrase",
+        "n": 17,
+        "margin": -0.05882299999999996,
+        "nessoMrr": 0.764706,
+        "bestOther": "bm25",
+        "otherMrr": 0.823529,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "overall",
+        "n": 59,
+        "margin": 0.0363190000000001,
+        "nessoMrr": 0.782082,
+        "bestOther": "bm25",
+        "otherMrr": 0.745763,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "cause",
+        "n": 142,
+        "margin": 0.006034000000000039,
+        "nessoMrr": 0.492673,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.486639,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 150,
+        "margin": -0.008333000000000035,
+        "nessoMrr": 0.991667,
+        "bestOther": "bm25",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 142,
+        "margin": -0.004519000000000051,
+        "nessoMrr": 0.771655,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.776174,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "overall",
+        "n": 434,
+        "margin": 0.07756399999999997,
+        "nessoMrr": 0.756416,
+        "bestOther": "bm25",
+        "otherMrr": 0.678852,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": 0.009259000000000017,
+        "nessoMrr": 0.609259,
+        "bestOther": "opensearch-knn",
+        "otherMrr": 0.6,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": 0.06944399999999995,
+        "nessoMrr": 0.958333,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.888889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": 0.1915119999999999,
+        "nessoMrr": 0.855864,
+        "bestOther": "bm25",
+        "otherMrr": 0.664352,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 0.333333,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.333333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 1.0,
+        "bestOther": "bm25",
+        "otherMrr": 0.958333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": 0.06481499999999996,
+        "nessoMrr": 0.777778,
+        "bestOther": "bm25",
+        "otherMrr": 0.712963,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 0.652778,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.652778,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": 0.12222200000000005,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.877778,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": 0.26851800000000003,
+        "nessoMrr": 0.884259,
+        "bestOther": "bm25",
+        "otherMrr": 0.615741,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "cause",
+        "n": 36,
+        "margin": 0.003086000000000033,
+        "nessoMrr": 0.53179,
+        "bestOther": "opensearch-knn",
+        "otherMrr": 0.528704,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 36,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 36,
+        "margin": 0.09166699999999994,
+        "nessoMrr": 0.986111,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.894444,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "overall",
+        "n": 108,
+        "margin": 0.174948,
+        "nessoMrr": 0.8393,
+        "bestOther": "bm25",
+        "otherMrr": 0.664352,
+        "verdict": "win"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.15649200000000002,
+        "nessoMrr": 0.3,
+        "bestOther": "ck",
+        "otherMrr": 0.456492,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.04066700000000001,
+        "nessoMrr": 0.51,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.550667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.056221999999999994,
+        "nessoMrr": 0.603333,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.15649200000000002,
+        "nessoMrr": 0.3,
+        "bestOther": "ck",
+        "otherMrr": 0.456492,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.04066700000000001,
+        "nessoMrr": 0.51,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.550667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.056221999999999994,
+        "nessoMrr": 0.603333,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "cause",
+        "n": 18,
+        "margin": -0.04999999999999993,
+        "nessoMrr": 0.638889,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.688889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "exact_id",
+        "n": 18,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "paraphrase",
+        "n": 18,
+        "margin": 0.08333400000000002,
+        "nessoMrr": 0.805556,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.722222,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "overall",
+        "n": 54,
+        "margin": 0.06944499999999998,
+        "nessoMrr": 0.814815,
+        "bestOther": "xerj",
+        "otherMrr": 0.74537,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "cause",
+        "n": 18,
+        "margin": -0.04999999999999993,
+        "nessoMrr": 0.638889,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.688889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 18,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 18,
+        "margin": 0.08333400000000002,
+        "nessoMrr": 0.805556,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.722222,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "overall",
+        "n": 54,
+        "margin": 0.06944499999999998,
+        "nessoMrr": 0.814815,
+        "bestOther": "xerj",
+        "otherMrr": 0.74537,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "keyword",
+        "n": 17,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "symptom",
+        "n": 17,
+        "margin": 0.174954,
+        "nessoMrr": 0.240313,
+        "bestOther": "bm25",
+        "otherMrr": 0.065359,
+        "verdict": "win"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "overall",
+        "n": 34,
+        "margin": 0.087476,
+        "nessoMrr": 0.620156,
+        "bestOther": "bm25",
+        "otherMrr": 0.53268,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "keyword",
+        "n": 17,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "symptom",
+        "n": 17,
+        "margin": 0.174954,
+        "nessoMrr": 0.240313,
+        "bestOther": "bm25",
+        "otherMrr": 0.065359,
+        "verdict": "win"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "overall",
+        "n": 34,
+        "margin": 0.087476,
+        "nessoMrr": 0.620156,
+        "bestOther": "bm25",
+        "otherMrr": 0.53268,
+        "verdict": "tie"
+      }
+    ],
+    "release": [
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.242825,
+        "nessoMrr": 0.29,
+        "bestOther": "ck",
+        "otherMrr": 0.532825,
+        "verdict": "loss"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.026000000000000023,
+        "nessoMrr": 0.59,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.564,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "hdfs-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.07955599999999996,
+        "nessoMrr": 0.626667,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": 0.04242800000000002,
+        "nessoMrr": 0.558095,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.515667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 0.94,
+        "bestOther": "xerj-semantic",
+        "otherMrr": 0.94,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "bgl-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.10036500000000004,
+        "nessoMrr": 0.832698,
+        "bestOther": "bm25",
+        "otherMrr": 0.732333,
+        "verdict": "win"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": 0.03460399999999997,
+        "nessoMrr": 0.642048,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.607444,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "bm25",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.03866700000000001,
+        "nessoMrr": 0.932,
+        "bestOther": "bm25",
+        "otherMrr": 0.893333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "thunderbird-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.093889,
+        "nessoMrr": 0.858016,
+        "bestOther": "bm25",
+        "otherMrr": 0.764127,
+        "verdict": "win"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.069,
+        "nessoMrr": 0.256,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.325,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj-semantic",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.119286,
+        "nessoMrr": 0.640714,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.76,
+        "verdict": "loss"
+      },
+      {
+        "suite": "2k",
+        "system": "openssh-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.029571000000000014,
+        "nessoMrr": 0.632238,
+        "bestOther": "bm25",
+        "otherMrr": 0.602667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.006285999999999903,
+        "nessoMrr": 0.693714,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.7,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": -0.020000000000000018,
+        "nessoMrr": 0.98,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": -0.03200000000000003,
+        "nessoMrr": 0.841333,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.873333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "linux-2k",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.14296300000000006,
+        "nessoMrr": 0.838349,
+        "bestOther": "bm25",
+        "otherMrr": 0.695386,
+        "verdict": "win"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "cause",
+        "n": 17,
+        "margin": 0.009804000000000035,
+        "nessoMrr": 0.529412,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.519608,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "paraphrase",
+        "n": 17,
+        "margin": -0.05882299999999996,
+        "nessoMrr": 0.764706,
+        "bestOther": "bm25",
+        "otherMrr": 0.823529,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "apache-2k",
+        "class": "overall",
+        "n": 59,
+        "margin": 0.05084700000000009,
+        "nessoMrr": 0.79661,
+        "bestOther": "bm25",
+        "otherMrr": 0.745763,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "cause",
+        "n": 142,
+        "margin": 0.006294000000000022,
+        "nessoMrr": 0.492933,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.486639,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 150,
+        "margin": -0.0033330000000000304,
+        "nessoMrr": 0.996667,
+        "bestOther": "bm25",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 142,
+        "margin": 0.009749999999999925,
+        "nessoMrr": 0.785924,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.776174,
+        "verdict": "tie"
+      },
+      {
+        "suite": "2k",
+        "system": "overall",
+        "class": "overall",
+        "n": 434,
+        "margin": 0.08404599999999995,
+        "nessoMrr": 0.762898,
+        "bestOther": "bm25",
+        "otherMrr": 0.678852,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": -0.05833299999999997,
+        "nessoMrr": 0.541667,
+        "bestOther": "opensearch-knn",
+        "otherMrr": 0.6,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": -0.5,
+        "nessoMrr": 0.5,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "loss"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": -0.004630000000000023,
+        "nessoMrr": 0.884259,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.888889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "hadoop-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": -0.02237700000000009,
+        "nessoMrr": 0.641975,
+        "bestOther": "bm25",
+        "otherMrr": 0.664352,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": 0.020238000000000034,
+        "nessoMrr": 0.353571,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.333333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 1.0,
+        "bestOther": "bm25",
+        "otherMrr": 0.958333,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "openstack-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": 0.07156099999999999,
+        "nessoMrr": 0.784524,
+        "bestOther": "bm25",
+        "otherMrr": 0.712963,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "cause",
+        "n": 12,
+        "margin": 0.05208299999999999,
+        "nessoMrr": 0.704861,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.652778,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "exact_id",
+        "n": 12,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "paraphrase",
+        "n": 12,
+        "margin": 0.12222200000000005,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.877778,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "healthapp-2k",
+        "class": "overall",
+        "n": 36,
+        "margin": 0.285879,
+        "nessoMrr": 0.90162,
+        "bestOther": "bm25",
+        "otherMrr": 0.615741,
+        "verdict": "win"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "cause",
+        "n": 36,
+        "margin": 0.004662000000000055,
+        "nessoMrr": 0.533366,
+        "bestOther": "opensearch-knn",
+        "otherMrr": 0.528704,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 36,
+        "margin": -0.166667,
+        "nessoMrr": 0.833333,
+        "bestOther": "ripgrep",
+        "otherMrr": 1.0,
+        "verdict": "loss"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 36,
+        "margin": 0.06697600000000004,
+        "nessoMrr": 0.96142,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.894444,
+        "verdict": "tie"
+      },
+      {
+        "suite": "formats",
+        "system": "overall",
+        "class": "overall",
+        "n": 108,
+        "margin": 0.1116879999999999,
+        "nessoMrr": 0.77604,
+        "bestOther": "bm25",
+        "otherMrr": 0.664352,
+        "verdict": "win"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.15649200000000002,
+        "nessoMrr": 0.3,
+        "bestOther": "ck",
+        "otherMrr": 0.456492,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.05933299999999997,
+        "nessoMrr": 0.61,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.550667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "hdfs-2k-json",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.08955599999999997,
+        "nessoMrr": 0.636667,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "cause",
+        "n": 25,
+        "margin": -0.15649200000000002,
+        "nessoMrr": 0.3,
+        "bestOther": "ck",
+        "otherMrr": 0.456492,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 25,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 25,
+        "margin": 0.05933299999999997,
+        "nessoMrr": 0.61,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.550667,
+        "verdict": "tie"
+      },
+      {
+        "suite": "json",
+        "system": "overall",
+        "class": "overall",
+        "n": 75,
+        "margin": 0.08955599999999997,
+        "nessoMrr": 0.636667,
+        "bestOther": "bm25",
+        "otherMrr": 0.547111,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "cause",
+        "n": 18,
+        "margin": -0.09166699999999994,
+        "nessoMrr": 0.597222,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.688889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "exact_id",
+        "n": 18,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "paraphrase",
+        "n": 18,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 0.763889,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.722222,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "support-bundle",
+        "class": "overall",
+        "n": 54,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 0.787037,
+        "bestOther": "xerj",
+        "otherMrr": 0.74537,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "cause",
+        "n": 18,
+        "margin": -0.09166699999999994,
+        "nessoMrr": 0.597222,
+        "bestOther": "vecgrep",
+        "otherMrr": 0.688889,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "exact_id",
+        "n": 18,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "paraphrase",
+        "n": 18,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 0.763889,
+        "bestOther": "xerj-neural",
+        "otherMrr": 0.722222,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bundle",
+        "system": "overall",
+        "class": "overall",
+        "n": 54,
+        "margin": 0.04166700000000001,
+        "nessoMrr": 0.787037,
+        "bestOther": "xerj",
+        "otherMrr": 0.74537,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "keyword",
+        "n": 17,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "symptom",
+        "n": 17,
+        "margin": 0.138381,
+        "nessoMrr": 0.20374,
+        "bestOther": "bm25",
+        "otherMrr": 0.065359,
+        "verdict": "win"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "bgl-needle-100k",
+        "class": "overall",
+        "n": 34,
+        "margin": 0.06918999999999997,
+        "nessoMrr": 0.60187,
+        "bestOther": "bm25",
+        "otherMrr": 0.53268,
+        "verdict": "win"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "keyword",
+        "n": 17,
+        "margin": 0.0,
+        "nessoMrr": 1.0,
+        "bestOther": "xerj",
+        "otherMrr": 1.0,
+        "verdict": "tie"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "symptom",
+        "n": 17,
+        "margin": 0.138381,
+        "nessoMrr": 0.20374,
+        "bestOther": "bm25",
+        "otherMrr": 0.065359,
+        "verdict": "win"
+      },
+      {
+        "suite": "bgl-needle-100k",
+        "system": "overall",
+        "class": "overall",
+        "n": 34,
+        "margin": 0.06918999999999997,
+        "nessoMrr": 0.60187,
+        "bestOther": "bm25",
+        "otherMrr": 0.53268,
+        "verdict": "win"
+      }
+    ]
+  }
+}
